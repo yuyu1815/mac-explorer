@@ -180,4 +180,15 @@ describe('AppStore - Selection and Clipboard', () => {
 
         expect(useAppStore.getState().clipboard).toEqual({ files: ['/f1.txt'], operation: 'copy' });
     });
+
+    it('should select all files', () => {
+        const store = useAppStore.getState();
+        store.selectAll();
+
+        const selected = useAppStore.getState().tabs[0].selectedFiles;
+        expect(selected.size).toBe(3);
+        expect(selected.has('/f1.txt')).toBe(true);
+        expect(selected.has('/f2.txt')).toBe(true);
+        expect(selected.has('/f3.txt')).toBe(true);
+    });
 });

@@ -12,7 +12,7 @@ const FileIcon = ({ isDir, size = 16 }: { isDir: boolean, size?: number }) => (
 );
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, setSortParams } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setSortParams } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -144,6 +144,12 @@ export const MainPane = () => {
     const handleKeyDown = async (e: KeyboardEvent) => {
         // リネーム中はキーボードショートカットを無効化
         if (renamingPath) return;
+
+        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+            e.preventDefault();
+            selectAll();
+            return;
+        }
 
         if (selectedFiles.size === 0) return;
 

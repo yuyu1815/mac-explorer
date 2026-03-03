@@ -45,6 +45,7 @@ interface AppState {
     setFiles: (files: FileEntry[]) => void;
     toggleSelection: (path: string, exclusive?: boolean, range?: boolean) => void;
     clearSelection: () => void;
+    selectAll: () => void;
     setClipboard: (clipboard: { files: string[], operation: 'copy' | 'cut' } | null) => void;
 
     setViewMode: (mode: ViewMode) => void;
@@ -202,6 +203,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     clearSelection: () => set((state) => {
         const tabs = state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, selectedFiles: new Set<string>() } : tab);
+        return { tabs };
+    }),
+
+    selectAll: () => set((state) => {
+        const tabs = state.tabs.map(tab => {
+            if (tab.id !== state.activeTabId) return tab;
+            return { ...tab, selectedFiles: new Set(tab.files.map(f => f.path)) };
+        });
         return { tabs };
     }),
 
