@@ -1,0 +1,85 @@
+@import './variables.css';
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-size: 14px;
+    user-select: none;
+    /* Desktop app feel */
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Tabs & Breadcrumbs & NavBtns */
+.tab-close-btn:hover,
+.breadcrumb-item:hover,
+.nav-btn:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+
+    .tab-close-btn:hover,
+    .breadcrumb-item:hover,
+    .nav-btn:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+.tab-add-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+    .tab-add-btn:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Scrollbar styling for Webkit */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 6px;
+    border: 3px solid var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}

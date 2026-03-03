@@ -1,0 +1,40 @@
+:root {
+  /* Windows 11 Light Theme Variables */
+  --bg-main: #FFFFFF;
+  --bg-side: #F3F3F3;
+  --bg-titlebar: #F3F3F3;
+  --text-main: #1A1A1A;
+  --text-muted: #5D5D5D;
+  --border-color: #E5E5E5;
+  --hover-bg: rgba(0, 0, 0, 0.04);
+  --hover-side-bg: rgba(0, 0, 0, 0.04);
+  --accent-color: #005FB8;
+  --selected-bg: #CCE4F7;
+  --selected-border: #99C9EF;
+
+  --font-family: 'Segoe UI Variable Display', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  --titlebar-height: 48px;
+  --navbar-height: 48px;
+  --statusbar-height: 28px;
+  --sidepanel-width: 260px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Windows 11 Dark Theme Variables */
+    --bg-main: #191919;
+    --bg-side: #202020;
+    --bg-titlebar: #202020;
+    --text-main: #FFFFFF;
+    --text-muted: #A0A0A0;
+    --border-color: #333333;
+    --hover-bg: rgba(255, 255, 255, 0.06);
+    --hover-side-bg: rgba(255, 255, 255, 0.06);
+    --accent-color: #60CDFF;
+    --selected-bg: rgba(255, 255, 255, 0.08);
+    --selected-border: rgba(255, 255, 255, 0.12);
+  }
+}
