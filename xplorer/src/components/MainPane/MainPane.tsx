@@ -291,7 +291,7 @@ export const MainPane = () => {
                             e.stopPropagation();
                             handleContextMenu(e, file.path);
                         }}
-                        className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}`}
+                        className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
                         style={{
                             cursor: 'pointer',
                             borderBottom: '1px solid var(--border-color)',
@@ -334,7 +334,7 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
-                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}`}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
                     style={{
                         cursor: 'pointer',
                         padding: '4px 12px',
@@ -371,7 +371,7 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
-                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}`}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
                     style={{
                         cursor: 'pointer',
                         padding: '12px 8px',
