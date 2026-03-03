@@ -25,6 +25,7 @@ export const MainPane = () => {
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, target: string | null } | null>(null);
     const [renamingPath, setRenamingPath] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
+    const [renameWarning, setRenameWarning] = useState<string | null>(null);
     const renameInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -223,33 +224,66 @@ export const MainPane = () => {
         return <span style={{ marginLeft: '4px', fontSize: '10px' }}>{sortDesc ? '▼' : '▲'}</span>;
     };
 
+    const INVALID_CHARS = /[/:]/g;
+
     const renderFileName = (file: any) => {
         if (renamingPath === file.path) {
             return (
-                <input
-                    ref={renameInputRef}
-                    data-testid="rename-input"
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === 'Enter') commitRename();
-                        if (e.key === 'Escape') cancelRename();
-                    }}
-                    onBlur={commitRename}
-                    onClick={(e) => e.stopPropagation()}
-                    onDoubleClick={(e) => e.stopPropagation()}
-                    style={{
-                        background: 'var(--bg-main)',
-                        border: '1px solid var(--accent-blue)',
-                        color: 'var(--text-main)',
-                        padding: '2px 4px',
-                        fontSize: '13px',
-                        outline: 'none',
-                        width: '100%',
-                        borderRadius: '2px',
-                    }}
-                />
+                <div style={{ position: 'relative', width: '100%' }}>
+                    <input
+                        ref={renameInputRef}
+                        data-testid="rename-input"
+                        value={renameValue}
+                        onChange={(e) => {
+                            const raw = e.target.value;
+                            if (INVALID_CHARS.test(raw)) {
+                                setRenameWarning('ファイル名には / : は使えません');
+                                setRenameValue(raw.replace(INVALID_CHARS, ''));
+                                setTimeout(() => setRenameWarning(null), 2000);
+                            } else {
+                                setRenameValue(raw);
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === 'Enter') commitRename();
+                            if (e.key === 'Escape') cancelRename();
+                        }}
+                        onBlur={commitRename}
+                        onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: 'var(--bg-main)',
+                            border: '1px solid var(--accent-blue)',
+                            color: 'var(--text-main)',
+                            padding: '2px 4px',
+                            fontSize: '13px',
+                            outline: 'none',
+                            width: '100%',
+                            borderRadius: '2px',
+                        }}
+                    />
+                    {renameWarning && (
+                        <div
+                            data-testid="rename-warning"
+                            style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                marginTop: '4px',
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                color: '#fff',
+                                backgroundColor: 'rgba(200, 50, 50, 0.9)',
+                                borderRadius: '4px',
+                                whiteSpace: 'nowrap',
+                                zIndex: 100,
+                            }}
+                        >
+                            {renameWarning}
+                        </div>
+                    )}
+                </div>
             );
         }
         return <>{file.name}</>;

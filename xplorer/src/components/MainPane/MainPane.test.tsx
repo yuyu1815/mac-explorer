@@ -256,6 +256,25 @@ describe('MainPane — インラインリネーム', () => {
 
         expect(screen.queryByTestId('rename-input')).not.toBeInTheDocument();
     });
+
+    it('禁則文字（/ :）がリネーム入力からフィルタされ、警告が表示される', async () => {
+        render(<MainPane />);
+        await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
+
+        const file1 = screen.getByText('file1.txt').closest('tr')!;
+        fireEvent.click(file1);
+
+        const container = file1.closest('div[tabIndex="0"]')!;
+        fireEvent.keyDown(container, { key: 'F2' });
+
+        const input = screen.getByTestId('rename-input');
+        fireEvent.change(input, { target: { value: 'test/file:name.txt' } });
+
+        // 禁則文字が除去されている
+        expect((input as HTMLInputElement).value).toBe('testfilename.txt');
+        // 警告が表示されている
+        expect(screen.getByTestId('rename-warning')).toHaveTextContent('ファイル名には / : は使えません');
+    });
 });
 
 describe('MainPane — コンテキストメニュー操作', () => {
