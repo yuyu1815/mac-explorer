@@ -12,7 +12,7 @@ const FileIcon = ({ isDir, size = 16 }: { isDir: boolean, size?: number }) => (
 );
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, setSortParams, renameTriggerId } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, setSortParams, renameTriggerId, clipboard, setClipboard } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -156,21 +156,27 @@ export const MainPane = () => {
         setContextMenu({ x: e.clientX, y: e.clientY, target: path });
     };
 
+    const typeAheadBuffer = useRef('');
+    const typeAheadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const handleKeyDown = async (e: KeyboardEvent) => {
         if (renamingPath) return;
 
+        // Ctrl+A 全選択
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             e.preventDefault();
             selectAll();
             return;
         }
 
+        // Ctrl+Shift+N 新規フォルダ
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
             e.preventDefault();
             handleCreateFolder();
             return;
         }
 
+        // Ctrl+Shift+C パスコピー
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
             e.preventDefault();
             const paths = Array.from(selectedFiles);
@@ -180,6 +186,47 @@ export const MainPane = () => {
             return;
         }
 
+        // Ctrl+C ファイルコピー
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'c' || e.key === 'C')) {
+            if (selectedFiles.size > 0) {
+                e.preventDefault();
+                setClipboard({ files: Array.from(selectedFiles), operation: 'copy' });
+            }
+            return;
+        }
+
+        // Ctrl+X ファイル切り取り
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'x' || e.key === 'X')) {
+            if (selectedFiles.size > 0) {
+                e.preventDefault();
+                setClipboard({ files: Array.from(selectedFiles), operation: 'cut' });
+            }
+            return;
+        }
+
+        // Ctrl+V ファイル貼り付け
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+            e.preventDefault();
+            if (clipboard) {
+                if (clipboard.operation === 'copy') {
+                    await invoke('copy_files', { sources: clipboard.files, dest: currentPath });
+                } else {
+                    await invoke('move_files', { sources: clipboard.files, dest: currentPath });
+                    setClipboard(null);
+                }
+                await refreshFiles();
+            }
+            return;
+        }
+
+        // F5 リフレッシュ
+        if (e.key === 'F5') {
+            e.preventDefault();
+            await refreshFiles();
+            return;
+        }
+
+        // 矢印キーでフォーカス移動
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             const focusedIndex = activeTab?.focusedIndex ?? -1;
@@ -195,6 +242,17 @@ export const MainPane = () => {
             return;
         }
 
+        // Home / End キー
+        if (e.key === 'Home' || e.key === 'End') {
+            e.preventDefault();
+            if (sortedFiles.length === 0) return;
+            const idx = e.key === 'Home' ? 0 : sortedFiles.length - 1;
+            setFocusedIndex(idx);
+            toggleSelection(sortedFiles[idx].path, true);
+            return;
+        }
+
+        // Enter でフォルダを開く/ファイル実行
         if (e.key === 'Enter' && selectedFiles.size === 1) {
             const targetPath = Array.from(selectedFiles)[0];
             const targetFile = files.find(f => f.path === targetPath);
@@ -204,12 +262,23 @@ export const MainPane = () => {
             return;
         }
 
+        // Backspace で履歴を戻る
         if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
             e.preventDefault();
             goBack();
             return;
         }
 
+        // Shift+Delete 完全削除
+        if (e.key === 'Delete' && e.shiftKey && selectedFiles.size > 0) {
+            if (confirm(`選択した${selectedFiles.size}項目を完全に削除しますか？（元に戻せません）`)) {
+                await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: false });
+                await refreshFiles();
+            }
+            return;
+        }
+
+        // Delete ゴミ箱へ移動
         if (e.key === 'Delete' && selectedFiles.size > 0) {
             if (confirm(`選択した${selectedFiles.size}項目をゴミ箱に移動しますか？`)) {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: true });
@@ -218,9 +287,26 @@ export const MainPane = () => {
             return;
         }
 
+        // F2 リネーム（拡張子除外選択）
         if (e.key === 'F2' && selectedFiles.size === 1) {
             const targetPath = Array.from(selectedFiles)[0];
             startRename(targetPath);
+            return;
+        }
+
+        // タイプアヘッド検索（英数字キー入力でファイル名ジャンプ）
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            typeAheadBuffer.current += e.key.toLowerCase();
+            if (typeAheadTimer.current) clearTimeout(typeAheadTimer.current);
+            typeAheadTimer.current = setTimeout(() => { typeAheadBuffer.current = ''; }, 800);
+
+            const match = sortedFiles.findIndex(f =>
+                f.name.toLowerCase().startsWith(typeAheadBuffer.current)
+            );
+            if (match !== -1) {
+                setFocusedIndex(match);
+                toggleSelection(sortedFiles[match].path, true);
+            }
         }
     };
 
