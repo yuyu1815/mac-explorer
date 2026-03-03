@@ -38,12 +38,12 @@ describe('StatusBar', () => {
         }));
 
         render(<StatusBar />);
-        expect(screen.getByTestId('statusbar-total')).toHaveTextContent('3 個の項目');
+        expect(screen.getByTestId('statusbar')).toHaveTextContent('3 個の項目');
     });
 
     it('should display zero items for empty folder', () => {
         render(<StatusBar />);
-        expect(screen.getByTestId('statusbar-total')).toHaveTextContent('0 個の項目');
+        expect(screen.getByTestId('statusbar')).toHaveTextContent('0 個の項目');
     });
 
     it('should display selected file count and size', () => {
@@ -56,9 +56,9 @@ describe('StatusBar', () => {
         }));
 
         render(<StatusBar />);
-        const selectionInfo = screen.getByTestId('statusbar-selection');
-        expect(selectionInfo).toHaveTextContent('2 個の項目を選択');
-        expect(selectionInfo).toHaveTextContent('3.0 KB');
+        const statusBar = screen.getByTestId('statusbar');
+        expect(statusBar).toHaveTextContent('2 個の項目を選択');
+        expect(statusBar).toHaveTextContent('3 KB');
     });
 
     it('should exclude directory size from selection total', () => {
@@ -71,9 +71,9 @@ describe('StatusBar', () => {
         }));
 
         render(<StatusBar />);
-        const selectionInfo = screen.getByTestId('statusbar-selection');
-        expect(selectionInfo).toHaveTextContent('2 個の項目を選択');
-        expect(selectionInfo).toHaveTextContent('512 B');
+        const statusBar = screen.getByTestId('statusbar');
+        expect(statusBar).toHaveTextContent('2 個の項目を選択');
+        expect(statusBar).toHaveTextContent('512 B');
     });
 
     it('should not show size when only directories are selected', () => {
@@ -85,9 +85,9 @@ describe('StatusBar', () => {
         }));
 
         render(<StatusBar />);
-        const selectionInfo = screen.getByTestId('statusbar-selection');
-        expect(selectionInfo).toHaveTextContent('1 個の項目を選択');
+        const statusBar = screen.getByTestId('statusbar');
+        expect(statusBar).toHaveTextContent('1 個の項目を選択');
         // ディレクトリだけ選択 → サイズは表示しない
-        expect(selectionInfo.textContent).not.toContain('B');
+        expect(statusBar.textContent).not.toContain('B');
     });
 });

@@ -7,12 +7,12 @@ import { Folder, FileText } from 'lucide-react';
 
 const FileIcon = ({ isDir, size = 16 }: { isDir: boolean, size?: number }) => (
     isDir
-        ? <Folder size={size} fill="#FFCA28" color="#F5B041" strokeWidth={1} style={{ flexShrink: 0 }} />
-        : <FileText size={size} fill="var(--bg-main)" color="var(--text-muted)" strokeWidth={1.5} style={{ flexShrink: 0 }} />
+        ? <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
+        : <FileText size={size} fill="#FFFFFF" color="#5D5D5D" strokeWidth={1.5} style={{ flexShrink: 0 }} />
 );
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, setSortParams } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, setSortParams, renameTriggerId } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -27,6 +27,13 @@ export const MainPane = () => {
     const [renameValue, setRenameValue] = useState('');
     const [renameWarning, setRenameWarning] = useState<string | null>(null);
     const renameInputRef = useRef<HTMLInputElement>(null);
+
+    // Context menu opening ignores default behavior
+    useEffect(() => {
+        const handleNativeContextMenu = (e: globalThis.MouseEvent) => e.preventDefault();
+        document.addEventListener('contextmenu', handleNativeContextMenu);
+        return () => document.removeEventListener('contextmenu', handleNativeContextMenu);
+    }, []);
 
     useEffect(() => {
         if (!currentPath) {
@@ -59,6 +66,14 @@ export const MainPane = () => {
             }
         }
     }, [renamingPath]);
+
+    // リボン等からの外部リネームトリガー監視
+    useEffect(() => {
+        if (renameTriggerId > 0 && selectedFiles.size === 1) {
+            const targetPath = Array.from(selectedFiles)[0];
+            startRename(targetPath);
+        }
+    }, [renameTriggerId]);
 
     const refreshFiles = async () => {
         try {
@@ -108,7 +123,6 @@ export const MainPane = () => {
         try {
             await invoke('create_directory', { path: newPath });
             await refreshFiles();
-            // 作成直後にインラインリネームモードに入る
             startRename(newPath);
         } catch (err) {
             console.error('Failed to create directory', err);
@@ -128,10 +142,10 @@ export const MainPane = () => {
     };
 
     const formatSize = (bytes: number, is_dir: boolean) => {
-        if (is_dir) return '--';
+        if (is_dir) return '';
         if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        if (bytes < 1024 * 1024) return Math.ceil(bytes / 1024) + ' KB';
+        return Math.ceil(bytes / 1024 / 1024) + ' MB';
     };
 
     const handleContextMenu = (e: ReactMouseEvent, path: string | null) => {
@@ -143,7 +157,6 @@ export const MainPane = () => {
     };
 
     const handleKeyDown = async (e: KeyboardEvent) => {
-        // リネーム中はキーボードショートカットを無効化
         if (renamingPath) return;
 
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
@@ -152,14 +165,12 @@ export const MainPane = () => {
             return;
         }
 
-        // Ctrl+Shift+N（Cmd+Shift+N）で新規フォルダ作成
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
             e.preventDefault();
             handleCreateFolder();
             return;
         }
 
-        // Ctrl+Shift+C（Cmd+Shift+C）でパスをコピー
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
             e.preventDefault();
             const paths = Array.from(selectedFiles);
@@ -169,7 +180,6 @@ export const MainPane = () => {
             return;
         }
 
-        // 矢印キーでフォーカス移動
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             const focusedIndex = activeTab?.focusedIndex ?? -1;
@@ -185,7 +195,6 @@ export const MainPane = () => {
             return;
         }
 
-        // Enterキーでフォルダを開く/ファイルを実行
         if (e.key === 'Enter' && selectedFiles.size === 1) {
             const targetPath = Array.from(selectedFiles)[0];
             const targetFile = files.find(f => f.path === targetPath);
@@ -195,14 +204,12 @@ export const MainPane = () => {
             return;
         }
 
-        // Backspaceで履歴を戻る（macOSのFinder風）
         if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
             e.preventDefault();
             goBack();
             return;
         }
 
-        // Deleteキーで削除
         if (e.key === 'Delete' && selectedFiles.size > 0) {
             if (confirm(`選択した${selectedFiles.size}項目をゴミ箱に移動しますか？`)) {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: true });
@@ -211,7 +218,6 @@ export const MainPane = () => {
             return;
         }
 
-        // F2でリネーム
         if (e.key === 'F2' && selectedFiles.size === 1) {
             const targetPath = Array.from(selectedFiles)[0];
             startRename(targetPath);
@@ -238,10 +244,10 @@ export const MainPane = () => {
 
     const SortIndicator = ({ column }: { column: string }) => {
         if (sortBy !== column) return null;
-        return <span style={{ marginLeft: '4px', fontSize: '10px' }}>{sortDesc ? '▼' : '▲'}</span>;
+        return <span style={{ marginLeft: '4px', fontSize: '9px', color: '#666' }}>{sortDesc ? '▼' : '▲'}</span>;
     };
 
-    const INVALID_CHARS = /[/:]/g;
+    const INVALID_CHARS = /[/:\\*?"<>|]/g; // Extended invalid chars per Windows
 
     const renderFileName = (file: any) => {
         if (renamingPath === file.path) {
@@ -254,7 +260,7 @@ export const MainPane = () => {
                         onChange={(e) => {
                             const raw = e.target.value;
                             if (INVALID_CHARS.test(raw)) {
-                                setRenameWarning('ファイル名には / : は使えません');
+                                setRenameWarning('ファイル名には / \\ : * ? " < > | は使えません');
                                 setRenameValue(raw.replace(INVALID_CHARS, ''));
                                 setTimeout(() => setRenameWarning(null), 2000);
                             } else {
@@ -270,14 +276,16 @@ export const MainPane = () => {
                         onClick={(e) => e.stopPropagation()}
                         onDoubleClick={(e) => e.stopPropagation()}
                         style={{
-                            background: 'var(--bg-main)',
-                            border: '1px solid var(--accent-blue)',
-                            color: 'var(--text-main)',
-                            padding: '2px 4px',
-                            fontSize: '13px',
+                            background: '#FFFFFF',
+                            border: '1px solid black', // Windows 10 uses black or blue border for inline rename
+                            color: '#000000',
+                            padding: '0 2px', // Minimal padding
+                            height: '20px',
+                            fontSize: '12px',
                             outline: 'none',
-                            width: '100%',
-                            borderRadius: '2px',
+                            width: '300px', // Allow longer input width natively
+                            maxWidth: '100%',
+                            fontFamily: 'Segoe UI'
                         }}
                     />
                     {renameWarning && (
@@ -292,7 +300,6 @@ export const MainPane = () => {
                                 fontSize: '11px',
                                 color: '#fff',
                                 backgroundColor: 'rgba(200, 50, 50, 0.9)',
-                                borderRadius: '4px',
                                 whiteSpace: 'nowrap',
                                 zIndex: 100,
                             }}
@@ -303,23 +310,25 @@ export const MainPane = () => {
                 </div>
             );
         }
-        return <>{file.name}</>;
+        return <span>{file.name}</span>;
     };
 
+    const rowHeight = '22px'; // Extreme density
+
     const renderDetailView = () => (
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
             <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-main)', zIndex: 10 }}>
-                <tr style={{ borderBottom: '1px solid var(--border-color)', fontSize: '12px', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '8px 16px', fontWeight: 'normal', cursor: 'pointer' }} onClick={() => setSortParams('name')}>
+                <tr style={{ height: rowHeight, borderBottom: '1px solid var(--border-color)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)' }} onClick={() => setSortParams('name')}>
                         名前 <SortIndicator column="name" />
                     </th>
-                    <th style={{ padding: '8px 16px', fontWeight: 'normal', width: '200px', cursor: 'pointer' }} onClick={() => setSortParams('modified')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', width: '150px', cursor: 'pointer', borderRight: '1px solid var(--border-color)' }} onClick={() => setSortParams('modified')}>
                         更新日時 <SortIndicator column="modified" />
                     </th>
-                    <th style={{ padding: '8px 16px', fontWeight: 'normal', width: '150px', cursor: 'pointer' }} onClick={() => setSortParams('file_type')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', width: '120px', cursor: 'pointer', borderRight: '1px solid var(--border-color)' }} onClick={() => setSortParams('file_type')}>
                         種類 <SortIndicator column="file_type" />
                     </th>
-                    <th style={{ padding: '8px 16px', fontWeight: 'normal', width: '100px', textAlign: 'right', cursor: 'pointer' }} onClick={() => setSortParams('size')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', width: '100px', textAlign: 'right', cursor: 'pointer' }} onClick={() => setSortParams('size')}>
                         サイズ <SortIndicator column="size" />
                     </th>
                 </tr>
@@ -343,21 +352,18 @@ export const MainPane = () => {
                             handleContextMenu(e, file.path);
                         }}
                         className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
-                        style={{
-                            cursor: 'pointer',
-                            borderBottom: '1px solid var(--border-color)',
-                        }}
+                        style={{ height: rowHeight, cursor: 'default' }}
                     >
-                        <td style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            <FileIcon isDir={file.is_dir} size={18} /> {renderFileName(file)}
+                        <td style={{ padding: '0 4px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: rowHeight }}>
+                            <FileIcon isDir={file.is_dir} size={16} /> {renderFileName(file)}
                         </td>
-                        <td style={{ padding: '8px 16px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '0 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                             {format(new Date(file.modified * 1000), 'yyyy/MM/dd HH:mm')}
                         </td>
-                        <td style={{ padding: '8px 16px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '0 6px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {file.file_type}
                         </td>
-                        <td style={{ padding: '8px 16px', color: 'var(--text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '0 6px', color: 'var(--text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {formatSize(file.size, file.is_dir)}
                         </td>
                     </tr>
@@ -367,7 +373,7 @@ export const MainPane = () => {
     );
 
     const renderListView = () => (
-        <div style={{ display: 'flex', flexWrap: 'wrap', padding: '8px', alignContent: 'flex-start' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', padding: '2px', alignContent: 'flex-start' }}>
             {sortedFiles.map(file => (
                 <div
                     key={file.path}
@@ -387,16 +393,16 @@ export const MainPane = () => {
                     }}
                     className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
                     style={{
-                        cursor: 'pointer',
-                        padding: '4px 12px',
-                        width: '250px',
+                        cursor: 'default',
+                        padding: '0 6px',
+                        width: '240px',
+                        height: rowHeight,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        borderRadius: 'var(--radius-sm)',
+                        gap: '6px',
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} size={18} />
+                    <FileIcon isDir={file.is_dir} size={16} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{renderFileName(file)}</span>
                 </div>
             ))}
@@ -404,7 +410,7 @@ export const MainPane = () => {
     );
 
     const renderIconView = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '16px', padding: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '4px', padding: '8px' }}>
             {sortedFiles.map(file => (
                 <div
                     key={file.path}
@@ -424,13 +430,12 @@ export const MainPane = () => {
                     }}
                     className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
                     style={{
-                        cursor: 'pointer',
-                        padding: '12px 8px',
+                        cursor: 'default',
+                        padding: '4px',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '8px',
-                        borderRadius: 'var(--radius-sm)',
+                        gap: '4px',
                         textAlign: 'center'
                     }}
                 >
@@ -443,7 +448,8 @@ export const MainPane = () => {
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical',
                         wordBreak: 'break-all',
-                        width: '100%'
+                        width: '100%',
+                        lineHeight: '1.2'
                     }}>{renderFileName(file)}</span>
                 </div>
             ))}
@@ -452,7 +458,8 @@ export const MainPane = () => {
 
     return (
         <div
-            style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto' }}
+            className="main-pane-container"
+            style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto', outline: 'none' }}
             onClick={() => { if (!renamingPath) clearSelection(); }}
             onContextMenu={(e) => handleContextMenu(e, null)}
             onKeyDown={handleKeyDown}
@@ -460,7 +467,7 @@ export const MainPane = () => {
         >
             {files.length === 0 && (
                 <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', width: '100%' }}>
-                    空のフォルダーです。
+                    このフォルダーは空です。
                 </div>
             )}
 

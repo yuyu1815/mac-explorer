@@ -5,9 +5,12 @@ mod commands;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::filesystem::list_directory,
             commands::filesystem::open_file_default,
+            commands::filesystem::show_properties,
             commands::filesystem::create_directory,
             commands::filesystem::copy_files,
             commands::filesystem::move_files,

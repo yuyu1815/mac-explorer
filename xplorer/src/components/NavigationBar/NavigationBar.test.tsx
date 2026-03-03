@@ -21,7 +21,8 @@ describe('NavigationBar Component', () => {
                 selectedFiles: new Set(),
                 viewMode: 'detail',
                 sortBy: 'name',
-                sortDesc: false
+                sortDesc: false,
+                focusedIndex: -1
             }],
             activeTabId: 'tab1',
             clipboard: null
@@ -42,7 +43,7 @@ describe('NavigationBar Component', () => {
         // inputに最も近いdiv要素など（実質パンくずコンテナ全体）を探してクリック
         const documentsBreadcrumb = screen.getByText('Documents');
         // パンくずコンテナ（onClickを持つdiv）を取得するための上位探索
-        const breadcrumbContainer = documentsBreadcrumb.closest('div[style*="cursor: text;"]');
+        const breadcrumbContainer = documentsBreadcrumb.closest('.win10-address-bar');
 
         if (breadcrumbContainer) {
             fireEvent.click(breadcrumbContainer);
@@ -64,7 +65,8 @@ describe('NavigationBar Component', () => {
                 selectedFiles: new Set(),
                 viewMode: 'detail',
                 sortBy: 'name',
-                sortDesc: false
+                sortDesc: false,
+                focusedIndex: -1
             }],
             activeTabId: 'tab1',
             clipboard: null

@@ -20,6 +20,41 @@ pub struct FileEntry {
 }
 
 #[tauri::command]
+pub async fn show_properties(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        // Use AppleScript to tell Finder to show info for the file
+        let script = format!(
+            "tell application \"Finder\" to open information window of (POSIX file \"{}\" as alias)",
+            path
+        );
+        std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(&script)
+            .spawn()
+            .map_err(|e| format!("Failed to open properties on Mac: {}", e))?;
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        // Unfortunately standard process::Command doesn't easily trigger the Win32 Properties dialog directly without complex COM calls.
+        // We'll execute an Explorer command as a fallback for now, or just open the containing folder and select it if COM is too much.
+        // Actually, there's no native one-liner CLI for "Properties" in Windows, so we'll fallback to selecting the file in Explorer.
+        std::process::Command::new("explorer")
+            .args(["/select,", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Linux is highly dependent on the DE. Fallback to nothing or xdg-open containing dir.
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
     let mut entries = Vec::new();
     let dir = fs::read_dir(&path).map_err(|e| e.to_string())?;

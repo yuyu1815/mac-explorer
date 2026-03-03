@@ -79,7 +79,7 @@ describe('MainPane — マウント・描画', () => {
         render(<MainPane />);
 
         await waitFor(() => {
-            expect(screen.getByText('空のフォルダーです。')).toBeInTheDocument();
+            expect(screen.getByText('このフォルダーは空です。')).toBeInTheDocument();
         });
     });
 });
@@ -273,7 +273,7 @@ describe('MainPane — インラインリネーム', () => {
         // 禁則文字が除去されている
         expect((input as HTMLInputElement).value).toBe('testfilename.txt');
         // 警告が表示されている
-        expect(screen.getByTestId('rename-warning')).toHaveTextContent('ファイル名には / : は使えません');
+        expect(screen.getByTestId('rename-warning')).toHaveTextContent('ファイル名には / \\ : * ? " < > | は使えません');
     });
 });
 
@@ -293,7 +293,7 @@ describe('MainPane — コンテキストメニュー操作', () => {
         fireEvent.click(file1);
         fireEvent.contextMenu(file1);
 
-        fireEvent.click(screen.getByText(/名前変更/));
+        fireEvent.click(screen.getByText(/名前の変更/));
 
         const input = screen.getByTestId('rename-input') as HTMLInputElement;
         expect(input).toBeInTheDocument();
@@ -306,7 +306,7 @@ describe('MainPane — コンテキストメニュー操作', () => {
 
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
         fireEvent.contextMenu(container);
-        fireEvent.click(screen.getByText('📁 新規フォルダー'));
+        fireEvent.click(screen.getByText(/フォルダ/));
 
         await waitFor(() => {
             expect(invoke).toHaveBeenCalledWith('create_directory', { path: `${basePath}/新しいフォルダー` });
@@ -345,7 +345,7 @@ describe('MainPane — コンテキストメニュー操作', () => {
 
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
         fireEvent.contextMenu(container);
-        fireEvent.click(screen.getByText(/📋 貼り付け/));
+        fireEvent.click(screen.getByText(/貼り付け/));
 
         expect(invoke).toHaveBeenCalledWith('copy_files', {
             sources: [`${basePath}/file1.txt`],
@@ -367,7 +367,7 @@ describe('MainPane — コンテキストメニュー操作', () => {
 
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
         fireEvent.contextMenu(container);
-        fireEvent.click(screen.getByText(/📋 貼り付け/));
+        fireEvent.click(screen.getByText(/貼り付け/));
 
         expect(invoke).toHaveBeenCalledWith('move_files', {
             sources: [`${basePath}/file1.txt`],

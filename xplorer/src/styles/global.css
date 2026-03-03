@@ -4,44 +4,23 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    /* Kill all animations globally for Win10 feel */
+    transition: none !important;
 }
 
 body {
     font-family: var(--font-family);
     background-color: var(--bg-main);
     color: var(--text-main);
-    font-size: 14px;
+    font-size: var(--font-size-main);
     user-select: none;
     /* Desktop app feel */
     overflow: hidden;
     height: 100vh;
     width: 100vw;
-}
-
-/* Tabs & Breadcrumbs & NavBtns */
-.tab-close-btn:hover,
-.breadcrumb-item:hover,
-.nav-btn:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-
-    .tab-close-btn:hover,
-    .breadcrumb-item:hover,
-    .nav-btn:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-}
-
-.tab-add-btn:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-@media (prefers-color-scheme: dark) {
-    .tab-add-btn:hover {
-        background-color: rgba(255, 255, 255, 0.05);
-    }
+    /* Disable macOS specific font smoothing and appearances to look like Windows */
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -56,6 +35,8 @@ body {
     flex-direction: column;
     height: 100%;
     width: 100%;
+    border: 1px solid var(--border-color);
+    /* Win10 window border, only visible if not maximized really, but good to have */
 }
 
 .main-content {
@@ -64,50 +45,192 @@ body {
     overflow: hidden;
 }
 
-/* Scrollbar styling for Webkit */
+/* Tabs & Breadcrumbs & NavBtns - keep original layout selectors if needed */
+.tab-close-btn:hover,
+.breadcrumb-item:hover,
+.nav-btn:hover {
+    background-color: var(--hover-bg);
+}
+
+.tab-add-btn:hover {
+    background-color: var(--hover-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+
+    .tab-close-btn:hover,
+    .breadcrumb-item:hover,
+    .nav-btn:hover,
+    .tab-add-btn:hover {
+        background-color: var(--hover-bg);
+    }
+}
+
+
+/* Win10 Classic Scrollbar for Webkit */
 ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 17px;
+    height: 17px;
+    background-color: #F0F0F0;
+}
+
+@media (prefers-color-scheme: dark) {
+    ::-webkit-scrollbar {
+        background-color: #1A1A1A;
+    }
 }
 
 ::-webkit-scrollbar-track {
     background: transparent;
+    border-left: 1px solid var(--border-color);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 6px;
-    border: 3px solid var(--bg-main);
+    background-color: #CDCDCD;
+    border: none;
+    border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+    background-color: #A6A6A6;
 }
 
-/* ファイルアイテムのホバー・選択 */
+::-webkit-scrollbar-thumb:active {
+    background-color: #606060;
+}
+
+@media (prefers-color-scheme: dark) {
+    ::-webkit-scrollbar-thumb {
+        background-color: #4D4D4D;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: #5D5D5D;
+    }
+
+    ::-webkit-scrollbar-thumb:active {
+        background-color: #7A7A7A;
+    }
+}
+
+/* Scrollbar Buttons */
+::-webkit-scrollbar-button:single-button {
+    background-color: #F0F0F0;
+    display: block;
+    border-left: 1px solid var(--border-color);
+    border-bottom: 1px solid transparent;
+    border-top: 1px solid transparent;
+    height: 17px;
+    width: 17px;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+::-webkit-scrollbar-button:single-button:hover {
+    background-color: #D2D2D2;
+}
+
+::-webkit-scrollbar-button:single-button:active {
+    background-color: #787878;
+}
+
+@media (prefers-color-scheme: dark) {
+    ::-webkit-scrollbar-button:single-button {
+        background-color: #1A1A1A;
+    }
+
+    ::-webkit-scrollbar-button:single-button:hover {
+        background-color: #333333;
+    }
+
+    ::-webkit-scrollbar-button:single-button:active {
+        background-color: #555555;
+    }
+}
+
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='7' height='4'><path d='M3.5 0L7 4H0z' fill='%23606060'/></svg>");
+}
+
+::-webkit-scrollbar-button:single-button:vertical:increment {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='7' height='4'><path d='M3.5 4L7 0H0z' fill='%23606060'/></svg>");
+}
+
+::-webkit-scrollbar-button:single-button:horizontal:decrement {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='7'><path d='M0 3.5L4 7V0z' fill='%23606060'/></svg>");
+}
+
+::-webkit-scrollbar-button:single-button:horizontal:increment {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='7'><path d='M4 3.5L0 7V0z' fill='%23606060'/></svg>");
+}
+
+@media (prefers-color-scheme: dark) {
+    ::-webkit-scrollbar-button:single-button:vertical:decrement {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='7' height='4'><path d='M3.5 0L7 4H0z' fill='%23A0A0A0'/></svg>");
+    }
+
+    ::-webkit-scrollbar-button:single-button:vertical:increment {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='7' height='4'><path d='M3.5 4L7 0H0z' fill='%23A0A0A0'/></svg>");
+    }
+
+    ::-webkit-scrollbar-button:single-button:horizontal:decrement {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='7'><path d='M0 3.5L4 7V0z' fill='%23A0A0A0'/></svg>");
+    }
+
+    ::-webkit-scrollbar-button:single-button:horizontal:increment {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='7'><path d='M4 3.5L0 7V0z' fill='%23A0A0A0'/></svg>");
+    }
+}
+
+/* File Item Hover & Selection */
 .file-item {
-    transition: background-color 0.08s ease;
+    /* No transition */
+    border: 1px solid transparent;
+    /* Prepare for border */
 }
 
+/* Phase 3 requires 1px border. We can add it here as a base styling */
 .file-item:hover {
-    background-color: rgba(0, 0, 0, 0.04);
+    background-color: var(--hover-bg);
+    border: 1px solid var(--hover-border);
 }
 
 .file-item.selected {
     background-color: var(--selected-bg);
+    border: 1px solid var(--selected-border);
 }
 
 .file-item.selected:hover {
     background-color: var(--selected-bg);
+    border: 1px solid var(--selected-border);
 }
 
-@media (prefers-color-scheme: dark) {
-    .file-item:hover {
-        background-color: rgba(255, 255, 255, 0.06);
-    }
-}
+/* We will handle invalidation (graying out) when focus is lost later in Phase 3 */
 
 /* 隠しファイル */
 .file-item.hidden {
     opacity: 0.5;
+}
+
+/* Form Inputs / General selection */
+input,
+textarea {
+    font-family: var(--font-family);
+    font-size: var(--font-size-main);
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--accent-color);
+}
+
+::selection {
+    background-color: var(--accent-color);
+    color: #FFFFFF;
+}
+
+/* Focus Rectangle (Dotted Line) */
+:focus-visible {
+    outline: 1px dotted invert;
 }

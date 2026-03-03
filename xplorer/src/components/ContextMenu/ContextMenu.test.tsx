@@ -51,36 +51,39 @@ describe('ContextMenu — 空白右クリック（targetPath=null）', () => {
         defaultProps.onCreateFolder = vi.fn();
     });
 
-    it('「新規フォルダー」と「貼り付け」のみ表示される', () => {
+    it('「表示」「並び替え」「最新の情報に更新」等が表示される', () => {
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
-        expect(screen.getByText('📁 新規フォルダー')).toBeInTheDocument();
-        expect(screen.getByText('📋 貼り付け')).toBeInTheDocument();
+        expect(screen.getByText(/表示/)).toBeInTheDocument();
+        expect(screen.getByText(/並び替え/)).toBeInTheDocument();
+        expect(screen.getByText(/最新の情報に更新/)).toBeInTheDocument();
+        expect(screen.getByText(/貼り付け/)).toBeInTheDocument();
+        expect(screen.getByText(/新規作成/)).toBeInTheDocument();
 
         expect(screen.queryByText(/切り取り/)).not.toBeInTheDocument();
         expect(screen.queryByText(/コピー/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/名前変更/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/名前の変更/)).not.toBeInTheDocument();
     });
 
     it('clipboard=null のとき「貼り付け」は半透明（opacity: 0.5）', () => {
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
-        const pasteItem = screen.getByText('📋 貼り付け').closest('div')!;
-        expect(pasteItem.style.opacity).toBe('0.5');
+        const pasteItem = screen.getByText('貼り付け(P)').parentElement as HTMLElement;
+        expect(pasteItem.classList.contains('disabled')).toBe(true);
     });
 
     it('clipboardにデータがあるとき「貼り付け」は有効（opacity: 1）', () => {
         setupStore({ clipboard: { files: [`${basePath}/file1.txt`], operation: 'copy' } });
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
-        const pasteItem = screen.getByText('📋 貼り付け').closest('div')!;
-        expect(pasteItem.style.opacity).toBe('1');
+        const pasteItem = screen.getByText('貼り付け(P)').parentElement as HTMLElement;
+        expect(pasteItem.classList.contains('disabled')).toBe(false);
     });
 
-    it('新規フォルダーをクリックすると onCreateFolder が呼ばれる', async () => {
+    it('新規作成の下層にあるフォルダをクリックすると onCreateFolder が呼ばれる', async () => {
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
-        fireEvent.click(screen.getByText('📁 新規フォルダー'));
+        fireEvent.click(screen.getByText(/フォルダ/));
 
         await waitFor(() => {
             expect(defaultProps.onCreateFolder).toHaveBeenCalled();
@@ -107,7 +110,7 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
         expect(screen.getByText(/開く/)).toBeInTheDocument();
         expect(screen.getByText(/切り取り/)).toBeInTheDocument();
         expect(screen.getByText(/コピー/)).toBeInTheDocument();
-        expect(screen.getByText(/名前変更/)).toBeInTheDocument();
+        expect(screen.getByText(/名前の変更/)).toBeInTheDocument();
         expect(screen.getByText(/削除/)).toBeInTheDocument();
     });
 
@@ -125,7 +128,7 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
 
     it('名前変更で onStartRename が呼ばれる（promptは使わない）', () => {
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
-        fireEvent.click(screen.getByText(/名前変更/));
+        fireEvent.click(screen.getByText(/名前の変更/));
         expect(defaultProps.onStartRename).toHaveBeenCalledWith(targetFile);
     });
 
@@ -177,7 +180,7 @@ describe('ContextMenu — 複数選択時の制御', () => {
         render(<ContextMenu {...defaultProps} targetPath={`${basePath}/file1.txt`} />);
 
         expect(screen.queryByText(/開く/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/名前変更/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/名前の変更/)).not.toBeInTheDocument();
 
         expect(screen.getByText(/切り取り/)).toBeInTheDocument();
         expect(screen.getByText(/コピー/)).toBeInTheDocument();

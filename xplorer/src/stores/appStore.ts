@@ -33,6 +33,8 @@ interface AppState {
     tabs: Tab[];
     activeTabId: string;
     clipboard: { files: string[], operation: 'copy' | 'cut' } | null;
+    renameTriggerId: number;
+    showDetailsPane: boolean;
 
     // Actions
     addTab: (path?: string) => void;
@@ -47,11 +49,14 @@ interface AppState {
     toggleSelection: (path: string, exclusive?: boolean, range?: boolean) => void;
     clearSelection: () => void;
     selectAll: () => void;
+    invertSelection: () => void;
     setFocusedIndex: (index: number) => void;
     setClipboard: (clipboard: { files: string[], operation: 'copy' | 'cut' } | null) => void;
+    triggerRename: () => void;
 
     setViewMode: (mode: ViewMode) => void;
     setSortParams: (column: SortColumn, desc?: boolean) => void;
+    toggleDetailsPane: () => void;
 }
 
 const createNewTab = (id: string, path: string = ''): Tab => ({
@@ -67,10 +72,12 @@ const createNewTab = (id: string, path: string = ''): Tab => ({
     sortDesc: false
 });
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>((set) => ({
     tabs: [createNewTab('default-tab')],
     activeTabId: 'default-tab',
     clipboard: null,
+    renameTriggerId: 0,
+    showDetailsPane: false,
 
     addTab: (path) => set((state) => {
         const id = `tab-${Date.now()}`;
@@ -221,6 +228,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         return { tabs };
     }),
 
+    invertSelection: () => set((state) => {
+        const tabs = state.tabs.map(tab => {
+            if (tab.id !== state.activeTabId) return tab;
+            const newSelected = new Set(tab.files.map(f => f.path));
+            tab.selectedFiles.forEach(path => newSelected.delete(path)); // remove currently selected
+            return { ...tab, selectedFiles: newSelected };
+        });
+        return { tabs };
+    }),
+
     setFocusedIndex: (index) => set((state) => {
         const tabs = state.tabs.map(tab => {
             if (tab.id !== state.activeTabId) return tab;
@@ -230,6 +247,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
     setClipboard: (clipboard) => set({ clipboard }),
+
+    triggerRename: () => set(state => ({ renameTriggerId: state.renameTriggerId + 1 })),
 
     setViewMode: (mode) => set((state) => {
         const tabs = state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, viewMode: mode } : tab);
@@ -245,5 +264,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             return tab;
         });
         return { tabs };
-    })
+    }),
+
+    toggleDetailsPane: () => set(state => ({ showDetailsPane: !state.showDetailsPane }))
 }));

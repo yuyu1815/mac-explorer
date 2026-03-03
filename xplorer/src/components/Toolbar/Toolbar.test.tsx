@@ -24,7 +24,8 @@ describe('Toolbar Component', () => {
                 selectedFiles: new Set(),
                 viewMode: 'detail',
                 sortBy: 'name',
-                sortDesc: false
+                sortDesc: false,
+                focusedIndex: -1
             }],
             activeTabId: 'tab1',
             clipboard: null
@@ -35,13 +36,13 @@ describe('Toolbar Component', () => {
         render(<Toolbar />);
 
         // 選択ファイルがない状態
-        const cutBtn = screen.getByText('切り取り').closest('button');
-        const copyBtn = screen.getByText('コピー').closest('button');
-        const deleteBtn = screen.getByText('削除').closest('button');
+        const cutBtn = screen.getByText('切り取り').closest('.ribbon-btn');
+        const copyBtn = screen.getByText('コピー').closest('.ribbon-btn');
+        const deleteBtn = screen.getByText('削除').closest('.ribbon-btn');
 
-        expect(cutBtn).toBeDisabled();
-        expect(copyBtn).toBeDisabled();
-        expect(deleteBtn).toBeDisabled();
+        expect(cutBtn).toHaveClass('disabled');
+        expect(copyBtn).toHaveClass('disabled');
+        expect(deleteBtn).toHaveClass('disabled');
     });
 
     it('enables cut, copy, delete when files are selected', () => {
@@ -50,21 +51,24 @@ describe('Toolbar Component', () => {
 
         render(<Toolbar />);
 
-        const cutBtn = screen.getByText('切り取り').closest('button');
-        const copyBtn = screen.getByText('コピー').closest('button');
-        const deleteBtn = screen.getByText('削除').closest('button');
+        const cutBtn = screen.getByText('切り取り').closest('.ribbon-btn');
+        const copyBtn = screen.getByText('コピー').closest('.ribbon-btn');
+        const deleteBtn = screen.getByText('削除').closest('.ribbon-btn');
 
-        expect(cutBtn).not.toBeDisabled();
-        expect(copyBtn).not.toBeDisabled();
-        expect(deleteBtn).not.toBeDisabled();
+        expect(cutBtn).not.toHaveClass('disabled');
+        expect(copyBtn).not.toHaveClass('disabled');
+        expect(deleteBtn).not.toHaveClass('disabled');
     });
 
     it('changes view mode in store when clicked', () => {
         render(<Toolbar />);
 
-        const detailBtn = screen.getByTitle('詳細');
-        const listBtn = screen.getByTitle('リスト');
-        const iconBtn = screen.getByTitle('アイコン');
+        const viewTab = screen.getByText('表示');
+        fireEvent.click(viewTab);
+
+        const detailBtn = screen.getByText('詳細').closest('.ribbon-btn')!;
+        const listBtn = screen.getByText('リスト').closest('.ribbon-btn')!;
+        const iconBtn = screen.getByText('特大アイコン').closest('.ribbon-btn')!;
 
         fireEvent.click(listBtn);
         expect(useAppStore.getState().tabs[0].viewMode).toBe('list');

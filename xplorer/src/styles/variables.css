@@ -1,40 +1,71 @@
 :root {
-  /* Windows 11 Light Theme Variables */
+  /* Windows 10 Light Theme Variables - Pixel Perfect Clone */
   --bg-main: #FFFFFF;
-  --bg-side: #F3F3F3;
-  --bg-titlebar: #F3F3F3;
-  --text-main: #1A1A1A;
+  --bg-side: #FFFFFF;
+  /* Win10 left pane is often white or very light grey, but tree background is white */
+  --bg-titlebar: #FFFFFF;
+  --text-main: #000000;
   --text-muted: #5D5D5D;
-  --border-color: #E5E5E5;
-  --hover-bg: rgba(0, 0, 0, 0.04);
-  --hover-side-bg: rgba(0, 0, 0, 0.04);
-  --accent-color: #005FB8;
-  --selected-bg: #CCE4F7;
-  --selected-border: #99C9EF;
+  --border-color: #D9D9D9;
+  /* Default Win10 borders */
+  --border-active: #99C9EF;
+  /* Active window/selection border */
 
-  --font-family: 'Segoe UI Variable Display', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
-  --radius-sm: 4px;
-  --radius-md: 8px;
+  /* Hover and Selection (Win10 specific colors) */
+  --hover-bg: #E5F3FF;
+  --hover-border: #D9EBF9;
+  --selected-bg: #CCE8FF;
+  --selected-border: #99D1FF;
+  --selected-inactive-bg: #F0F0F0;
+  --selected-inactive-border: #D9D9D9;
 
-  --titlebar-height: 48px;
+  /* Drag Selection (Rubber band) */
+  --drag-bg: rgba(0, 120, 215, 0.2);
+  --drag-border: #0078D7;
+
+  --accent-color: #0078D7;
+  /* Default Win10 Blue */
+
+  /* Typography: Dense, Segoe UI 9pt/12px */
+  --font-family: 'Segoe UI', Arial, sans-serif;
+  --font-size-main: 12px;
+
+  /* Geometry: 0 border radius everywhere */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+
+  /* Layout dimensions */
+  --titlebar-height: 30px;
+  /* Much thinner than Win11 */
   --navbar-height: 48px;
-  --statusbar-height: 28px;
-  --sidepanel-width: 260px;
+  /* Includes Address bar, ribbon gets its own space */
+  --statusbar-height: 22px;
+  /* Very thin */
+  --sidepanel-width: 200px;
+  /* Thinner */
+  --row-height: 22px;
+  /* Extremely dense list view */
 }
 
+/* Dark mode (optional, but requested light mode clone mostly) */
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Windows 11 Dark Theme Variables */
     --bg-main: #191919;
-    --bg-side: #202020;
-    --bg-titlebar: #202020;
+    --bg-side: #191919;
+    --bg-titlebar: #191919;
     --text-main: #FFFFFF;
     --text-muted: #A0A0A0;
     --border-color: #333333;
-    --hover-bg: rgba(255, 255, 255, 0.06);
-    --hover-side-bg: rgba(255, 255, 255, 0.06);
-    --accent-color: #60CDFF;
-    --selected-bg: rgba(255, 255, 255, 0.08);
-    --selected-border: rgba(255, 255, 255, 0.12);
+
+    --hover-bg: #333333;
+    --hover-border: #444444;
+    --selected-bg: #4D4D4D;
+    --selected-border: #555555;
+    --selected-inactive-bg: #2B2B2B;
+    --selected-inactive-border: #333333;
+
+    --drag-bg: rgba(0, 120, 215, 0.3);
+    --drag-border: #0078D7;
   }
 }

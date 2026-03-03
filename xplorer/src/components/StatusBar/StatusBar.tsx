@@ -1,59 +1,114 @@
 import { useAppStore } from '../../stores/appStore';
+import { AlignJustify, LayoutGrid } from 'lucide-react';
 
 const formatSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    if (bytes < 1024 * 1024) return `${Number((bytes / 1024).toFixed(1))} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${Number((bytes / (1024 * 1024)).toFixed(1))} MB`;
+    return `${Number((bytes / (1024 * 1024 * 1024)).toFixed(1))} GB`;
 };
 
 export const StatusBar = () => {
-    const { tabs, activeTabId } = useAppStore();
+    const { tabs, activeTabId, setViewMode } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const files = activeTab?.files || [];
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
+    const viewMode = activeTab?.viewMode || 'detail';
 
     const totalCount = files.length;
+    let selectedCount = 0;
+    let selectedSize = 0;
 
-    // 選択されたファイルの合計サイズ（ディレクトリは除外）
-    const selectedCount = selectedFiles.size;
-    const selectedSize = files
-        .filter(f => selectedFiles.has(f.path) && !f.is_dir)
-        .reduce((sum, f) => sum + f.size, 0);
-
-    const renderInfo = () => {
-        if (selectedCount > 0) {
-            return (
-                <span data-testid="statusbar-selection">
-                    {selectedCount} 個の項目を選択
-                    {selectedSize > 0 && ` ${formatSize(selectedSize)}`}
-                </span>
-            );
+    files.forEach(f => {
+        if (selectedFiles.has(f.path)) {
+            selectedCount++;
+            if (!f.is_dir) {
+                selectedSize += f.size;
+            }
         }
-        return (
-            <span data-testid="statusbar-total">
-                {totalCount} 個の項目
-            </span>
-        );
-    };
+    });
 
     return (
         <div
+            className="win10-status-bar"
             data-testid="statusbar"
-            style={{
-                height: 'var(--statusbar-height)',
-                borderTop: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-main)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0 16px',
-                fontSize: '12px',
-                color: 'var(--text-muted)'
-            }}
         >
-            <div>{renderInfo()}</div>
+            <div className="status-left">
+                <span>{totalCount} 個の項目</span>
+                {selectedCount > 0 && (
+                    <>
+                        <div className="status-vertical-sep" />
+                        <span>{selectedCount} 個の項目を選択 {selectedSize > 0 ? formatSize(selectedSize) : ''}</span>
+                    </>
+                )}
+            </div>
+            <div className="status-right">
+                <div
+                    className={`status-view-btn ${viewMode === 'detail' ? 'active' : ''}`}
+                    onClick={() => setViewMode('detail')}
+                    title="詳細"
+                >
+                    <AlignJustify size={14} />
+                </div>
+                <div
+                    className={`status-view-btn ${viewMode === 'icon' ? 'active' : ''}`}
+                    onClick={() => setViewMode('icon')}
+                    title="大アイコン"
+                >
+                    <LayoutGrid size={14} />
+                </div>
+            </div>
+
+            <style>{`
+                .win10-status-bar {
+                    height: var(--statusbar-height);
+                    border-top: 1px solid var(--border-color);
+                    background-color: var(--bg-main);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 0 4px 0 8px;
+                    font-size: 11px;
+                    color: var(--text-main);
+                    user-select: none;
+                    cursor: default;
+                }
+                .status-left {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .status-vertical-sep {
+                    height: 14px;
+                    width: 1px;
+                    background-color: var(--border-color);
+                }
+                .status-right {
+                    display: flex;
+                    align-items: center;
+                    height: 100%;
+                    gap: 2px;
+                }
+                .status-view-btn {
+                    height: 100%;
+                    width: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 1px solid transparent;
+                    color: var(--text-muted);
+                }
+                .status-view-btn:hover {
+                    background-color: var(--hover-bg);
+                    border-color: var(--hover-border);
+                }
+                .status-view-btn.active {
+                    background-color: var(--selected-bg);
+                    border-color: var(--border-active);
+                    color: var(--text-main);
+                }
+            `}</style>
         </div>
     );
 };
