@@ -27,6 +27,8 @@ export const MainPane = () => {
     const [renameValue, setRenameValue] = useState('');
     const [renameWarning, setRenameWarning] = useState<string | null>(null);
     const renameInputRef = useRef<HTMLInputElement>(null);
+    const [colWidths, setColWidths] = useState({ name: 0, modified: 150, file_type: 120, size: 100 });
+    const [iconSize, setIconSize] = useState(48);
 
     // Context menu opening ignores default behavior
     useEffect(() => {
@@ -401,21 +403,55 @@ export const MainPane = () => {
 
     const rowHeight = '22px'; // Extreme density
 
+    const handleColumnResize = (column: 'modified' | 'file_type' | 'size', startX: number) => {
+        const startWidth = colWidths[column];
+        const onMouseMove = (e: MouseEvent) => {
+            const diff = e.clientX - startX;
+            setColWidths(prev => ({ ...prev, [column]: Math.max(50, startWidth + diff) }));
+        };
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
+    const ResizeHandle = ({ column }: { column: 'modified' | 'file_type' | 'size' }) => (
+        <div
+            onMouseDown={(e) => { e.stopPropagation(); handleColumnResize(column, e.clientX); }}
+            style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '4px', cursor: 'col-resize', zIndex: 5 }}
+        />
+    );
+
     const renderDetailView = () => (
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
+            <colgroup>
+                <col />
+                <col style={{ width: colWidths.modified }} />
+                <col style={{ width: colWidths.file_type }} />
+                <col style={{ width: colWidths.size }} />
+            </colgroup>
             <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-main)', zIndex: 10 }}>
                 <tr style={{ height: rowHeight, borderBottom: '1px solid var(--border-color)', fontSize: '12px', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)' }} onClick={() => setSortParams('name')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('name')}>
                         名前 <SortIndicator column="name" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', width: '150px', cursor: 'pointer', borderRight: '1px solid var(--border-color)' }} onClick={() => setSortParams('modified')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('modified')}>
                         更新日時 <SortIndicator column="modified" />
+                        <ResizeHandle column="modified" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', width: '120px', cursor: 'pointer', borderRight: '1px solid var(--border-color)' }} onClick={() => setSortParams('file_type')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('file_type')}>
                         種類 <SortIndicator column="file_type" />
+                        <ResizeHandle column="file_type" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', width: '100px', textAlign: 'right', cursor: 'pointer' }} onClick={() => setSortParams('size')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', textAlign: 'right', cursor: 'pointer', position: 'relative' }} onClick={() => setSortParams('size')}>
                         サイズ <SortIndicator column="size" />
+                        <ResizeHandle column="size" />
                     </th>
                 </tr>
             </thead>
@@ -496,7 +532,7 @@ export const MainPane = () => {
     );
 
     const renderIconView = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '4px', padding: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${iconSize + 40}px, 1fr))`, gap: '4px', padding: '8px' }}>
             {sortedFiles.map(file => (
                 <div
                     key={file.path}
@@ -525,7 +561,7 @@ export const MainPane = () => {
                         textAlign: 'center'
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} size={48} />
+                    <FileIcon isDir={file.is_dir} size={iconSize} />
                     <span style={{
                         fontSize: '12px',
                         overflow: 'hidden',
@@ -549,6 +585,12 @@ export const MainPane = () => {
             onClick={() => { if (!renamingPath) clearSelection(); }}
             onContextMenu={(e) => handleContextMenu(e, null)}
             onKeyDown={handleKeyDown}
+            onWheel={(e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    setIconSize(prev => Math.max(16, Math.min(256, prev + (e.deltaY < 0 ? 8 : -8))));
+                }
+            }}
             tabIndex={0}
         >
             {files.length === 0 && (

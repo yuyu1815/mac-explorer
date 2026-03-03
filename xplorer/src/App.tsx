@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { TitleBar } from './components/TitleBar/TitleBar';
 import { NavigationBar } from './components/NavigationBar/NavigationBar';
 import { SidePanel } from './components/SidePanel/SidePanel';
@@ -10,6 +11,26 @@ import './styles/global.css';
 
 function App() {
   const showDetailsPane = useAppStore(s => s.showDetailsPane);
+  const [sideWidth, setSideWidth] = useState(200);
+
+  const handleSideResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sideWidth;
+    const onMove = (ev: MouseEvent) => {
+      setSideWidth(Math.max(100, Math.min(500, startWidth + (ev.clientX - startX))));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   return (
     <div className="app-container">
@@ -19,7 +40,13 @@ function App() {
         <Toolbar />
       </div>
       <div className="main-content">
-        <SidePanel />
+        <div style={{ width: sideWidth, flexShrink: 0 }}>
+          <SidePanel />
+        </div>
+        <div
+          onMouseDown={handleSideResize}
+          style={{ width: '3px', cursor: 'col-resize', backgroundColor: 'var(--border-color)', flexShrink: 0 }}
+        />
         <MainPane />
         {showDetailsPane && <DetailsPane />}
       </div>

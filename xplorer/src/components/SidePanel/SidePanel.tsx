@@ -148,10 +148,10 @@ export const SidePanel = () => {
 
     return (
         <div style={{
-            width: 'var(--sidepanel-width)',
+            width: '100%',
             height: '100%',
-            backgroundColor: 'var(--bg-main)', // Windows 10 explorer side panel is typically white like main
-            borderRight: '1px solid var(--border-color)',
+            backgroundColor: 'var(--bg-main)',
+            borderRight: 'none',
             overflowY: 'auto',
             overflowX: 'hidden',
             paddingTop: '8px'
