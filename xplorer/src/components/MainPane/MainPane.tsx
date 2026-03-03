@@ -159,6 +159,16 @@ export const MainPane = () => {
             return;
         }
 
+        // Ctrl+Shift+C（Cmd+Shift+C）でパスをコピー
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+            e.preventDefault();
+            const paths = Array.from(selectedFiles);
+            if (paths.length > 0) {
+                navigator.clipboard.writeText(paths.join('\n'));
+            }
+            return;
+        }
+
         // 矢印キーでフォーカス移動
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
