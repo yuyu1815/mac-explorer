@@ -38,6 +38,7 @@ const setupStore = (overrides: Record<string, unknown> = {}) => {
             historyIndex: 0,
             files: [],
             selectedFiles: new Set<string>(),
+            focusedIndex: -1,
             viewMode: 'detail' as const,
             sortBy: 'name' as const,
             sortDesc: false,

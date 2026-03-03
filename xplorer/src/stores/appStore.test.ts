@@ -3,9 +3,6 @@ import { useAppStore } from './appStore';
 
 describe('AppStore - Tab Management', () => {
     beforeEach(() => {
-        // Zustand store reset helper or manual reset
-        const store = useAppStore.getState();
-        // Force reset to initial state
         useAppStore.setState({
             tabs: [{
                 id: 'default-tab',
@@ -14,6 +11,7 @@ describe('AppStore - Tab Management', () => {
                 historyIndex: -1,
                 files: [],
                 selectedFiles: new Set(),
+                focusedIndex: -1,
                 viewMode: 'detail',
                 sortBy: 'name',
                 sortDesc: false
@@ -48,7 +46,6 @@ describe('AppStore - Tab Management', () => {
         let state = useAppStore.getState();
         const secondTabId = state.activeTabId;
 
-        // Close the newly added active tab
         store.closeTab(secondTabId);
 
         state = useAppStore.getState();
@@ -75,6 +72,7 @@ describe('AppStore - Navigation History', () => {
                 historyIndex: 0,
                 files: [],
                 selectedFiles: new Set(),
+                focusedIndex: -1,
                 viewMode: 'detail',
                 sortBy: 'name',
                 sortDesc: false
@@ -103,15 +101,15 @@ describe('AppStore - Navigation History', () => {
         const activeTab = useAppStore.getState().tabs[0];
         expect(activeTab.currentPath).toBe('/second');
         expect(activeTab.historyIndex).toBe(1);
-        expect(activeTab.history.length).toBe(3); // History is preserved
+        expect(activeTab.history.length).toBe(3);
     });
 
     it('should go forward in history', () => {
         const store = useAppStore.getState();
         store.setCurrentPath('/second');
-        store.goBack(); // Now at /start
+        store.goBack();
 
-        store.goForward(); // Should go back to /second
+        store.goForward();
 
         const activeTab = useAppStore.getState().tabs[0];
         expect(activeTab.currentPath).toBe('/second');
@@ -143,6 +141,7 @@ describe('AppStore - Selection and Clipboard', () => {
                     { path: '/f3.txt', name: 'f3.txt', is_dir: false, size: 0, modified: 0, created: 0, file_type: '', is_hidden: false, is_symlink: false, permissions: '' }
                 ],
                 selectedFiles: new Set(),
+                focusedIndex: -1,
                 viewMode: 'detail',
                 sortBy: 'name',
                 sortDesc: false
@@ -155,12 +154,10 @@ describe('AppStore - Selection and Clipboard', () => {
     it('should toggle selection for a single file', () => {
         const store = useAppStore.getState();
 
-        // toggle on
         store.toggleSelection('/f1.txt', true, false);
         expect(useAppStore.getState().tabs[0].selectedFiles.has('/f1.txt')).toBe(true);
         expect(useAppStore.getState().tabs[0].selectedFiles.size).toBe(1);
 
-        // toggle off
         store.toggleSelection('/f1.txt', false, false);
         expect(useAppStore.getState().tabs[0].selectedFiles.has('/f1.txt')).toBe(false);
     });
@@ -190,5 +187,18 @@ describe('AppStore - Selection and Clipboard', () => {
         expect(selected.has('/f1.txt')).toBe(true);
         expect(selected.has('/f2.txt')).toBe(true);
         expect(selected.has('/f3.txt')).toBe(true);
+    });
+
+    it('should set focused index', () => {
+        const store = useAppStore.getState();
+        store.setFocusedIndex(2);
+        expect(useAppStore.getState().tabs[0].focusedIndex).toBe(2);
+    });
+
+    it('should reset focused index on navigation', () => {
+        const store = useAppStore.getState();
+        store.setFocusedIndex(2);
+        store.setCurrentPath('/other');
+        expect(useAppStore.getState().tabs[0].focusedIndex).toBe(-1);
     });
 });

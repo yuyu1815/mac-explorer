@@ -22,6 +22,7 @@ const setupStore = (overrides: Record<string, unknown> = {}) => {
                 { path: `${basePath}/file2.txt`, name: 'file2.txt', is_dir: false, size: 200, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' },
             ],
             selectedFiles: new Set<string>(),
+            focusedIndex: -1,
             viewMode: 'detail' as const,
             sortBy: 'name' as const,
             sortDesc: false,

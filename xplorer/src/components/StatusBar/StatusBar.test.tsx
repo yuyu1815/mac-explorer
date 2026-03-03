@@ -14,6 +14,7 @@ const createTestState = (overrides: Partial<{
         historyIndex: 0,
         files: overrides.files || [],
         selectedFiles: overrides.selectedFiles || new Set<string>(),
+        focusedIndex: -1,
         viewMode: 'detail' as const,
         sortBy: 'name' as const,
         sortDesc: false

@@ -23,6 +23,7 @@ export interface Tab {
     historyIndex: number;
     files: FileEntry[];
     selectedFiles: Set<string>;
+    focusedIndex: number;
     viewMode: ViewMode;
     sortBy: SortColumn;
     sortDesc: boolean;
@@ -46,6 +47,7 @@ interface AppState {
     toggleSelection: (path: string, exclusive?: boolean, range?: boolean) => void;
     clearSelection: () => void;
     selectAll: () => void;
+    setFocusedIndex: (index: number) => void;
     setClipboard: (clipboard: { files: string[], operation: 'copy' | 'cut' } | null) => void;
 
     setViewMode: (mode: ViewMode) => void;
@@ -59,6 +61,7 @@ const createNewTab = (id: string, path: string = ''): Tab => ({
     historyIndex: path ? 0 : -1,
     files: [],
     selectedFiles: new Set(),
+    focusedIndex: -1,
     viewMode: 'detail',
     sortBy: 'name',
     sortDesc: false
@@ -101,7 +104,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 currentPath: path,
                 history: newHistory,
                 historyIndex: newHistory.length - 1,
-                selectedFiles: new Set<string>()
+                selectedFiles: new Set<string>(),
+                focusedIndex: -1
             };
         });
         return { tabs };
@@ -114,7 +118,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 ...tab,
                 historyIndex: tab.historyIndex - 1,
                 currentPath: tab.history[tab.historyIndex - 1],
-                selectedFiles: new Set<string>()
+                selectedFiles: new Set<string>(),
+                focusedIndex: -1
             };
         });
         return { tabs };
@@ -127,7 +132,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 ...tab,
                 historyIndex: tab.historyIndex + 1,
                 currentPath: tab.history[tab.historyIndex + 1],
-                selectedFiles: new Set<string>()
+                selectedFiles: new Set<string>(),
+                focusedIndex: -1
             };
         });
         return { tabs };
@@ -147,7 +153,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                     currentPath: parent,
                     history: newHistory,
                     historyIndex: newHistory.length - 1,
-                    selectedFiles: new Set<string>()
+                    selectedFiles: new Set<string>(),
+                    focusedIndex: -1
                 };
             }
             return tab;
@@ -210,6 +217,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         const tabs = state.tabs.map(tab => {
             if (tab.id !== state.activeTabId) return tab;
             return { ...tab, selectedFiles: new Set(tab.files.map(f => f.path)) };
+        });
+        return { tabs };
+    }),
+
+    setFocusedIndex: (index) => set((state) => {
+        const tabs = state.tabs.map(tab => {
+            if (tab.id !== state.activeTabId) return tab;
+            return { ...tab, focusedIndex: index };
         });
         return { tabs };
     }),

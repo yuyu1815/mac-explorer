@@ -12,7 +12,7 @@ const FileIcon = ({ isDir, size = 16 }: { isDir: boolean, size?: number }) => (
 );
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setSortParams } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, setSortParams } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -151,15 +151,49 @@ export const MainPane = () => {
             return;
         }
 
-        if (selectedFiles.size === 0) return;
+        // 矢印キーでフォーカス移動
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const focusedIndex = activeTab?.focusedIndex ?? -1;
+            const maxIndex = sortedFiles.length - 1;
+            if (maxIndex < 0) return;
 
-        if (e.key === 'Delete' || e.key === 'Backspace') {
+            const nextIndex = e.key === 'ArrowDown'
+                ? Math.min(focusedIndex + 1, maxIndex)
+                : Math.max(focusedIndex - 1, 0);
+
+            setFocusedIndex(nextIndex);
+            toggleSelection(sortedFiles[nextIndex].path, true);
+            return;
+        }
+
+        // Enterキーでフォルダを開く/ファイルを実行
+        if (e.key === 'Enter' && selectedFiles.size === 1) {
+            const targetPath = Array.from(selectedFiles)[0];
+            const targetFile = files.find(f => f.path === targetPath);
+            if (targetFile) {
+                handleDoubleClick(targetFile);
+            }
+            return;
+        }
+
+        // Backspaceで履歴を戻る（macOSのFinder風）
+        if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
+            e.preventDefault();
+            goBack();
+            return;
+        }
+
+        // Deleteキーで削除
+        if (e.key === 'Delete' && selectedFiles.size > 0) {
             if (confirm(`選択した${selectedFiles.size}項目をゴミ箱に移動しますか？`)) {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: true });
                 await refreshFiles();
             }
+            return;
         }
 
+        // F2でリネーム
         if (e.key === 'F2' && selectedFiles.size === 1) {
             const targetPath = Array.from(selectedFiles)[0];
             startRename(targetPath);
