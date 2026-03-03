@@ -152,6 +152,13 @@ export const MainPane = () => {
             return;
         }
 
+        // Ctrl+Shift+N（Cmd+Shift+N）で新規フォルダ作成
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+            e.preventDefault();
+            handleCreateFolder();
+            return;
+        }
+
         // 矢印キーでフォーカス移動
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
