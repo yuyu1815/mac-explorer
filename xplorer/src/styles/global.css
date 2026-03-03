@@ -83,3 +83,26 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
 }
+
+/* ファイルアイテムのホバー・選択 */
+.file-item {
+    transition: background-color 0.08s ease;
+}
+
+.file-item:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.file-item.selected {
+    background-color: var(--selected-bg);
+}
+
+.file-item.selected:hover {
+    background-color: var(--selected-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+    .file-item:hover {
+        background-color: rgba(255, 255, 255, 0.06);
+    }
+}

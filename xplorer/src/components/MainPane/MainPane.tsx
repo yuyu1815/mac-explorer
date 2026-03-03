@@ -291,10 +291,10 @@ export const MainPane = () => {
                             e.stopPropagation();
                             handleContextMenu(e, file.path);
                         }}
+                        className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}`}
                         style={{
                             cursor: 'pointer',
                             borderBottom: '1px solid var(--border-color)',
-                            backgroundColor: selectedFiles.has(file.path) ? 'var(--selected-bg)' : 'transparent'
                         }}
                     >
                         <td style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -334,6 +334,7 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}`}
                     style={{
                         cursor: 'pointer',
                         padding: '4px 12px',
@@ -342,7 +343,6 @@ export const MainPane = () => {
                         alignItems: 'center',
                         gap: '8px',
                         borderRadius: 'var(--radius-sm)',
-                        backgroundColor: selectedFiles.has(file.path) ? 'var(--selected-bg)' : 'transparent'
                     }}
                 >
                     <FileIcon isDir={file.is_dir} size={18} />
@@ -371,6 +371,7 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}`}
                     style={{
                         cursor: 'pointer',
                         padding: '12px 8px',
@@ -379,7 +380,6 @@ export const MainPane = () => {
                         alignItems: 'center',
                         gap: '8px',
                         borderRadius: 'var(--radius-sm)',
-                        backgroundColor: selectedFiles.has(file.path) ? 'var(--selected-bg)' : 'transparent',
                         textAlign: 'center'
                     }}
                 >

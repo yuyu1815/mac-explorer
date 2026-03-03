@@ -130,7 +130,7 @@ describe('MainPane — 選択操作とUI反映', () => {
         fireEvent.click(row);
 
         expect(useAppStore.getState().tabs[0].selectedFiles.has(`${basePath}/file1.txt`)).toBe(true);
-        expect(row.style.backgroundColor).toContain('var(--selected-bg)');
+        expect(row.classList.contains('selected')).toBe(true);
     });
 
     it('Ctrl/Meta+クリックで複数選択できる', async () => {
