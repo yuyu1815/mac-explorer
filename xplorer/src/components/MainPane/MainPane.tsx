@@ -53,6 +53,7 @@ export const MainPane = () => {
 
         const fetchFiles = async () => {
             try {
+                console.log('[DEBUG] Fetching files:', { path: currentPath, sortBy, sortDesc });
                 const result = await invoke('list_files_sorted', {
                     path: currentPath,
                     showHidden: false,
