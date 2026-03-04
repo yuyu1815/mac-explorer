@@ -2,7 +2,6 @@ use serde::Serialize;
 use std::fs;
 use std::time::UNIX_EPOCH;
 
-#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 #[derive(Serialize)]
@@ -81,17 +80,6 @@ pub async fn show_properties(path: String) -> Result<(), String> {
             .map_err(|e| format!("Failed to open properties on Mac: {}", e))?;
     }
     
-    #[cfg(target_os = "windows")]
-    {
-        // Unfortunately standard process::Command doesn't easily trigger the Win32 Properties dialog directly without complex COM calls.
-        // We'll execute an Explorer command as a fallback for now, or just open the containing folder and select it if COM is too much.
-        // Actually, there's no native one-liner CLI for "Properties" in Windows, so we'll fallback to selecting the file in Explorer.
-        std::process::Command::new("explorer")
-            .args(["/select,", &path])
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-
     #[cfg(target_os = "linux")]
     {
         // Linux is highly dependent on the DE. Fallback to nothing or xdg-open containing dir.
@@ -152,9 +140,6 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
     let cluster_size = 4096;
     let size_on_disk_bytes = if size_bytes == 0 { 0 } else { ((size_bytes + cluster_size - 1) / cluster_size) * cluster_size };
 
-    #[cfg(not(unix))]
-    let is_readonly = metadata.permissions().readonly();
-    #[cfg(unix)]
     let is_readonly = metadata.permissions().mode() & 0o222 == 0;
 
     let is_hidden = name.starts_with('.'); // Simple cross-platform hidden check
@@ -220,11 +205,7 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
             let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
             let is_symlink = metadata.file_type().is_symlink();
             
-            #[cfg(unix)]
             let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
-            
-            #[cfg(not(unix))]
-            let permissions = if metadata.permissions().readonly() { "444".to_string() } else { "666".to_string() };
 
             entries.push(FileEntry {
                 name: file_name,
@@ -256,9 +237,6 @@ pub async fn open_file_default(path: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     std::process::Command::new("open").arg(&path).spawn().map_err(|e| e.to_string())?;
     
-    #[cfg(target_os = "windows")]
-    std::process::Command::new("cmd").args(["/C", "start", "", &path]).spawn().map_err(|e| e.to_string())?;
-
     #[cfg(target_os = "linux")]
     std::process::Command::new("xdg-open").arg(&path).spawn().map_err(|e| e.to_string())?;
 
@@ -402,28 +380,9 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
         });
     }
 
-    #[cfg(target_os = "windows")]
-    {
-        // Windowsではドライブレターを列挙
-        for letter in b'A'..=b'Z' {
-            let drive = format!("{}:\\", letter as char);
-            if std::path::Path::new(&drive).exists() {
-                volumes.push(VolumeInfo {
-                    name: format!("ローカルディスク ({}:)", letter as char),
-                    path: drive,
-                    total_bytes: 0,
-                    free_bytes: 0,
-                    total_bytes_formatted: String::new(),
-                    free_bytes_formatted: String::new(),
-                });
-            }
-        }
-    }
-
     Ok(volumes)
 }
 
-#[cfg(unix)]
 fn get_statvfs_info(path: &str) -> (u64, u64) {
     use std::ffi::CString;
     use std::mem::MaybeUninit;
@@ -439,11 +398,6 @@ fn get_statvfs_info(path: &str) -> (u64, u64) {
             (0, 0)
         }
     }
-}
-
-#[cfg(not(unix))]
-fn get_statvfs_info(_path: &str) -> (u64, u64) {
-    (0, 0)
 }
 
 // --- list_files_sorted コマンド ---
@@ -932,30 +886,23 @@ mod tests {
 // ============================================
 
 /// 与えられたパスの親ディレクトリパスを返す
-/// Unix/Windows両方のパス区切り文字に対応
+/// Unixパスのみ対応
 #[tauri::command]
 pub async fn get_parent_path(path: String) -> Result<String, String> {
     if path.is_empty() {
         return Err("Path cannot be empty".to_string());
     }
 
-    // パス区切り文字で分割（/ と \ の両方に対応）
-    let segments: Vec<&str> = path.split(|c| c == '/' || c == '\\').collect();
+    // パス区切り文字で分割
+    let segments: Vec<&str> = path.split('/').collect();
 
-    // 空のセグメントを除外（連続する区切り文字や末尾の区切り文字対策）
+    // 空のセグメントを除外
     let non_empty: Vec<&str> = segments.into_iter().filter(|s| !s.is_empty()).collect();
 
     // ルートディレクトリまたはセグメントが1つ以下の場合は自分自身を返す
     if non_empty.len() <= 1 {
-        // Unix ルート
         if path.starts_with('/') {
             return Ok("/".to_string());
-        }
-        // Windows ドライブレター (C:\ など)
-        if path.contains(':') {
-            let drive_end = path.find(':').unwrap() + 1;
-            let drive = &path[..drive_end];
-            return Ok(format!("{}\\", drive));
         }
         return Ok(path);
     }
@@ -963,17 +910,10 @@ pub async fn get_parent_path(path: String) -> Result<String, String> {
     // 最後のセグメントを削除して再構築
     let parent_segments = &non_empty[..non_empty.len() - 1];
 
-    // 元のパスが / で始まる場合は Unix パス
     if path.starts_with('/') {
         return Ok(format!("/{}", parent_segments.join("/")));
     }
 
-    // 元のパスが \ を含むか : を含む場合は Windows パス
-    if path.contains('\\') || path.contains(':') {
-        return Ok(parent_segments.join("\\"));
-    }
-
-    // それ以外は Unix スタイル
     Ok(parent_segments.join("/"))
 }
 
@@ -1050,15 +990,7 @@ fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntr
             let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
             let is_symlink_val = metadata.file_type().is_symlink();
 
-            #[cfg(unix)]
             let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
-
-            #[cfg(not(unix))]
-            let permissions = if metadata.permissions().readonly() {
-                "444".to_string()
-            } else {
-                "666".to_string()
-            };
 
             entries.push(FileEntry {
                 name: file_name,
