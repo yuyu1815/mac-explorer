@@ -17,7 +17,7 @@ export interface FileEntry {
     permissions: string;
 }
 
-export type ViewMode = 'detail' | 'list' | 'icon';
+export type ViewMode = 'extra_large_icon' | 'large_icon' | 'medium_icon' | 'small_icon' | 'list' | 'detail' | 'tiles' | 'content';
 export type SortColumn = 'name' | 'modified' | 'file_type' | 'size';
 
 export interface Tab {
@@ -41,6 +41,12 @@ interface AppState {
     renameTriggerId: number;
     showDetailsPane: boolean;
     loading: boolean;
+    propertiesDialogTarget: string | null;
+
+    // View Tab UI states
+    showHiddenFiles: boolean;
+    showFileExtensions: boolean;
+    showItemCheckBoxes: boolean;
 
     // Actions
     addTab: (path?: string) => void;
@@ -65,6 +71,11 @@ interface AppState {
     toggleDetailsPane: () => void;
     setSearchQuery: (query: string) => void;
     setLoading: (loading: boolean) => void;
+    openPropertiesDialog: (path: string | null) => void;
+
+    setShowHiddenFiles: (show: boolean) => void;
+    setShowFileExtensions: (show: boolean) => void;
+    setShowItemCheckBoxes: (show: boolean) => void;
 }
 
 const createNewTab = (id: string, path: string = ''): Tab => {
@@ -90,6 +101,11 @@ export const useAppStore = create<AppState>((set) => ({
     renameTriggerId: 0,
     showDetailsPane: false,
     loading: false,
+    propertiesDialogTarget: null,
+
+    showHiddenFiles: false,
+    showFileExtensions: true,
+    showItemCheckBoxes: false,
 
     addTab: (path) => set((state) => {
         const id = `tab-${Date.now()}`;
@@ -300,5 +316,10 @@ export const useAppStore = create<AppState>((set) => ({
         return { tabs };
     }),
 
-    setLoading: (loading) => set({ loading }),
+    setLoading: (loading: boolean) => set({ loading }),
+    openPropertiesDialog: (path) => set({ propertiesDialogTarget: path }),
+
+    setShowHiddenFiles: (show) => set({ showHiddenFiles: show }),
+    setShowFileExtensions: (show) => set({ showFileExtensions: show }),
+    setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),
 }));

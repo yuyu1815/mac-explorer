@@ -55,9 +55,9 @@ describe('ContextMenu — 空白右クリック（targetPath=null）', () => {
     it('「表示」「並び替え」「最新の情報に更新」等が表示される', () => {
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
-        expect(screen.getByText(/表示/)).toBeInTheDocument();
-        expect(screen.getByText(/並び替え/)).toBeInTheDocument();
-        expect(screen.getByText(/最新の情報に更新/)).toBeInTheDocument();
+        expect(screen.getByText('表示(V) ▸')).toBeInTheDocument();
+        expect(screen.getByText('並べ替え(O) ▸')).toBeInTheDocument();
+        expect(screen.getByText(/最新の情報/)).toBeInTheDocument();
         expect(screen.getByText(/貼り付け/)).toBeInTheDocument();
         expect(screen.getByText(/新規作成/)).toBeInTheDocument();
 

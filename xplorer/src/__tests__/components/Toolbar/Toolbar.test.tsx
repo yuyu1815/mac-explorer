@@ -55,13 +55,15 @@ describe('Toolbar Component', () => {
     it('changes view mode in store when clicked', () => {
         render(<Toolbar />);
         fireEvent.click(screen.getByText('表示'));
-        const listBtn = screen.getByText('リスト').closest('.ribbon-btn')!;
+        const listBtn = screen.getByText('一覧').closest('.ribbon-btn')!;
         const iconBtn = screen.getByText('特大アイコン').closest('.ribbon-btn')!;
         const detailBtn = screen.getByText('詳細').closest('.ribbon-btn')!;
+
         fireEvent.click(listBtn);
         expect(useAppStore.getState().tabs[0].viewMode).toBe('list');
+
         fireEvent.click(iconBtn);
-        expect(useAppStore.getState().tabs[0].viewMode).toBe('icon');
+        expect(useAppStore.getState().tabs[0].viewMode).toBe('extra_large_icon');
         fireEvent.click(detailBtn);
         expect(useAppStore.getState().tabs[0].viewMode).toBe('detail');
     });

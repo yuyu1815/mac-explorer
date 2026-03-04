@@ -1,0 +1,225 @@
+.properties-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.properties-dialog-window {
+    width: 380px;
+    background-color: #f0f0f0;
+    border: 1px solid #aaa;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 12px;
+    color: #000;
+}
+
+.properties-dialog-titlebar {
+    height: 30px;
+    background-color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid #e0e0e0;
+    user-select: none;
+}
+
+.titlebar-text {
+    font-size: 12px;
+}
+
+.titlebar-close {
+    cursor: pointer;
+    padding: 2px 8px;
+}
+
+.titlebar-close:hover {
+    background-color: #e81123;
+    color: white;
+}
+
+.properties-dialog-content {
+    padding: 12px;
+    background-color: #ffffff;
+    flex: 1;
+}
+
+.properties-tabs {
+    display: flex;
+    border-bottom: 1px solid #d9d9d9;
+    margin-bottom: 12px;
+}
+
+.properties-tab {
+    padding: 4px 12px;
+    border: 1px solid transparent;
+    border-bottom: none;
+    margin-bottom: -1px;
+    cursor: default;
+}
+
+.properties-tab.active {
+    background-color: #ffffff;
+    border-color: #d9d9d9;
+    border-top: 2px solid #0078d7;
+}
+
+.properties-tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.prop-row {
+    display: flex;
+    align-items: flex-start;
+}
+
+.prop-header {
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.prop-icon {
+    width: 48px;
+    display: flex;
+    justify-content: center;
+}
+
+.prop-name-input {
+    flex: 1;
+    padding: 2px 4px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+}
+
+.prop-divider {
+    height: 1px;
+    background-color: #e5e5e5;
+    margin: 6px 0;
+}
+
+.prop-label {
+    width: 120px;
+    color: #333;
+}
+
+.prop-value {
+    flex: 1;
+    word-break: break-all;
+}
+
+.prop-attrs {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+}
+
+.prop-attrs label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.prop-btn-small {
+    padding: 2px 8px;
+    font-size: 11px;
+}
+
+.prop-btn-advanced {
+    margin-left: auto;
+}
+
+.properties-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px;
+    background-color: #f0f0f0;
+    border-top: 1px solid #dfdfdf;
+}
+
+.prop-btn {
+    min-width: 75px;
+    padding: 4px 12px;
+    border: 1px solid #adadad;
+    background-color: #e1e1e1;
+    cursor: default;
+    font-size: 12px;
+}
+
+.prop-btn:hover:not(:disabled) {
+    background-color: #e5f1fb;
+    border-color: #0078d7;
+}
+
+.prop-btn:disabled {
+    color: #888;
+}
+
+@media (prefers-color-scheme: dark) {
+    .properties-dialog-window {
+        background-color: #2b2b2b;
+        color: #fff;
+        border-color: #444;
+    }
+
+    .properties-dialog-titlebar {
+        background-color: #202020;
+        border-color: #333;
+    }
+
+    .properties-dialog-content {
+        background-color: #2b2b2b;
+    }
+
+    .properties-tabs {
+        border-color: #444;
+    }
+
+    .properties-tab.active {
+        background-color: #2b2b2b;
+        border-color: #444;
+        border-top-color: #0078d7;
+    }
+
+    .prop-divider {
+        background-color: #444;
+    }
+
+    .prop-name-input {
+        background-color: #1a1a1a;
+        color: #fff;
+        border-color: #555;
+    }
+
+    .prop-label {
+        color: #ccc;
+    }
+
+    .properties-dialog-footer {
+        background-color: #202020;
+        border-color: #333;
+    }
+
+    .prop-btn {
+        background-color: #333;
+        color: #fff;
+        border-color: #555;
+    }
+
+    .prop-btn:hover:not(:disabled) {
+        background-color: #444;
+    }
+}

@@ -13,6 +13,7 @@ pub fn run() {
             commands::filesystem::list_files_sorted,
             commands::filesystem::open_file_default,
             commands::filesystem::show_properties,
+            commands::filesystem::get_detailed_properties,
             commands::filesystem::create_directory,
             commands::filesystem::copy_files,
             commands::filesystem::move_files,

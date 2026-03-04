@@ -3,15 +3,16 @@ import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../../stores/appStore';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { Folder, FileText } from 'lucide-react';
+import { PropertiesDialog } from '../PropertiesDialog/PropertiesDialog';
 
-const FileIcon = ({ isDir, size = 16 }: { isDir: boolean, size?: number }) => (
+export const FileIcon = ({ isDir, size = 16 }: { isDir: boolean, size?: number }) => (
     isDir
         ? <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
         : <FileText size={size} fill="#FFFFFF" color="#5D5D5D" strokeWidth={1.5} style={{ flexShrink: 0 }} />
 );
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, setLoading, setViewMode } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, setLoading, setViewMode, propertiesDialogTarget, openPropertiesDialog, showHiddenFiles, showFileExtensions } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -23,7 +24,6 @@ export const MainPane = () => {
     const sortDesc = activeTab?.sortDesc || false;
 
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, target: string | null } | null>(null);
-    const [showProperties, setShowProperties] = useState(false);
     const [dragTarget, setDragTarget] = useState<string | null>(null);
     const [renamingPath, setRenamingPath] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
@@ -55,7 +55,7 @@ export const MainPane = () => {
                 console.log('[DEBUG] Fetching files:', { path: currentPath, sortBy, sortDesc });
                 const result = await invoke('list_files_sorted', {
                     path: currentPath,
-                    showHidden: false,
+                    showHidden: showHiddenFiles,
                     sortBy,
                     sortDesc,
                     searchQuery: searchQuery || ''
@@ -67,7 +67,7 @@ export const MainPane = () => {
         };
 
         fetchFiles();
-    }, [currentPath, activeTabId, setFiles, setCurrentPath, sortBy, sortDesc, searchQuery]);
+    }, [currentPath, activeTabId, setFiles, setCurrentPath, sortBy, sortDesc, searchQuery, showHiddenFiles]);
 
     // リネーム開始時にinputをフォーカス＆全選択
     useEffect(() => {
@@ -96,7 +96,7 @@ export const MainPane = () => {
         try {
             const result = await invoke('list_files_sorted', {
                 path: currentPath,
-                showHidden: false,
+                showHidden: showHiddenFiles,
                 sortBy,
                 sortDesc,
                 searchQuery: searchQuery || ''
@@ -125,6 +125,15 @@ export const MainPane = () => {
                 localStorage.setItem(`viewMode:${currentPath}`, viewMode);
             }
         } catch { /* localStorage unavailable */ }
+
+        switch (viewMode as string) {
+            case 'extra_large_icon': setIconSize(256); break;
+            case 'large_icon': setIconSize(96); break;
+            case 'medium_icon': setIconSize(48); break;
+            case 'small_icon': setIconSize(16); break;
+            case 'tiles': setIconSize(48); break;
+            case 'content': setIconSize(32); break;
+        }
     }, [viewMode, currentPath]);
 
     const startRename = (path: string) => {
@@ -323,7 +332,8 @@ export const MainPane = () => {
         // Alt+Enter プロパティ
         if (e.altKey && e.key === 'Enter') {
             e.preventDefault();
-            setShowProperties(true);
+            const paths = Array.from(selectedFiles);
+            if (paths.length > 0) openPropertiesDialog(paths[0]);
             return;
         }
 
@@ -560,16 +570,22 @@ export const MainPane = () => {
                 </div>
             );
         }
-        if (!searchQuery) return <span>{file.name}</span>;
 
-        const parts = file.name.split(new RegExp(`(${searchQuery})`, 'gi'));
+        const displayPath = file.name;
+        const displayName = (!showFileExtensions && !file.is_dir && displayPath.includes('.'))
+            ? displayPath.substring(0, displayPath.lastIndexOf('.'))
+            : displayPath;
+
+        if (!searchQuery) return <span>{displayName}</span>;
+
+        const parts = displayName.split(new RegExp(`(${searchQuery})`, 'gi'));
         return (
             <span>
                 {parts.map((part: string, i: number) =>
                     part.toLowerCase() === searchQuery.toLowerCase() ? (
                         <span key={i} style={{ backgroundColor: '#FFE200', color: '#000' }}>{part}</span>
                     ) : (
-                        part
+                        <span key={i}>{part}</span>
                     )
                 )}
             </span>
@@ -801,6 +817,125 @@ export const MainPane = () => {
         </div>
     );
 
+    const renderTilesView = () => (
+        <div style={{ display: 'flex', flexWrap: 'wrap', padding: '8px', alignContent: 'flex-start', gap: '4px' }}>
+            {sortedFiles.map(file => (
+                <div
+                    key={file.path}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, file)}
+                    onDragOver={(e) => handleDragOverItem(e, file)}
+                    onDragEnter={(e) => handleDragEnterItem(e, file)}
+                    onDragLeave={(e) => handleDragLeaveItem(e, file)}
+                    onDrop={(e) => handleDropItem(e, file)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (renamingPath) return;
+                        if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
+
+                        const isAlreadySelected = selectedFiles.has(file.path) && selectedFiles.size === 1;
+                        if (isAlreadySelected && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                            renameTimeoutRef.current = setTimeout(() => {
+                                startRename(file.path);
+                            }, 500);
+                        }
+                        toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, sortedFiles.map(f => f.path));
+                    }}
+                    onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
+                        if (renamingPath) return;
+                        handleDoubleClick(file);
+                    }}
+                    onContextMenu={(e) => {
+                        e.stopPropagation();
+                        handleContextMenu(e, file.path);
+                    }}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                    data-filepath={file.path}
+                    style={{
+                        cursor: 'default',
+                        padding: '4px',
+                        width: '240px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}
+                >
+                    <FileIcon isDir={file.is_dir} size={48} />
+                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+                        <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{renderFileName(file)}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.file_type}</span>
+                        {!file.is_dir && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{file.size_formatted}</span>}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
+    const renderContentView = () => (
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '8px', alignContent: 'flex-start' }}>
+            {sortedFiles.map(file => (
+                <div
+                    key={file.path}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, file)}
+                    onDragOver={(e) => handleDragOverItem(e, file)}
+                    onDragEnter={(e) => handleDragEnterItem(e, file)}
+                    onDragLeave={(e) => handleDragLeaveItem(e, file)}
+                    onDrop={(e) => handleDropItem(e, file)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (renamingPath) return;
+                        if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
+
+                        const isAlreadySelected = selectedFiles.has(file.path) && selectedFiles.size === 1;
+                        if (isAlreadySelected && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                            renameTimeoutRef.current = setTimeout(() => {
+                                startRename(file.path);
+                            }, 500);
+                        }
+                        toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, sortedFiles.map(f => f.path));
+                    }}
+                    onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
+                        if (renamingPath) return;
+                        handleDoubleClick(file);
+                    }}
+                    onContextMenu={(e) => {
+                        e.stopPropagation();
+                        handleContextMenu(e, file.path);
+                    }}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                    data-filepath={file.path}
+                    style={{
+                        cursor: 'default',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        borderBottom: '1px solid var(--border-color)',
+                        width: '100%',
+                        maxWidth: '800px'
+                    }}
+                >
+                    <FileIcon isDir={file.is_dir} size={32} />
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 'bold' }}>{renderFileName(file)}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{file.modified_formatted}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.file_type}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{file.size_formatted}</span>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
     const handleMarqueeStart = (e: React.MouseEvent) => {
         // Only start marquee from blank area (left button, no file-item clicked)
         if (e.button !== 0) return;
@@ -895,7 +1030,9 @@ export const MainPane = () => {
 
             {files.length > 0 && viewMode === 'detail' && renderDetailView()}
             {files.length > 0 && viewMode === 'list' && renderListView()}
-            {files.length > 0 && viewMode === 'icon' && renderIconView()}
+            {files.length > 0 && ['extra_large_icon', 'large_icon', 'medium_icon', 'small_icon', 'icon'].includes(viewMode as string) && renderIconView()}
+            {files.length > 0 && viewMode === 'tiles' && renderTilesView()}
+            {files.length > 0 && viewMode === 'content' && renderContentView()}
 
             {contextMenu && (
                 <ContextMenu
@@ -908,21 +1045,11 @@ export const MainPane = () => {
                 />
             )}
 
-            {showProperties && (
-                <div style={{
-                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    background: '#f0f0f0', border: '1px solid #ccc', boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-                    padding: '20px', zIndex: 2000, width: '300px', fontFamily: 'Segoe UI'
-                }}>
-                    <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'normal' }}>プロパティ</h3>
-                    <div style={{ fontSize: '12px' }}>
-                        <p>選択された項目: {selectedFiles.size}</p>
-                        <p>この機能は現在モック版です。</p>
-                    </div>
-                    <div style={{ textAlign: 'right', marginTop: '15px' }}>
-                        <button onClick={() => setShowProperties(false)} style={{ padding: '4px 12px' }}>OK</button>
-                    </div>
-                </div>
+            {propertiesDialogTarget && (
+                <PropertiesDialog
+                    path={propertiesDialogTarget}
+                    onClose={() => openPropertiesDialog(null)}
+                />
             )}
 
             {batchRename && (

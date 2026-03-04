@@ -160,7 +160,11 @@ export const NavigationBar = () => {
 
     // Click outside to close dropdown
     useEffect(() => {
-        const handleOutsideClick = () => {
+        const handleOutsideClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('.breadcrumb-dropdown') || target.closest('.breadcrumb-arrow') || target.closest('.history-dropdown-toggle')) {
+                return;
+            }
             setDropdownPath(null);
             setShowHistoryDropdown(false);
         };
@@ -198,7 +202,8 @@ export const NavigationBar = () => {
                         {dropdownPath === '/' && (
                             <div className="breadcrumb-dropdown">
                                 {dropdownItems.map(item => (
-                                    <div key={item.path} className="breadcrumb-dropdown-item" onClick={(e) => {
+                                    <div key={item.path} className="breadcrumb-dropdown-item" onMouseDown={(e) => {
+                                        e.preventDefault();
                                         e.stopPropagation();
                                         setCurrentPath(item.path);
                                         setDropdownPath(null);
@@ -236,7 +241,8 @@ export const NavigationBar = () => {
                             {dropdownPath === thisPath && (
                                 <div className="breadcrumb-dropdown">
                                     {dropdownItems.map(item => (
-                                        <div key={item.path} className="breadcrumb-dropdown-item" onClick={(e) => {
+                                        <div key={item.path} className="breadcrumb-dropdown-item" onMouseDown={(e) => {
+                                            e.preventDefault();
                                             e.stopPropagation();
                                             setCurrentPath(item.path);
                                             setDropdownPath(null);
@@ -352,7 +358,8 @@ export const NavigationBar = () => {
                 {showHistoryDropdown && activeTab && (
                     <div className="breadcrumb-dropdown" style={{ right: 0, left: 'auto', minWidth: '300px' }}>
                         {[...activeTab.history].reverse().map((path, idx) => (
-                            <div key={idx} className="breadcrumb-dropdown-item" onClick={(e) => {
+                            <div key={idx} className="breadcrumb-dropdown-item" onMouseDown={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
                                 setCurrentPath(path);
                                 setShowHistoryDropdown(false);

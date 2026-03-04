@@ -57,8 +57,8 @@ export const StatusBar = () => {
                     <AlignJustify size={14} />
                 </div>
                 <div
-                    className={`status-view-btn ${viewMode === 'icon' ? 'active' : ''}`}
-                    onClick={() => setViewMode('icon')}
+                    className={`status-view-btn ${viewMode === 'large_icon' ? 'active' : ''}`}
+                    onClick={() => setViewMode('large_icon')}
                     title="大アイコン"
                 >
                     <LayoutGrid size={14} />

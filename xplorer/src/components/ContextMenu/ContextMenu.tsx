@@ -13,7 +13,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreateFolder }: ContextMenuProps) => {
-    const { tabs, activeTabId, setFiles, setClipboard, clipboard } = useAppStore();
+    const { tabs, activeTabId, setFiles, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -83,11 +83,33 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
 
             {!targetPath ? (
                 <>
-                    {/* View Menu Mock */}
-                    <ContextMenuItem icon={<LayoutGrid size={16} />} label="表示(V) >" onClick={() => { }} />
+                    {/* View Menu */}
+                    <ContextSubMenuItem icon={<LayoutGrid size={16} />} label="表示(V)">
+                        <ContextMenuItem label="特大アイコン(X) " onClick={() => handleAction(() => setViewMode('extra_large_icon'))} />
+                        <ContextMenuItem label="大アイコン(R) " onClick={() => handleAction(() => setViewMode('large_icon'))} />
+                        <ContextMenuItem label="中アイコン(M) " onClick={() => handleAction(() => setViewMode('medium_icon'))} />
+                        <ContextMenuItem label="小アイコン(N) " onClick={() => handleAction(() => setViewMode('small_icon'))} />
+                        <ContextMenuItem label="一覧(L) " onClick={() => handleAction(() => setViewMode('list'))} />
+                        <ContextMenuItem label="詳細(D) " onClick={() => handleAction(() => setViewMode('detail'))} />
+                        <ContextMenuItem label="並べて表示(S) " onClick={() => handleAction(() => setViewMode('tiles'))} />
+                        <ContextMenuItem label="コンテンツ(T) " onClick={() => handleAction(() => setViewMode('content'))} />
+                    </ContextSubMenuItem>
                     <ContextMenuSeparator />
-                    {/* Sort Menu Mock */}
-                    <ContextMenuItem icon={<ArrowDownAZ size={16} />} label="並び替え(O) >" onClick={() => { }} />
+                    {/* Sort Menu */}
+                    <ContextSubMenuItem icon={<ArrowDownAZ size={16} />} label="並べ替え(O)">
+                        <ContextMenuItem label="名前" onClick={() => handleAction(() => setSortParams('name'))} />
+                        <ContextMenuItem label="更新日時" onClick={() => handleAction(() => setSortParams('modified'))} />
+                        <ContextMenuItem label="種類" onClick={() => handleAction(() => setSortParams('file_type'))} />
+                        <ContextMenuItem label="サイズ" onClick={() => handleAction(() => setSortParams('size'))} />
+                        <ContextMenuSeparator />
+                        <ContextMenuItem label="昇順(A)" onClick={() => handleAction(() => setSortParams(activeTab?.sortBy || 'name', false))} />
+                        <ContextMenuItem label="降順(D)" onClick={() => handleAction(() => setSortParams(activeTab?.sortBy || 'name', true))} />
+                    </ContextSubMenuItem>
+                    <ContextMenuSeparator />
+                    {/* Group By Mock */}
+                    <ContextSubMenuItem label="グループで表示(P)">
+                        <ContextMenuItem label="(なし)(N)" onClick={() => handleAction(() => { })} />
+                    </ContextSubMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem icon={<RefreshCw size={16} />} label="最新の情報に更新(E)" onClick={() => handleAction(refreshFiles)} />
                     <ContextMenuSeparator />
@@ -117,7 +139,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     </ContextSubMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem icon={<Settings size={16} />} label="プロパティ(R)" onClick={() => handleAction(async () => {
-                        await invoke('show_properties', { path: currentPath });
+                        openPropertiesDialog(currentPath);
                     })} />
                 </>
             ) : (
@@ -152,7 +174,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     })} />
                     <ContextMenuSeparator />
                     <ContextMenuItem icon={<Settings size={16} />} label="プロパティ(R)" onClick={() => handleAction(async () => {
-                        if (targetPath) await invoke('show_properties', { path: targetPath });
+                        if (targetPath) openPropertiesDialog(targetPath);
                     })} />
                 </>
             )}

@@ -4,11 +4,11 @@ import { invoke } from '@tauri-apps/api/core';
 import {
     ClipboardPaste, Scissors, Copy, Link as LinkIcon, Edit2, Trash2, FolderPlus,
     FilePlus, List, AlignJustify, LayoutGrid, CheckSquare, XSquare, ArrowRightSquare,
-    FolderOpen, Settings, ChevronUp, ChevronDown
+    FolderOpen, Settings, ChevronUp, ChevronDown, Monitor, PanelRight, ArrowDownAZ, EyeOff
 } from 'lucide-react';
 
 export const Toolbar = () => {
-    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane } = useAppStore();
+    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -141,7 +141,7 @@ export const Toolbar = () => {
         if (selectedFiles.size === 0) return;
         const targetPath = Array.from(selectedFiles)[0];
         try {
-            await invoke('show_properties', { path: targetPath });
+            openPropertiesDialog(targetPath);
         } catch (err) {
             console.error('Failed to show properties', err);
         }
@@ -222,24 +222,67 @@ export const Toolbar = () => {
         <div className="ribbon-content">
             <div className="ribbon-group">
                 <div className="ribbon-group-items">
+                    <LargeButton icon={<Monitor size={32} strokeWidth={1} color="#5D5D5D" />} label="ナビゲーション\nウィンドウ" onClick={() => { }} />
+                    <div className="small-button-col">
+                        <SmallButton icon={<PanelRight size={16} color="#5D5D5D" />} label="プレビュー ウィンドウ" onClick={() => { }} disabled />
+                        <SmallButton icon={<PanelRight size={16} color={showDetailsPane ? '#0078D7' : '#5D5D5D'} />} label="詳細ウィンドウ" onClick={toggleDetailsPane} active={showDetailsPane} />
+                    </div>
+                </div>
+                <div className="ribbon-group-title">ペイン</div>
+            </div>
+
+            <div className="ribbon-group">
+                <div className="ribbon-group-items">
                     <div className="view-grid">
-                        <SmallButton icon={<LayoutGrid size={16} color={viewMode === 'icon' ? '#0078D7' : '#5D5D5D'} />} label="特大アイコン" onClick={() => setViewMode('icon')} active={viewMode === 'icon'} />
-                        <SmallButton icon={<LayoutGrid size={16} color="#5D5D5D" />} label="大アイコン" />
-                        <SmallButton icon={<LayoutGrid size={16} color="#5D5D5D" />} label="中アイコン" />
-                        <SmallButton icon={<List size={16} color={viewMode === 'list' ? '#0078D7' : '#5D5D5D'} />} label="リスト" onClick={() => setViewMode('list')} active={viewMode === 'list'} />
+                        <SmallButton icon={<LayoutGrid size={16} color={viewMode === 'extra_large_icon' ? '#0078D7' : '#5D5D5D'} />} label="特大アイコン" onClick={() => setViewMode('extra_large_icon')} active={viewMode === 'extra_large_icon'} />
+                        <SmallButton icon={<LayoutGrid size={16} color={viewMode === 'large_icon' ? '#0078D7' : '#5D5D5D'} />} label="大アイコン" onClick={() => setViewMode('large_icon')} active={viewMode === 'large_icon'} />
+                        <SmallButton icon={<LayoutGrid size={16} color={viewMode === 'medium_icon' ? '#0078D7' : '#5D5D5D'} />} label="中アイコン" onClick={() => setViewMode('medium_icon')} active={viewMode === 'medium_icon'} />
+                        <SmallButton icon={<LayoutGrid size={16} color={viewMode === 'small_icon' ? '#0078D7' : '#5D5D5D'} />} label="小アイコン" onClick={() => setViewMode('small_icon')} active={viewMode === 'small_icon'} />
+                        <SmallButton icon={<List size={16} color={viewMode === 'list' ? '#0078D7' : '#5D5D5D'} />} label="一覧" onClick={() => setViewMode('list')} active={viewMode === 'list'} />
                         <SmallButton icon={<AlignJustify size={16} color={viewMode === 'detail' ? '#0078D7' : '#5D5D5D'} />} label="詳細" onClick={() => setViewMode('detail')} active={viewMode === 'detail'} />
+                        <SmallButton icon={<LayoutGrid size={16} color={viewMode === 'tiles' ? '#0078D7' : '#5D5D5D'} />} label="並べて表示" onClick={() => setViewMode('tiles')} active={viewMode === 'tiles'} />
+                        <SmallButton icon={<AlignJustify size={16} color={viewMode === 'content' ? '#0078D7' : '#5D5D5D'} />} label="コンテンツ" onClick={() => setViewMode('content')} active={viewMode === 'content'} />
                     </div>
                 </div>
                 <div className="ribbon-group-title">レイアウト</div>
             </div>
 
-            <div className="ribbon-group" style={{ borderRight: 'none' }}>
+            <div className="ribbon-group">
                 <div className="ribbon-group-items">
-                    <div className="small-button-col">
-                        <SmallButton icon={<AlignJustify size={16} color={showDetailsPane ? '#0078D7' : '#5D5D5D'} />} label="詳細ウィンドウ" onClick={toggleDetailsPane} active={showDetailsPane} />
+                    <LargeButton icon={<ArrowDownAZ size={32} strokeWidth={1} color="#5D5D5D" />} label="並べ替え" onClick={() => { }} />
+                    <LargeButton icon={<List size={32} strokeWidth={1} color="#5D5D5D" />} label="グループ化" onClick={() => { }} disabled />
+                    <div className="small-button-col" style={{ width: '150px' }}>
+                        <SmallButton icon={<CheckSquare size={16} color="#5D5D5D" />} label="列の追加" onClick={() => { }} disabled />
+                        <SmallButton icon={<AlignJustify size={16} color="#5D5D5D" />} label="すべての列のサイズ..." onClick={() => { }} disabled />
                     </div>
                 </div>
-                <div className="ribbon-group-title">ウィンドウ</div>
+                <div className="ribbon-group-title">現在のビュー</div>
+            </div>
+
+            <div className="ribbon-group">
+                <div className="ribbon-group-items">
+                    <div className="ribbon-checkbox-col">
+                        <label className="ribbon-checkbox-label">
+                            <input type="checkbox" checked={showItemCheckBoxes} onChange={e => setShowItemCheckBoxes(e.target.checked)} /> 項目チェック ボックス
+                        </label>
+                        <label className="ribbon-checkbox-label">
+                            <input type="checkbox" checked={showFileExtensions} onChange={e => setShowFileExtensions(e.target.checked)} /> ファイル名拡張子
+                        </label>
+                        <label className="ribbon-checkbox-label">
+                            <input type="checkbox" checked={showHiddenFiles} onChange={e => setShowHiddenFiles(e.target.checked)} /> 隠しファイル
+                        </label>
+                    </div>
+                    <div style={{ width: '1px', backgroundColor: 'var(--border-color)', margin: '4px' }}></div>
+                    <LargeButton icon={<EyeOff size={32} strokeWidth={1} color="#5D5D5D" />} label="選択した項目を\n表示しない" onClick={() => { }} disabled />
+                </div>
+                <div className="ribbon-group-title">表示/非表示</div>
+            </div>
+
+            <div className="ribbon-group" style={{ borderRight: 'none' }}>
+                <div className="ribbon-group-items">
+                    <LargeButton icon={<Settings size={32} strokeWidth={1} color="#5D5D5D" />} label="オプション" onClick={() => { }} disabled />
+                </div>
+                <div className="ribbon-group-title">オプション</div>
             </div>
         </div>
     );
@@ -396,16 +439,44 @@ export const Toolbar = () => {
                 .small-button-col {
                     display: flex;
                     flex-direction: column;
-                    justify-content: flex-start;
-                    gap: 1px;
+                    justify-content: center;
+                    gap: 2px;
                 }
 
                 .view-grid {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    grid-template-rows: repeat(3, 1fr);
+                    grid-template-rows: repeat(4, 22px);
                     gap: 1px;
                     margin-left: 8px;
+                    width: 220px;
+                    height: 66px;
+                    border: 1px solid var(--border-color);
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    padding: 1px;
+                    background-color: var(--bg-main);
+                }
+
+                .ribbon-checkbox-col {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    gap: 6px;
+                    padding: 0 8px;
+                    height: 100%;
+                }
+
+                .ribbon-checkbox-label {
+                    display: flex;
+                    align-items: center;
+                    font-size: 11px;
+                    cursor: pointer;
+                    user-select: none;
+                }
+
+                .ribbon-checkbox-label input[type="checkbox"] {
+                    margin: 0 6px 0 0;
                 }
             `}</style>
         </div>
@@ -419,13 +490,14 @@ const LargeButton = ({ icon, label, onClick, disabled }: any) => {
             <div className="label-container" dangerouslySetInnerHTML={{ __html: label.replace('\\n', '<br/>') }} />
             <style>{`
                 .ribbon-btn.large {
-                    width: 56px;
+                    min-width: 56px;
+                    width: max-content;
                     height: 68px;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: flex-start;
-                    padding: 4px 2px;
+                    padding: 4px 6px;
                     cursor: default;
                     border: 1px solid transparent;
                     border-radius: 0;
@@ -447,7 +519,8 @@ const LargeButton = ({ icon, label, onClick, disabled }: any) => {
                 .ribbon-btn.large .label-container {
                     font-size: 11px;
                     text-align: center;
-                    line-height: 1.1;
+                    line-height: 1.2;
+                    white-space: pre-wrap;
                 }
             `}</style>
         </div>

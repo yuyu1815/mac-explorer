@@ -22,6 +22,25 @@ pub struct FileEntry {
     permissions: String,
 }
 
+#[derive(Serialize)]
+pub struct DetailedProperties {
+    name: String,
+    path: String,
+    file_type: String,
+    location: String,
+    size_bytes: u64,
+    size_formatted: String,
+    size_on_disk_bytes: u64,
+    size_on_disk_formatted: String,
+    contains_files: u32,
+    contains_folders: u32,
+    created_formatted: String,
+    modified_formatted: String,
+    accessed_formatted: String,
+    is_readonly: bool,
+    is_hidden: bool,
+}
+
 fn format_size(bytes: u64) -> String {
     if bytes < 1024 {
         format!("{} B", bytes)
@@ -79,6 +98,84 @@ pub async fn show_properties(path: String) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties, String> {
+    let path_buf = std::path::PathBuf::from(&path);
+    if !path_buf.exists() {
+        return Err("File or directory not found".into());
+    }
+
+    let metadata = std::fs::symlink_metadata(&path_buf).map_err(|e| e.to_string())?;
+    let name = path_buf.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.clone());
+    let location = path_buf.parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+    
+    let is_dir = metadata.is_dir();
+    let file_type = if is_dir {
+        "ファイル フォルダー".to_string()
+    } else {
+        path_buf.extension()
+            .map(|ext| format!("{} ファイル", ext.to_string_lossy().to_uppercase()))
+            .unwrap_or_else(|| "ファイル".to_string())
+    };
+
+    let created = metadata.created().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
+    let modified = metadata.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
+    let accessed = metadata.accessed().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
+
+    let mut size_bytes = metadata.len();
+    let mut contains_files = 0;
+    let mut contains_folders = 0;
+
+    if is_dir {
+        // Simple recursive walk to calculate size and counts
+        let mut dirs_to_visit = vec![path_buf.clone()];
+        while let Some(current_dir) = dirs_to_visit.pop() {
+            if let Ok(entries) = std::fs::read_dir(current_dir) {
+                for entry in entries.flatten() {
+                    if let Ok(meta) = entry.metadata() {
+                        if meta.is_dir() {
+                            contains_folders += 1;
+                            dirs_to_visit.push(entry.path());
+                        } else {
+                            contains_files += 1;
+                            size_bytes += meta.len();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Windows "Size on disk" is typically cluster size aligned. We'll approximate for now.
+    let cluster_size = 4096;
+    let size_on_disk_bytes = if size_bytes == 0 { 0 } else { ((size_bytes + cluster_size - 1) / cluster_size) * cluster_size };
+
+    #[cfg(not(unix))]
+    let is_readonly = metadata.permissions().readonly();
+    #[cfg(unix)]
+    let is_readonly = metadata.permissions().mode() & 0o222 == 0;
+
+    let is_hidden = name.starts_with('.'); // Simple cross-platform hidden check
+
+    Ok(DetailedProperties {
+        name,
+        path,
+        file_type,
+        location,
+        size_bytes,
+        size_formatted: format_size(size_bytes),
+        size_on_disk_bytes,
+        size_on_disk_formatted: format_size(size_on_disk_bytes),
+        contains_files,
+        contains_folders,
+        created_formatted: format_timestamp(created),
+        modified_formatted: format_timestamp(modified),
+        accessed_formatted: format_timestamp(accessed),
+        is_readonly,
+        is_hidden,
+    })
 }
 
 #[tauri::command]
