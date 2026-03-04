@@ -18,6 +18,8 @@ export const NavigationBar = () => {
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [dropdownPath, setDropdownPath] = useState<string | null>(null);
     const [dropdownItems, setDropdownItems] = useState<{ name: string, path: string }[]>([]);
+    const [pathSuggestions, setPathSuggestions] = useState<{ name: string, path: string }[]>([]);
+    const [suggestionIndex, setSuggestionIndex] = useState(-1);
 
     useEffect(() => {
         setEditValue(currentPath);
@@ -44,6 +46,48 @@ export const NavigationBar = () => {
         return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }, []);
 
+    useEffect(() => {
+        if (!isEditing || !editValue) {
+            setPathSuggestions([]);
+            return;
+        }
+
+        const fetchSuggestions = async () => {
+            try {
+                const sep = editValue.includes('\\') ? '\\' : '/';
+                const lastSepIndex = editValue.lastIndexOf(sep);
+                let dirPath = '';
+                let searchPrefix = '';
+
+                if (lastSepIndex === -1) {
+                    if (editValue.endsWith(':')) {
+                        dirPath = editValue + '\\';
+                    } else if (editValue === '') {
+                        dirPath = '/';
+                    } else {
+                        setPathSuggestions([]);
+                        return;
+                    }
+                } else {
+                    dirPath = editValue.substring(0, lastSepIndex + 1);
+                    searchPrefix = editValue.substring(lastSepIndex + 1).toLowerCase();
+                }
+
+                const res = await invoke<any[]>('list_directory', { path: dirPath, showHidden: false });
+                const filtered = res
+                    .filter(item => item.is_dir && item.name.toLowerCase().startsWith(searchPrefix))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                setPathSuggestions(filtered);
+                setSuggestionIndex(-1);
+            } catch (e) {
+                setPathSuggestions([]);
+            }
+        };
+
+        const timer = setTimeout(fetchSuggestions, 150);
+        return () => clearTimeout(timer);
+    }, [editValue, isEditing]);
+
     const handlePathSubmit = () => {
         let finalPath = editValue.trim();
         if (finalPath && finalPath !== currentPath) {
@@ -56,11 +100,28 @@ export const NavigationBar = () => {
     };
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handlePathSubmit();
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSuggestionIndex(prev => Math.min(prev + 1, pathSuggestions.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSuggestionIndex(prev => Math.max(prev - 1, -1));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (suggestionIndex >= 0 && suggestionIndex < pathSuggestions.length) {
+                let p = pathSuggestions[suggestionIndex].path;
+                if (!p.endsWith('/') && !p.endsWith('\\')) p += p.includes('\\') ? '\\' : '/';
+                setEditValue(p);
+                setPathSuggestions([]);
+                setSuggestionIndex(-1);
+            } else {
+                handlePathSubmit();
+            }
         } else if (e.key === 'Escape') {
             setEditValue(currentPath);
             setIsEditing(false);
+            setPathSuggestions([]);
+            setSuggestionIndex(-1);
         }
     };
 
@@ -219,7 +280,7 @@ export const NavigationBar = () => {
             </div>
 
             {/* Address Bar */}
-            <div className={`win10-address-bar ${isEditing ? 'editing' : ''}`} onClick={() => !isEditing && setIsEditing(true)}>
+            <div className={`win10-address-bar ${isEditing ? 'editing' : ''}`} style={{ position: 'relative' }} onClick={() => !isEditing && setIsEditing(true)}>
                 {isEditing ? (
                     <div style={{ display: 'flex', alignItems: 'center', width: '100%', height: '100%', paddingLeft: '4px' }}>
                         <Folder size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ marginRight: '6px' }} />
@@ -227,7 +288,10 @@ export const NavigationBar = () => {
                             ref={inputRef}
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={handlePathSubmit}
+                            onBlur={() => {
+                                // Short delay to allow mousedown on suggestions to fire
+                                setTimeout(() => handlePathSubmit(), 150);
+                            }}
                             onKeyDown={handleKeyDown}
                             style={{
                                 border: 'none',
@@ -240,6 +304,29 @@ export const NavigationBar = () => {
                                 fontFamily: 'Segoe UI, sans-serif'
                             }}
                         />
+                        {pathSuggestions.length > 0 && (
+                            <div className="breadcrumb-dropdown" style={{ width: '100%' }}>
+                                {pathSuggestions.map((item, idx) => (
+                                    <div
+                                        key={item.path}
+                                        className="breadcrumb-dropdown-item"
+                                        style={idx === suggestionIndex ? { backgroundColor: 'var(--hover-bg)' } : {}}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            let p = item.path;
+                                            if (!p.endsWith('/') && !p.endsWith('\\')) p += p.includes('\\') ? '\\' : '/';
+                                            setEditValue(p);
+                                            setPathSuggestions([]);
+                                            setSuggestionIndex(-1);
+                                        }}
+                                    >
+                                        <Folder size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />
+                                        <span>{item.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ) : (
                     renderBreadcrumbs()
