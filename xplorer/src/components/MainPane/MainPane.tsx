@@ -879,7 +879,7 @@ export const MainPane = () => {
         <div
             ref={paneRef}
             className="main-pane-container"
-            style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto', outline: 'none', position: 'relative' }}
+            style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto', outline: 'none', position: 'relative', userSelect: 'none' }}
             onClick={() => { if (!renamingPath && !marquee) clearSelection(); }}
             onDoubleClick={(e) => {
                 if ((e.target as HTMLElement).closest('.file-item')) return;
