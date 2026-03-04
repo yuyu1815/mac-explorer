@@ -251,6 +251,18 @@ input:focus {
     background-color: transparent;
 }
 
+input::selection,
+textarea::selection {
+    background-color: highlight;
+    color: highlighttext;
+}
+
+input::-moz-selection,
+textarea::-moz-selection {
+    background-color: highlight;
+    color: highlighttext;
+}
+
 /* Focus Rectangle (Dotted Line) - ファイルアイテムのみに適用 */
 .file-item:focus-visible {
     outline: 1px dotted invert;
