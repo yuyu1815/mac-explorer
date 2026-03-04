@@ -15,6 +15,9 @@ export const NavigationBar = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(currentPath);
     const inputRef = useRef<HTMLInputElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const [dropdownPath, setDropdownPath] = useState<string | null>(null);
+    const [dropdownItems, setDropdownItems] = useState<{ name: string, path: string }[]>([]);
 
     useEffect(() => {
         setEditValue(currentPath);
@@ -26,6 +29,20 @@ export const NavigationBar = () => {
             inputRef.current.select();
         }
     }, [isEditing]);
+
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'F' || e.key === 'f') || e.key === 'F3') {
+                e.preventDefault();
+                if (searchInputRef.current) {
+                    searchInputRef.current.focus();
+                    searchInputRef.current.select();
+                }
+            }
+        };
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, []);
 
     const handlePathSubmit = () => {
         let finalPath = editValue.trim();
@@ -61,6 +78,29 @@ export const NavigationBar = () => {
         setCurrentPath(newPath);
     };
 
+    const handleArrowClick = async (e: React.MouseEvent, path: string) => {
+        e.stopPropagation();
+        if (dropdownPath === path) {
+            setDropdownPath(null);
+            return;
+        }
+        try {
+            const res = await invoke<any[]>('list_directory', { path, showHidden: false });
+            const dirs = res.filter(f => f.is_dir).sort((a, b) => a.name.localeCompare(b.name));
+            setDropdownItems(dirs);
+            setDropdownPath(path);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    // Click outside to close dropdown
+    useEffect(() => {
+        const handleOutsideClick = () => setDropdownPath(null);
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
+
     const renderBreadcrumbs = () => {
         if (!currentPath) return null;
         const sep = currentPath.includes('\\') ? '\\' : '/';
@@ -81,26 +121,66 @@ export const NavigationBar = () => {
                 <ChevronRight size={14} color="var(--text-muted)" style={{ margin: '0 2px' }} />
 
                 {sep === '/' && currentPath.startsWith('/') && (
-                    <div className="breadcrumb-wrapper">
+                    <div className="breadcrumb-wrapper" style={{ position: 'relative' }}>
                         <div onClick={(e) => { e.stopPropagation(); setCurrentPath('/'); }} className="breadcrumb-item">
                             /
                         </div>
-                        <div className="breadcrumb-arrow" onClick={(e) => e.stopPropagation()}>
+                        <div className="breadcrumb-arrow" onClick={(e) => handleArrowClick(e, '/')}>
                             <ChevronRight size={14} />
                         </div>
+                        {dropdownPath === '/' && (
+                            <div className="breadcrumb-dropdown">
+                                {dropdownItems.map(item => (
+                                    <div key={item.path} className="breadcrumb-dropdown-item" onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCurrentPath(item.path);
+                                        setDropdownPath(null);
+                                    }}>
+                                        <Folder size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />
+                                        <span>{item.name}</span>
+                                    </div>
+                                ))}
+                                {dropdownItems.length === 0 && <div className="breadcrumb-dropdown-item" style={{ color: '#888' }}>空のフォルダー</div>}
+                            </div>
+                        )}
                     </div>
                 )}
 
                 {parts.map((part, i) => {
                     if (!part) return null;
+
+                    let thisPath = '';
+                    if (sep === '/') {
+                        thisPath = '/' + parts.slice(0, i + 1).join('/');
+                        if (thisPath === '//') thisPath = '/';
+                    } else {
+                        thisPath = parts.slice(0, i + 1).join('\\');
+                        if (thisPath.endsWith(':')) thisPath += '\\';
+                    }
+
                     return (
-                        <div key={i} className="breadcrumb-wrapper">
+                        <div key={i} className="breadcrumb-wrapper" style={{ position: 'relative' }}>
                             <div onClick={(e) => handleBreadcrumbClick(e, i, parts)} className="breadcrumb-item">
                                 {part}
                             </div>
-                            <div className="breadcrumb-arrow" onClick={(e) => e.stopPropagation()}>
+                            <div className="breadcrumb-arrow" onClick={(e) => handleArrowClick(e, thisPath)}>
                                 <ChevronRight size={14} />
                             </div>
+                            {dropdownPath === thisPath && (
+                                <div className="breadcrumb-dropdown">
+                                    {dropdownItems.map(item => (
+                                        <div key={item.path} className="breadcrumb-dropdown-item" onClick={(e) => {
+                                            e.stopPropagation();
+                                            setCurrentPath(item.path);
+                                            setDropdownPath(null);
+                                        }}>
+                                            <Folder size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />
+                                            <span>{item.name}</span>
+                                        </div>
+                                    ))}
+                                    {dropdownItems.length === 0 && <div className="breadcrumb-dropdown-item" style={{ color: '#888' }}>空のフォルダー</div>}
+                                </div>
+                            )}
                         </div>
                     );
                 })}
@@ -167,8 +247,10 @@ export const NavigationBar = () => {
             </div>
 
             {/* Search Box */}
+            {/* Search Box */}
             <div className="win10-search-bar">
                 <input
+                    ref={searchInputRef}
                     placeholder={`${folderName} の検索`}
                     style={{
                         border: 'none',
@@ -185,94 +267,68 @@ export const NavigationBar = () => {
                 </div>
             </div>
 
+            {/* Embedded styles for extreme density */}
             <style>{`
                 .win10-nav-btn {
-                    width: 28px;
-                    height: 28px;
-                    border: 1px solid transparent;
-                    background: transparent;
-                    color: var(--text-main);
+                    width: 34px;
+                    height: 34px;
                     display: flex;
-                    align-items: center;
                     justify-content: center;
-                    cursor: default;
+                    align-items: center;
+                    background: transparent;
+                    border: 1px solid transparent;
+                    border-radius: 4px; /* Win11 uses more rounded, Win10 uses less */
+                    color: var(--text-main);
+                    cursor: pointer;
+                    outline: none;
                 }
-                .win10-nav-btn:hover:not(:disabled) {
+                .win10-nav-btn:hover {
                     background-color: var(--hover-bg);
-                    border-color: var(--hover-border);
                 }
-                .win10-nav-btn:active:not(:disabled) {
+                .win10-nav-btn:active {
                     background-color: var(--selected-bg);
-                    border-color: var(--selected-border);
                 }
                 
                 .win10-address-bar {
                     flex: 1;
-                    height: 26px;
-                    border: 1px solid var(--border-color);
-                    background-color: var(--bg-main);
+                    height: 28px;
                     display: flex;
                     align-items: center;
-                    cursor: text;
-                    position: relative;
+                    background-color: transparent;
+                    border: 1px solid transparent;
+                    padding: 0 2px;
+                    margin: 0 4px;
+                    cursor: default;
                 }
                 .win10-address-bar:hover {
-                    border-color: #A0A0A0; /* Slightly darker border on hover */
+                    background-color: transparent;
+                    border: 1px solid var(--border-color);
                 }
                 .win10-address-bar.editing {
-                    border-color: var(--accent-color);
-                    box-shadow: inset 0 0 0 1px var(--accent-color);
-                }
-
-                .breadcrumb-wrapper {
-                    display: flex;
-                    align-items: center;
-                    height: 100%;
-                }
-                .breadcrumb-item {
-                    padding: 0 4px;
-                    height: 22px;
-                    display: flex;
-                    align-items: center;
-                    cursor: default;
-                    font-size: 13px;
-                    border: 1px solid transparent;
-                }
-                .breadcrumb-item:hover {
-                    background-color: var(--hover-bg);
-                    border-color: var(--hover-border);
-                }
-                
-                .breadcrumb-arrow {
-                    padding: 0 2px;
-                    height: 22px;
-                    display: flex;
-                    align-items: center;
-                    cursor: default;
-                    border: 1px solid transparent;
-                    color: var(--text-muted);
-                }
-                .breadcrumb-arrow:hover {
-                    background-color: var(--hover-bg);
-                    border-color: var(--hover-border);
+                    background-color: var(--bg-main);
+                    border: 1px solid #0078D7;
+                    outline: 1px auto #0078D7;
+                    cursor: text;
                 }
 
                 .win10-search-bar {
-                    width: 260px;
-                    height: 26px;
-                    border: 1px solid var(--border-color);
-                    background-color: var(--bg-main);
+                    width: 240px;
+                    height: 28px;
                     display: flex;
                     align-items: center;
-                    transition: none;
+                    background-color: transparent;
+                    border: 1px solid var(--border-color);
+                    padding: 0 4px;
+                    margin-left: 2px;
                 }
                 .win10-search-bar:hover {
-                    border-color: #A0A0A0;
+                    border: 1px solid #999;
                 }
                 .win10-search-bar:focus-within {
-                    border-color: var(--accent-color);
-                    box-shadow: inset 0 0 0 1px var(--accent-color);
+                    border: 1px solid #0078D7;
+                    box-shadow: inset 0 0 0 1px #0078D7;
                 }
+
                 .search-icon-wrapper {
                     width: 24px;
                     height: 100%;
@@ -282,6 +338,66 @@ export const NavigationBar = () => {
                     cursor: default;
                 }
                 .search-icon-wrapper:hover {
+                    background-color: var(--hover-bg);
+                }
+
+                .breadcrumb-wrapper {
+                    display: flex;
+                    align-items: center;
+                    height: 24px;
+                }
+                .breadcrumb-item {
+                    display: flex;
+                    align-items: center;
+                    padding: 0 4px;
+                    height: 100%;
+                    font-size: 13px;
+                    color: var(--text-main);
+                    cursor: pointer;
+                    border: 1px solid transparent;
+                }
+                .breadcrumb-item:hover {
+                    background-color: var(--hover-bg);
+                    border: 1px solid var(--hover-border);
+                }
+                .breadcrumb-arrow {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 16px;
+                    height: 24px;
+                    color: var(--text-muted);
+                    cursor: pointer;
+                    border: 1px solid transparent;
+                }
+                .breadcrumb-arrow:hover {
+                    background-color: var(--hover-bg);
+                    border: 1px solid var(--hover-border);
+                }
+
+                .breadcrumb-dropdown {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    min-width: 200px;
+                    max-height: 400px;
+                    overflow-y: auto;
+                    background-color: var(--bg-main);
+                    border: 1px solid var(--border-color);
+                    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+                    z-index: 1000;
+                    padding: 2px 0;
+                }
+                .breadcrumb-dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 4px 12px;
+                    font-size: 13px;
+                    color: var(--text-main);
+                    cursor: pointer;
+                }
+                .breadcrumb-dropdown-item:hover {
                     background-color: var(--hover-bg);
                 }
             `}</style>
