@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MainPane } from './MainPane';
-import { useAppStore } from '../../stores/appStore';
+import { MainPane } from '../../../components/MainPane/MainPane';
+import { useAppStore } from '../../../stores/appStore';
 import { invoke } from '@tauri-apps/api/core';
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -52,7 +52,7 @@ const setupStore = (overrides: Record<string, unknown> = {}) => {
 
 const mockInvoke = (fileList = defaultFiles) => {
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
-        if (cmd === 'list_directory') return fileList;
+        if (cmd === 'list_files_sorted') return fileList;
         return null;
     });
 };
@@ -68,7 +68,7 @@ describe('MainPane — マウント・描画', () => {
         render(<MainPane />);
 
         await waitFor(() => {
-            expect(invoke).toHaveBeenCalledWith('list_directory', { path: basePath, showHidden: false });
+            expect(invoke).toHaveBeenCalledWith('list_files_sorted', { path: basePath, showHidden: false, sortBy: 'name', sortDesc: false, searchQuery: '' });
         });
 
         expect(screen.getByText('file1.txt')).toBeInTheDocument();
@@ -326,7 +326,7 @@ describe('MainPane — コンテキストメニュー操作', () => {
         expect(invoke).toHaveBeenCalledWith('delete_files', expect.objectContaining({ toTrash: true }));
 
         await waitFor(() => {
-            const calls = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_directory');
+            const calls = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_files_sorted');
             expect(calls.length).toBeGreaterThanOrEqual(2);
         });
     });
@@ -483,12 +483,12 @@ describe('MainPane — タブ操作', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
 
-        const callsBefore = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_directory').length;
+        const callsBefore = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_files_sorted').length;
 
         useAppStore.getState().addTab(basePath);
 
         await waitFor(() => {
-            const callsAfter = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_directory').length;
+            const callsAfter = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_files_sorted').length;
             expect(callsAfter).toBeGreaterThan(callsBefore);
         });
     });
@@ -501,15 +501,15 @@ describe('MainPane — タブ操作', () => {
 
         render(<MainPane />);
         await waitFor(() => {
-            expect(invoke).toHaveBeenCalledWith('list_directory', { path: basePath, showHidden: false });
+            expect(invoke).toHaveBeenCalledWith('list_files_sorted', { path: basePath, showHidden: false, sortBy: 'name', sortDesc: false, searchQuery: '' });
         });
 
-        const callsBefore = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_directory').length;
+        const callsBefore = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_files_sorted').length;
 
         useAppStore.getState().setActiveTab(tab2Id);
 
         await waitFor(() => {
-            const callsAfter = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_directory').length;
+            const callsAfter = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_files_sorted').length;
             expect(callsAfter).toBeGreaterThan(callsBefore);
         });
     });
@@ -528,7 +528,7 @@ describe('MainPane — エラーハンドリング', () => {
         expect(() => render(<MainPane />)).not.toThrow();
 
         await waitFor(() => {
-            expect(consoleSpy).toHaveBeenCalledWith('Failed to list directory', expect.any(Error));
+            expect(consoleSpy).toHaveBeenCalledWith('Failed to list_files_sorted', expect.any(Error));
         });
 
         consoleSpy.mockRestore();

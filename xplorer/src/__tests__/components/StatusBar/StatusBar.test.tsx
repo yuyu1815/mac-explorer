@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { useAppStore } from '../../stores/appStore';
-import { StatusBar } from './StatusBar';
+import { useAppStore } from '../../../stores/appStore';
+import { StatusBar } from '../../../components/StatusBar/StatusBar';
 
 const createTestState = (overrides: Partial<{
     files: any[];

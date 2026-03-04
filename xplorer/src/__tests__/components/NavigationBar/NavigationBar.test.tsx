@@ -1,8 +1,8 @@
 /// <reference types="@testing-library/jest-dom" />
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { NavigationBar } from './NavigationBar';
-import { useAppStore } from '../../stores/appStore';
+import { NavigationBar } from '../../../components/NavigationBar/NavigationBar';
+import { useAppStore } from '../../../stores/appStore';
 
 // Tauri APIモック
 vi.mock('@tauri-apps/api/core', () => ({

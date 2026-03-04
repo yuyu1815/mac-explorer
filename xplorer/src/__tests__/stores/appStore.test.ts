@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useAppStore } from './appStore';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { useAppStore } from '../../stores/appStore';
+import { invoke } from '@tauri-apps/api/core';
+
+vi.mock('@tauri-apps/api/core', () => ({
+    invoke: vi.fn(),
+}));
 
 describe('AppStore - Tab Management', () => {
     beforeEach(() => {
@@ -31,10 +36,8 @@ describe('AppStore - Tab Management', () => {
     it('should add a new tab and set it as active', () => {
         useAppStore.getState().addTab('/new/path');
         const state = useAppStore.getState();
-
         expect(state.tabs.length).toBe(2);
         expect(state.activeTabId).not.toBe('default-tab');
-
         const activeTab = state.tabs.find(t => t.id === state.activeTabId);
         expect(activeTab?.currentPath).toBe('/new/path');
         expect(activeTab?.history).toEqual(['/new/path']);
@@ -43,12 +46,9 @@ describe('AppStore - Tab Management', () => {
     it('should close a tab and fallback to another tab', () => {
         const store = useAppStore.getState();
         store.addTab('/second/path');
-
         let state = useAppStore.getState();
         const secondTabId = state.activeTabId;
-
         store.closeTab(secondTabId);
-
         state = useAppStore.getState();
         expect(state.tabs.length).toBe(1);
         expect(state.activeTabId).toBe('default-tab');
@@ -57,7 +57,6 @@ describe('AppStore - Tab Management', () => {
     it('should not close the last remaining tab', () => {
         const store = useAppStore.getState();
         store.closeTab('default-tab');
-
         const state = useAppStore.getState();
         expect(state.tabs.length).toBe(1);
     });
@@ -84,10 +83,9 @@ describe('AppStore - Navigation History', () => {
         });
     });
 
-    it('should append new path to history when setCurrentPath is called', () => {
+    it('should append new path to history', () => {
         useAppStore.getState().setCurrentPath('/next/path');
         const activeTab = useAppStore.getState().tabs[0];
-
         expect(activeTab.currentPath).toBe('/next/path');
         expect(activeTab.history).toEqual(['/start', '/next/path']);
         expect(activeTab.historyIndex).toBe(1);
@@ -97,9 +95,7 @@ describe('AppStore - Navigation History', () => {
         const store = useAppStore.getState();
         store.setCurrentPath('/second');
         store.setCurrentPath('/third');
-
         store.goBack();
-
         const activeTab = useAppStore.getState().tabs[0];
         expect(activeTab.currentPath).toBe('/second');
         expect(activeTab.historyIndex).toBe(1);
@@ -110,20 +106,20 @@ describe('AppStore - Navigation History', () => {
         const store = useAppStore.getState();
         store.setCurrentPath('/second');
         store.goBack();
-
         store.goForward();
-
         const activeTab = useAppStore.getState().tabs[0];
         expect(activeTab.currentPath).toBe('/second');
         expect(activeTab.historyIndex).toBe(1);
     });
 
-    it('should go up to parent directory', () => {
+    it('should go up to parent directory', async () => {
+        vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+            if (cmd === 'get_parent_path') return '/parent';
+            return null;
+        });
         const store = useAppStore.getState();
         store.setCurrentPath('/parent/child');
-
-        store.goUp();
-
+        await store.goUp();
         const activeTab = useAppStore.getState().tabs[0];
         expect(activeTab.currentPath).toBe('/parent');
     });
@@ -156,11 +152,9 @@ describe('AppStore - Selection and Clipboard', () => {
 
     it('should toggle selection for a single file', () => {
         const store = useAppStore.getState();
-
         store.toggleSelection('/f1.txt', true, false);
         expect(useAppStore.getState().tabs[0].selectedFiles.has('/f1.txt')).toBe(true);
         expect(useAppStore.getState().tabs[0].selectedFiles.size).toBe(1);
-
         store.toggleSelection('/f1.txt', false, false);
         expect(useAppStore.getState().tabs[0].selectedFiles.has('/f1.txt')).toBe(false);
     });
@@ -169,7 +163,6 @@ describe('AppStore - Selection and Clipboard', () => {
         const store = useAppStore.getState();
         store.toggleSelection('/f1.txt', true, false);
         expect(useAppStore.getState().tabs[0].selectedFiles.size).toBe(1);
-
         store.setCurrentPath('/new-dir');
         expect(useAppStore.getState().tabs[0].selectedFiles.size).toBe(0);
     });
@@ -177,14 +170,12 @@ describe('AppStore - Selection and Clipboard', () => {
     it('should set clipboard data', () => {
         const store = useAppStore.getState();
         store.setClipboard({ files: ['/f1.txt'], operation: 'copy' });
-
         expect(useAppStore.getState().clipboard).toEqual({ files: ['/f1.txt'], operation: 'copy' });
     });
 
     it('should select all files', () => {
         const store = useAppStore.getState();
         store.selectAll();
-
         const selected = useAppStore.getState().tabs[0].selectedFiles;
         expect(selected.size).toBe(3);
         expect(selected.has('/f1.txt')).toBe(true);
@@ -193,8 +184,7 @@ describe('AppStore - Selection and Clipboard', () => {
     });
 
     it('should set focused index', () => {
-        const store = useAppStore.getState();
-        store.setFocusedIndex(2);
+        useAppStore.getState().setFocusedIndex(2);
         expect(useAppStore.getState().tabs[0].focusedIndex).toBe(2);
     });
 

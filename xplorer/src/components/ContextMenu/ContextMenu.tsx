@@ -37,7 +37,10 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
 
     const refreshFiles = async () => {
         try {
-            const result = await invoke('list_directory', { path: currentPath, showHidden: false });
+            const sortBy = activeTab?.sortBy || 'name';
+            const sortDesc = activeTab?.sortDesc || false;
+            const searchQuery = activeTab?.searchQuery || '';
+            const result = await invoke('list_files_sorted', { path: currentPath, showHidden: false, sortBy, sortDesc, searchQuery });
             setFiles(result as any);
         } catch (err) { }
     };
