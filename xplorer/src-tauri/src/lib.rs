@@ -9,6 +9,28 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_log::Builder::new().build())
+        .register_uri_scheme_protocol("icon", |_app, request| {
+            let path = request.uri().path();
+            let decoded_path = percent_encoding::percent_decode_str(path).decode_utf8_lossy();
+            
+            // ルーティング
+            let icon_id = if decoded_path.starts_with("/localhost/") {
+                &decoded_path["/localhost/".len() - 1..]
+            } else {
+                &decoded_path
+            };
+
+            // IDからバイナリ(TIFF)を直接取得
+            if let Some(data) = commands::filesystem::get_icon_binary(&icon_id[1..]) {
+                tauri::http::Response::builder()
+                    .header("Content-Type", "image/tiff")
+                    .header("Cache-Control", "public, max-age=300")
+                    .body(data)
+                    .unwrap()
+            } else {
+                tauri::http::Response::builder().status(404).body(Vec::new()).unwrap()
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::filesystem::list_directory,
             commands::filesystem::list_files_sorted,
@@ -26,7 +48,6 @@ pub fn run() {
             commands::filesystem::get_parent_path,
             commands::filesystem::complete_path,
             commands::filesystem::open_terminal_at,
-            commands::filesystem::get_icons_batch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

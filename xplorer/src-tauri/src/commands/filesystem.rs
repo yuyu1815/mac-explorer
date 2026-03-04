@@ -42,7 +42,6 @@ pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
             let ns_path = NSString::alloc(nil).init_str(path);
             msg_send![workspace, iconForFile: ns_path]
         } else if id == "dir" {
-            // 標準のフォルダアイコン
             msg_send![objc::class!(NSImage), imageNamed: NSString::alloc(nil).init_str("NSFolder")]
         } else {
             return None;
@@ -50,17 +49,12 @@ pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
 
         if icon == nil { return None; }
 
+        // TIFFデータをそのまま取得（変換なし・超高速）
         let tiff_data: cocoa_id = msg_send![icon, TIFFRepresentation];
         if tiff_data == nil { return None; }
 
-        let image_rep: cocoa_id = msg_send![objc::class!(NSBitmapImageRep), imageRepWithData: tiff_data];
-        if image_rep == nil { return None; }
-
-        let png_data: cocoa_id = msg_send![image_rep, representationUsingType: 4 properties: nil];
-        if png_data == nil { return None; }
-
-        let length: usize = msg_send![png_data, length];
-        let bytes: *const u8 = msg_send![png_data, bytes];
+        let length: usize = msg_send![tiff_data, length];
+        let bytes: *const u8 = msg_send![tiff_data, bytes];
         Some(std::slice::from_raw_parts(bytes, length).to_vec())
     }
 }

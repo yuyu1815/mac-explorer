@@ -43,7 +43,6 @@ interface AppState {
     showDetailsPane: boolean;
     loading: boolean;
     propertiesDialogTarget: string | null;
-    iconCache: Record<string, string>;
     showHiddenFiles: boolean;
     showFileExtensions: boolean;
     showItemCheckBoxes: boolean;
@@ -73,7 +72,6 @@ interface AppState {
     setShowHiddenFiles: (show: boolean) => void;
     setShowFileExtensions: (show: boolean) => void;
     setShowItemCheckBoxes: (show: boolean) => void;
-    updateIconCache: (newIcons: Record<string, string>) => void;
 }
 
 const createNewTab = (id: string, path: string = ''): Tab => ({
@@ -98,7 +96,6 @@ export const useAppStore = create<AppState>((set) => ({
     showDetailsPane: false,
     loading: false,
     propertiesDialogTarget: null,
-    iconCache: {},
     showHiddenFiles: false,
     showFileExtensions: true,
     showItemCheckBoxes: false,
@@ -240,5 +237,4 @@ export const useAppStore = create<AppState>((set) => ({
     setShowHiddenFiles: (show) => set({ showHiddenFiles: show }),
     setShowFileExtensions: (show) => set({ showFileExtensions: show }),
     setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),
-    updateIconCache: (newIcons) => set((state) => ({ iconCache: { ...state.iconCache, ...newIcons } })),
 }));

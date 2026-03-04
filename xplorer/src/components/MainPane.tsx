@@ -86,7 +86,8 @@ export const MainPane = () => {
                 const newIcons: Record<string, string> = {};
                 
                 for (const [id, bytes] of Object.entries(result)) {
-                    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+                    console.log(`[DEBUG] Received icon binary for ${id}, size: ${bytes.length} bytes`);
+                    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/tiff' });
                     newIcons[id] = URL.createObjectURL(blob);
                 }
                 updateIconCache(newIcons);
