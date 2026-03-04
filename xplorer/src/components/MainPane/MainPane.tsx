@@ -676,6 +676,7 @@ export const MainPane = () => {
                             handleContextMenu(e, file.path);
                         }}
                         className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${index % 2 === 1 ? ' zebra' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                        data-filepath={file.path}
                         style={{ height: rowHeight, cursor: 'default' }}
                     >
                         <td style={{ padding: '0 4px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: rowHeight }}>
@@ -731,6 +732,7 @@ export const MainPane = () => {
                         handleContextMenu(e, file.path);
                     }}
                     className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                    data-filepath={file.path}
                     style={{
                         cursor: 'default',
                         padding: '0 6px',
@@ -783,6 +785,7 @@ export const MainPane = () => {
                         handleContextMenu(e, file.path);
                     }}
                     className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                    data-filepath={file.path}
                     style={{
                         cursor: 'default',
                         padding: '4px',
@@ -849,10 +852,10 @@ export const MainPane = () => {
                     if (path) newSelected.add(path);
                 }
             });
-            // Apply selection via store
-            newSelected.forEach(p => {
-                if (!selectedFiles.has(p)) toggleSelection(p, false);
-            });
+            // Apply selection via store — clear first, then add intersecting
+            const { clearSelection: clr, toggleSelection: tog } = useAppStore.getState();
+            clr();
+            newSelected.forEach(p => tog(p, false));
         };
 
         const onUp = () => {
