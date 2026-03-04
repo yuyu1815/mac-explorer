@@ -4,6 +4,8 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::time::UNIX_EPOCH;
 
+use std::collections::HashMap;
+
 #[derive(Serialize)]
 pub struct FileEntry {
     name: String,
@@ -19,85 +21,62 @@ pub struct FileEntry {
     is_hidden: bool,
     is_symlink: bool,
     permissions: String,
-    icon: Option<String>,
+    icon_id: String, // "ext:pdf", "dir", "app:/path/to/app" 等の識別子
 }
 
-use dashmap::DashMap;
-use once_cell::sync::Lazy;
-
-// グローバルな拡張子アイコンキャッシュ (拡張子 -> PNGバイナリ)
-static ICON_CACHE: Lazy<DashMap<String, Vec<u8>>> = Lazy::new(DashMap::new);
-
 #[cfg(target_os = "macos")]
-pub fn get_icon_by_extension(ext: &str) -> Option<Vec<u8>> {
-    // 1. キャッシュを確認
-    if let Some(data) = ICON_CACHE.get(ext) {
-        return Some(data.clone());
-    }
-
-    // 2. キャッシュにない場合はOSから取得
-    use cocoa::base::{id, nil};
+pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
+    use cocoa::base::{id as cocoa_id, nil};
     use cocoa::foundation::NSString;
     use objc::{msg_send, sel, sel_impl};
 
     unsafe {
-        let workspace: id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
-        let ns_ext = NSString::alloc(nil).init_str(ext);
+        let workspace: cocoa_id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
         
-        // 拡張子からアイコンを取得（ファイルパスより圧倒的に速い）
-        let icon: id = msg_send![workspace, iconForFileType: ns_ext];
+        let icon: cocoa_id = if id.starts_with("ext:") {
+            let ext = &id[4..];
+            let ns_ext = NSString::alloc(nil).init_str(ext);
+            msg_send![workspace, iconForFileType: ns_ext]
+        } else if id.starts_with("app:") || id.starts_with("file:") {
+            let path = &id[4..];
+            let ns_path = NSString::alloc(nil).init_str(path);
+            msg_send![workspace, iconForFile: ns_path]
+        } else if id == "dir" {
+            // 標準のフォルダアイコン
+            msg_send![objc::class!(NSImage), imageNamed: NSString::alloc(nil).init_str("NSFolder")]
+        } else {
+            return None;
+        };
 
         if icon == nil { return None; }
 
-        let tiff_data: id = msg_send![icon, TIFFRepresentation];
+        let tiff_data: cocoa_id = msg_send![icon, TIFFRepresentation];
         if tiff_data == nil { return None; }
 
-        let image_rep: id = msg_send![objc::class!(NSBitmapImageRep), imageRepWithData: tiff_data];
+        let image_rep: cocoa_id = msg_send![objc::class!(NSBitmapImageRep), imageRepWithData: tiff_data];
         if image_rep == nil { return None; }
 
-        let png_data: id = msg_send![image_rep, representationUsingType: 4 properties: nil];
-        if png_data == nil { return None; }
-
-        let length: usize = msg_send![png_data, length];
-        let bytes: *const u8 = msg_send![png_data, bytes];
-        let data = std::slice::from_raw_parts(bytes, length).to_vec();
-
-        // キャッシュに保存
-        ICON_CACHE.insert(ext.to_string(), data.clone());
-        Some(data)
-    }
-}
-
-#[cfg(not(target_os = "macos"))]
-pub fn get_icon_by_extension(_ext: &str) -> Option<Vec<u8>> { None }
-
-#[cfg(target_os = "macos")]
-pub fn get_file_icon_raw(path: &str) -> Option<Vec<u8>> {
-    // 特殊なアイコン（アプリ、画像サムネイルなど）が必要な場合のみこちらを使用
-    use cocoa::base::{id, nil};
-    use cocoa::foundation::NSString;
-    use objc::{msg_send, sel, sel_impl};
-
-    unsafe {
-        let workspace: id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
-        let ns_path = NSString::alloc(nil).init_str(path);
-        let icon: id = msg_send![workspace, iconForFile: ns_path];
-
-        if icon == nil { return None; }
-
-        let tiff_data: id = msg_send![icon, TIFFRepresentation];
-        if tiff_data == nil { return None; }
-
-        let image_rep: id = msg_send![objc::class!(NSBitmapImageRep), imageRepWithData: tiff_data];
-        if image_rep == nil { return None; }
-
-        let png_data: id = msg_send![image_rep, representationUsingType: 4 properties: nil];
+        let png_data: cocoa_id = msg_send![image_rep, representationUsingType: 4 properties: nil];
         if png_data == nil { return None; }
 
         let length: usize = msg_send![png_data, length];
         let bytes: *const u8 = msg_send![png_data, bytes];
         Some(std::slice::from_raw_parts(bytes, length).to_vec())
     }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn get_icon_binary(_id: &str) -> Option<Vec<u8>> { None }
+
+#[tauri::command]
+pub async fn get_icons_batch(ids: Vec<String>) -> Result<HashMap<String, Vec<u8>>, String> {
+    let mut map = HashMap::new();
+    for id in ids {
+        if let Some(data) = get_icon_binary(&id) {
+            map.insert(id, data);
+        }
+    }
+    Ok(map)
 }
 
 #[derive(Serialize)]
@@ -309,10 +288,19 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
                 .unwrap_or_default()
         };
 
-        let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
-        let is_symlink = metadata.file_type().is_symlink();
-
-        let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
+        let icon_id = if is_dir {
+            if path_str.ends_with(".app") {
+                format!("app:{}", path_str)
+            } else {
+                "dir".to_string()
+            }
+        } else {
+            let ext = path_buf
+                .extension()
+                .map(|e| e.to_string_lossy().to_lowercase())
+                .unwrap_or_default();
+            format!("ext:{}", ext)
+        };
 
         entries.push(FileEntry {
             name: file_name,
@@ -332,7 +320,7 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
             is_hidden,
             is_symlink,
             permissions,
-            icon: None,
+            icon_id,
         });
     }
 
@@ -727,10 +715,19 @@ fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntr
                 .unwrap_or_default()
         };
 
-        let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
-        let is_symlink_val = metadata.file_type().is_symlink();
-
-        let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
+        let icon_id = if is_dir {
+            if path_str.ends_with(".app") {
+                format!("app:{}", path_str)
+            } else {
+                "dir".to_string()
+            }
+        } else {
+            let ext = path_buf
+                .extension()
+                .map(|e| e.to_string_lossy().to_lowercase())
+                .unwrap_or_default();
+            format!("ext:{}", ext)
+        };
 
         entries.push(FileEntry {
             name: file_name,
@@ -750,7 +747,7 @@ fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntr
             is_hidden,
             is_symlink: is_symlink_val,
             permissions,
-            icon: None,
+            icon_id,
         });
     }
 

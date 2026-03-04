@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileIcon } from './MainPane';
+import { useAppStore } from '../stores/appStore';
 import '../styles/components/PropertiesDialog.css';
 
 interface PropertiesDialogProps {
@@ -32,6 +33,12 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
     const [error, setError] = useState<string | null>(null);
     const [nameInputValue, setNameInputValue] = useState("");
 
+    // Need to get the entry to access icon_id
+    const activeTab = useAppStore(state => state.tabs.find(t => t.id === useAppStore.getState().activeTabId));
+    const entry = activeTab?.files.find(f => f.path === path);
+    const isDir = props?.file_type === 'ファイル フォルダー';
+    const iconId = entry?.icon_id || (isDir ? 'dir' : '');
+
     useEffect(() => {
         const fetchProperties = async () => {
             try {
@@ -47,8 +54,6 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
         };
         fetchProperties();
     }, [path]);
-
-    const isDir = props?.file_type === 'ファイル フォルダー';
 
     return (
         <div className="properties-dialog-overlay" onMouseDown={onClose}>
@@ -72,7 +77,7 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
                             <div className="properties-tab-content">
                                 <div className="prop-row prop-header">
                                     <div className="prop-icon">
-                                        <FileIcon isDir={isDir} path={path} size={32} />
+                                        <FileIcon isDir={isDir} iconId={iconId} size={32} />
                                     </div>
                                     <input
                                         type="text"

@@ -15,7 +15,7 @@ export interface FileEntry {
     is_hidden: boolean;
     is_symlink: boolean;
     permissions: string;
-    icon?: string;
+    icon_id: string; // "ext:pdf", "dir", "app:/path/to/app"
 }
 
 export type ViewMode = 'extra_large_icon' | 'large_icon' | 'medium_icon' | 'small_icon' | 'list' | 'detail' | 'tiles' | 'content';
@@ -43,6 +43,9 @@ interface AppState {
     showDetailsPane: boolean;
     loading: boolean;
     propertiesDialogTarget: string | null;
+
+    // Icon Cache (icon_id -> Blob URL)
+    iconCache: Record<string, string>;
 
     // View Tab UI states
     showHiddenFiles: boolean;
@@ -77,6 +80,8 @@ interface AppState {
     setShowHiddenFiles: (show: boolean) => void;
     setShowFileExtensions: (show: boolean) => void;
     setShowItemCheckBoxes: (show: boolean) => void;
+
+    updateIconCache: (newIcons: Record<string, string>) => void;
 }
 
 const createNewTab = (id: string, path: string = ''): Tab => {
@@ -91,7 +96,7 @@ const createNewTab = (id: string, path: string = ''): Tab => {
         viewMode: 'detail',
         sortBy: 'name',
         sortDesc: false,
-        searchQuery: '', // Added searchQuery
+        searchQuery: '',
     };
 };
 
@@ -103,6 +108,7 @@ export const useAppStore = create<AppState>((set) => ({
     showDetailsPane: false,
     loading: false,
     propertiesDialogTarget: null,
+    iconCache: {},
 
     showHiddenFiles: false,
     showFileExtensions: true,
@@ -119,7 +125,7 @@ export const useAppStore = create<AppState>((set) => ({
     }),
 
     closeTab: (id) => set((state) => {
-        if (state.tabs.length <= 1) return state; // Prevent closing last tab
+        if (state.tabs.length <= 1) return state;
         const newTabs = state.tabs.filter(t => t.id !== id);
         let newActiveId = state.activeTabId;
         if (state.activeTabId === id) {
@@ -142,7 +148,7 @@ export const useAppStore = create<AppState>((set) => ({
                 historyIndex: newHistory.length - 1,
                 selectedFiles: new Set<string>(),
                 focusedIndex: -1,
-                searchQuery: '', // Clear search query on path change
+                searchQuery: '',
             };
         });
         return { tabs };
@@ -157,7 +163,7 @@ export const useAppStore = create<AppState>((set) => ({
                 currentPath: tab.history[tab.historyIndex - 1],
                 selectedFiles: new Set<string>(),
                 focusedIndex: -1,
-                searchQuery: '', // Clear search query on navigation
+                searchQuery: '',
             };
         });
         return { tabs };
@@ -172,7 +178,7 @@ export const useAppStore = create<AppState>((set) => ({
                 currentPath: tab.history[tab.historyIndex + 1],
                 selectedFiles: new Set<string>(),
                 focusedIndex: -1,
-                searchQuery: '', // Clear search query on navigation
+                searchQuery: '',
             };
         });
         return { tabs };
@@ -271,7 +277,7 @@ export const useAppStore = create<AppState>((set) => ({
         const tabs = state.tabs.map(tab => {
             if (tab.id !== state.activeTabId) return tab;
             const newSelected = new Set(tab.files.map(f => f.path));
-            tab.selectedFiles.forEach(path => newSelected.delete(path)); // remove currently selected
+            tab.selectedFiles.forEach(path => newSelected.delete(path));
             return { ...tab, selectedFiles: newSelected };
         });
         return { tabs };
@@ -323,4 +329,8 @@ export const useAppStore = create<AppState>((set) => ({
     setShowHiddenFiles: (show) => set({ showHiddenFiles: show }),
     setShowFileExtensions: (show) => set({ showFileExtensions: show }),
     setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),
+
+    updateIconCache: (newIcons) => set((state) => ({
+        iconCache: { ...state.iconCache, ...newIcons }
+    })),
 }));
