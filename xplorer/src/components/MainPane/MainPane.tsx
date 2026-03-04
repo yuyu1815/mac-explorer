@@ -35,6 +35,7 @@ export const MainPane = () => {
     const [iconSize, setIconSize] = useState(48);
     const [marquee, setMarquee] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
     const paneRef = useRef<HTMLDivElement>(null);
+    const marqueeJustEnded = useRef(false);
     const [batchRename, setBatchRename] = useState<{ prefix: string; startNum: number } | null>(null);
 
     // Context menu opening ignores default behavior
@@ -860,9 +861,11 @@ export const MainPane = () => {
         };
 
         const onUp = () => {
+            marqueeJustEnded.current = true;
             setMarquee(null);
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
+            setTimeout(() => { marqueeJustEnded.current = false; }, 0);
         };
 
         document.addEventListener('mousemove', onMove);
@@ -881,7 +884,7 @@ export const MainPane = () => {
             ref={paneRef}
             className="main-pane-container"
             style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto', outline: 'none', position: 'relative', userSelect: 'none' }}
-            onClick={() => { if (!renamingPath && !marquee) clearSelection(); }}
+            onClick={() => { if (!renamingPath && !marquee && !marqueeJustEnded.current) clearSelection(); }}
             onDoubleClick={(e) => {
                 if ((e.target as HTMLElement).closest('.file-item')) return;
                 if ((e.target as HTMLElement).closest('th')) return;
