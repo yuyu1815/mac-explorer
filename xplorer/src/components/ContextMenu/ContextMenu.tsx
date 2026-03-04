@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../../stores/appStore';
 import { ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard, LayoutGrid, ArrowDownAZ, RefreshCw, Settings } from 'lucide-react';
@@ -19,6 +19,25 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
 
     const menuRef = useRef<HTMLDivElement>(null);
+
+    const [position, setPosition] = useState({ top: y, left: x });
+
+    useLayoutEffect(() => {
+        if (menuRef.current) {
+            const rect = menuRef.current.getBoundingClientRect();
+            let newTop = y;
+            let newLeft = x;
+
+            if (y + rect.height > window.innerHeight) {
+                newTop = Math.max(0, y - rect.height);
+            }
+            if (x + rect.width > window.innerWidth) {
+                newLeft = Math.max(0, x - rect.width);
+            }
+
+            setPosition({ top: newTop, left: newLeft });
+        }
+    }, [x, y, targetPath]);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -58,7 +77,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
     const pathsToActOn: string[] = (targetPath && selectedFiles.has(targetPath)) ? Array.from(selectedFiles) : targetPath ? [targetPath] : [];
 
     return (
-        <div ref={menuRef} className="win32-context-menu" style={{ top: y, left: x }}>
+        <div ref={menuRef} className="win32-context-menu" style={{ top: position.top, left: position.left }}>
             {/* Background Gutter */}
             <div className="win32-ContextMenu-gutter"></div>
 
