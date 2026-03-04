@@ -27,23 +27,11 @@ export const DetailsPane = () => {
     const selectedEntries = files.filter(f => selectedFiles.has(f.path));
     const entry = selectedEntries.length === 1 ? selectedEntries[0] : null;
 
-    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'ico'];
-    const isImage = entry && !entry.is_dir && imageExts.includes(entry.file_type.toLowerCase());
-
     return (
         <div className="details-pane">
             {entry ? (
                 <div className="details-content">
-                    {isImage ? (
-                        <img
-                            src={`asset://localhost/${entry.path}`}
-                            alt={entry.name}
-                            style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '4px', marginBottom: '8px', marginTop: '8px' }}
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                    ) : (
-                        <div className="details-icon">{fileIcon(entry)}</div>
-                    )}
+                    <div className="details-icon">{fileIcon(entry)}</div>
                     <div className="details-name">{entry.name}</div>
                     <div className="details-props">
                         <DetailRow label="項目の種類" value={entry.is_dir ? 'ファイルフォルダー' : entry.file_type.toUpperCase() + ' ファイル'} />
