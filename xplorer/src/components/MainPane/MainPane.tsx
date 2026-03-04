@@ -29,6 +29,8 @@ export const MainPane = () => {
     const renameInputRef = useRef<HTMLInputElement>(null);
     const [colWidths, setColWidths] = useState({ name: 0, modified: 150, file_type: 120, size: 100 });
     const [iconSize, setIconSize] = useState(48);
+    const [marquee, setMarquee] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
+    const paneRef = useRef<HTMLDivElement>(null);
 
     // Context menu opening ignores default behavior
     useEffect(() => {
@@ -578,13 +580,77 @@ export const MainPane = () => {
         </div>
     );
 
+    const handleMarqueeStart = (e: React.MouseEvent) => {
+        // Only start marquee from blank area (left button, no file-item clicked)
+        if (e.button !== 0) return;
+        if ((e.target as HTMLElement).closest('.file-item')) return;
+        if ((e.target as HTMLElement).closest('th')) return;
+
+        const pane = paneRef.current;
+        if (!pane) return;
+
+        const rect = pane.getBoundingClientRect();
+        const startX = e.clientX - rect.left + pane.scrollLeft;
+        const startY = e.clientY - rect.top + pane.scrollTop;
+
+        setMarquee({ startX, startY, x: startX, y: startY });
+        if (!e.ctrlKey && !e.metaKey) clearSelection();
+
+        const onMove = (ev: MouseEvent) => {
+            const mx = ev.clientX - rect.left + pane.scrollLeft;
+            const my = ev.clientY - rect.top + pane.scrollTop;
+            setMarquee(prev => prev ? { ...prev, x: mx, y: my } : null);
+
+            // select items that intersect
+            const selX = Math.min(startX, mx);
+            const selY = Math.min(startY, my);
+            const selW = Math.abs(mx - startX);
+            const selH = Math.abs(my - startY);
+
+            const items = pane.querySelectorAll('.file-item');
+            const newSelected = new Set<string>();
+            items.forEach(item => {
+                const ir = item.getBoundingClientRect();
+                const itemX = ir.left - rect.left + pane.scrollLeft;
+                const itemY = ir.top - rect.top + pane.scrollTop;
+                if (itemX < selX + selW && itemX + ir.width > selX &&
+                    itemY < selY + selH && itemY + ir.height > selY) {
+                    const path = (item as HTMLElement).dataset.filepath;
+                    if (path) newSelected.add(path);
+                }
+            });
+            // Apply selection via store
+            newSelected.forEach(p => {
+                if (!selectedFiles.has(p)) toggleSelection(p, false);
+            });
+        };
+
+        const onUp = () => {
+            setMarquee(null);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    };
+
+    const marqueeRect = marquee ? {
+        left: Math.min(marquee.startX, marquee.x),
+        top: Math.min(marquee.startY, marquee.y),
+        width: Math.abs(marquee.x - marquee.startX),
+        height: Math.abs(marquee.y - marquee.startY),
+    } : null;
+
     return (
         <div
+            ref={paneRef}
             className="main-pane-container"
-            style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto', outline: 'none' }}
-            onClick={() => { if (!renamingPath) clearSelection(); }}
+            style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto', outline: 'none', position: 'relative' }}
+            onClick={() => { if (!renamingPath && !marquee) clearSelection(); }}
             onContextMenu={(e) => handleContextMenu(e, null)}
             onKeyDown={handleKeyDown}
+            onMouseDown={handleMarqueeStart}
             onWheel={(e) => {
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
@@ -612,6 +678,20 @@ export const MainPane = () => {
                     onStartRename={startRename}
                     onCreateFolder={handleCreateFolder}
                 />
+            )}
+
+            {marqueeRect && (
+                <div style={{
+                    position: 'absolute',
+                    left: `${marqueeRect.left}px`,
+                    top: `${marqueeRect.top}px`,
+                    width: `${marqueeRect.width}px`,
+                    height: `${marqueeRect.height}px`,
+                    backgroundColor: 'rgba(0, 120, 215, 0.4)',
+                    border: '1px solid rgba(0, 120, 215, 0.8)',
+                    pointerEvents: 'none',
+                    zIndex: 1000
+                }} />
             )}
         </div>
     );
