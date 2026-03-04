@@ -15,7 +15,7 @@ export interface FileEntry {
     is_hidden: boolean;
     is_symlink: boolean;
     permissions: string;
-    icon_id: string; // "ext:pdf", "dir", "app:/path/to/app"
+    icon_id: string;
 }
 
 export type ViewMode = 'extra_large_icon' | 'large_icon' | 'medium_icon' | 'small_icon' | 'list' | 'detail' | 'tiles' | 'content';
@@ -43,11 +43,7 @@ interface AppState {
     showDetailsPane: boolean;
     loading: boolean;
     propertiesDialogTarget: string | null;
-
-    // Icon Cache (icon_id -> Blob URL)
     iconCache: Record<string, string>;
-
-    // View Tab UI states
     showHiddenFiles: boolean;
     showFileExtensions: boolean;
     showItemCheckBoxes: boolean;
@@ -56,7 +52,6 @@ interface AppState {
     addTab: (path?: string) => void;
     closeTab: (id: string) => void;
     setActiveTab: (id: string) => void;
-
     setCurrentPath: (path: string) => void;
     goBack: () => void;
     goForward: () => void;
@@ -69,36 +64,31 @@ interface AppState {
     setFocusedIndex: (index: number) => void;
     setClipboard: (clipboard: { files: string[], operation: 'copy' | 'cut' } | null) => void;
     triggerRename: () => void;
-
     setViewMode: (mode: ViewMode) => void;
     setSortParams: (column: SortColumn, desc?: boolean) => void;
     toggleDetailsPane: () => void;
     setSearchQuery: (query: string) => void;
     setLoading: (loading: boolean) => void;
     openPropertiesDialog: (path: string | null) => void;
-
     setShowHiddenFiles: (show: boolean) => void;
     setShowFileExtensions: (show: boolean) => void;
     setShowItemCheckBoxes: (show: boolean) => void;
-
     updateIconCache: (newIcons: Record<string, string>) => void;
 }
 
-const createNewTab = (id: string, path: string = ''): Tab => {
-    return {
-        id,
-        currentPath: path,
-        history: path ? [path] : [],
-        historyIndex: path ? 0 : -1,
-        files: [],
-        selectedFiles: new Set(),
-        focusedIndex: -1,
-        viewMode: 'detail',
-        sortBy: 'name',
-        sortDesc: false,
-        searchQuery: '',
-    };
-};
+const createNewTab = (id: string, path: string = ''): Tab => ({
+    id,
+    currentPath: path,
+    history: path ? [path] : [],
+    historyIndex: path ? 0 : -1,
+    files: [],
+    selectedFiles: new Set(),
+    focusedIndex: -1,
+    viewMode: 'detail',
+    sortBy: 'name',
+    sortDesc: false,
+    searchQuery: '',
+});
 
 export const useAppStore = create<AppState>((set) => ({
     tabs: [createNewTab('default-tab')],
@@ -109,228 +99,146 @@ export const useAppStore = create<AppState>((set) => ({
     loading: false,
     propertiesDialogTarget: null,
     iconCache: {},
-
     showHiddenFiles: false,
     showFileExtensions: true,
     showItemCheckBoxes: false,
 
     addTab: (path) => set((state) => {
         const id = `tab-${Date.now()}`;
-        const targetPath = path !== undefined ? path : (state.tabs.find(t => t.id === state.activeTabId)?.currentPath || '');
-        const newTab = createNewTab(id, targetPath);
-        return {
-            tabs: [...state.tabs, newTab],
-            activeTabId: id
-        };
+        const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+        const targetPath = path ?? activeTab?.currentPath ?? '';
+        return { tabs: [...state.tabs, createNewTab(id, targetPath)], activeTabId: id };
     }),
 
     closeTab: (id) => set((state) => {
         if (state.tabs.length <= 1) return state;
         const newTabs = state.tabs.filter(t => t.id !== id);
-        let newActiveId = state.activeTabId;
-        if (state.activeTabId === id) {
-            newActiveId = newTabs[newTabs.length - 1].id;
-        }
-        return { tabs: newTabs, activeTabId: newActiveId };
+        const activeTabId = state.activeTabId === id ? newTabs[newTabs.length - 1].id : state.activeTabId;
+        return { tabs: newTabs, activeTabId };
     }),
 
     setActiveTab: (id) => set({ activeTabId: id }),
 
-    setCurrentPath: (path) => set((state) => {
-        const tabs = state.tabs.map(tab => {
+    setCurrentPath: (path) => set((state) => ({
+        tabs: state.tabs.map(tab => {
             if (tab.id !== state.activeTabId) return tab;
-            const newHistory = tab.history.slice(0, tab.historyIndex + 1);
-            newHistory.push(path);
+            const newHistory = [...tab.history.slice(0, tab.historyIndex + 1), path];
             return {
                 ...tab,
                 currentPath: path,
                 history: newHistory,
                 historyIndex: newHistory.length - 1,
-                selectedFiles: new Set<string>(),
+                selectedFiles: new Set(),
                 focusedIndex: -1,
                 searchQuery: '',
             };
-        });
-        return { tabs };
-    }),
+        })
+    })),
 
-    goBack: () => set((state) => {
-        const tabs = state.tabs.map(tab => {
+    goBack: () => set((state) => ({
+        tabs: state.tabs.map(tab => {
             if (tab.id !== state.activeTabId || tab.historyIndex <= 0) return tab;
             return {
                 ...tab,
                 historyIndex: tab.historyIndex - 1,
                 currentPath: tab.history[tab.historyIndex - 1],
-                selectedFiles: new Set<string>(),
+                selectedFiles: new Set(),
                 focusedIndex: -1,
                 searchQuery: '',
             };
-        });
-        return { tabs };
-    }),
+        })
+    })),
 
-    goForward: () => set((state) => {
-        const tabs = state.tabs.map(tab => {
+    goForward: () => set((state) => ({
+        tabs: state.tabs.map(tab => {
             if (tab.id !== state.activeTabId || tab.historyIndex >= tab.history.length - 1) return tab;
             return {
                 ...tab,
                 historyIndex: tab.historyIndex + 1,
                 currentPath: tab.history[tab.historyIndex + 1],
-                selectedFiles: new Set<string>(),
+                selectedFiles: new Set(),
                 focusedIndex: -1,
                 searchQuery: '',
             };
-        });
-        return { tabs };
-    }),
+        })
+    })),
 
     goUp: async () => {
-        const state = useAppStore.getState();
-        const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+        const { tabs, activeTabId } = useAppStore.getState();
+        const activeTab = tabs.find(t => t.id === activeTabId);
         if (!activeTab) return;
 
-        try {
-            const parent = await invoke<string>('get_parent_path', { path: activeTab.currentPath });
-            if (parent && parent !== activeTab.currentPath) {
-                const newHistory = activeTab.history.slice(0, activeTab.historyIndex + 1);
-                newHistory.push(parent);
-                set((state) => ({
-                    tabs: state.tabs.map(tab =>
-                        tab.id === state.activeTabId
-                            ? {
-                                ...tab,
-                                currentPath: parent,
-                                history: newHistory,
-                                historyIndex: newHistory.length - 1,
-                                selectedFiles: new Set<string>(),
-                                focusedIndex: -1,
-                                searchQuery: '',
-                            }
-                            : tab
-                    )
-                }));
-            }
-        } catch (error) {
-            console.error('Failed to get parent path:', error);
+        const parent = await invoke<string>('get_parent_path', { path: activeTab.currentPath });
+        if (parent && parent !== activeTab.currentPath) {
+            useAppStore.getState().setCurrentPath(parent);
         }
     },
 
-    setFiles: (files) => set((state) => {
-        const tabs = state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, files } : tab);
-        return { tabs };
-    }),
+    setFiles: (files) => set((state) => ({
+        tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, files } : tab)
+    })),
 
-    toggleSelection: (path, exclusive = false, range = false, orderedPaths = undefined) => set((state) => {
-        const tabs = state.tabs.map(tab => {
+    toggleSelection: (path, exclusive, range, orderedPaths) => set((state) => ({
+        tabs: state.tabs.map(tab => {
             if (tab.id !== state.activeTabId) return tab;
-            let newSelected = new Set(tab.selectedFiles);
-
-            if (exclusive) {
-                newSelected.clear();
-                newSelected.add(path);
-            } else if (range) {
-                if (tab.selectedFiles.size > 0 && tab.files.length > 0) {
-                    const paths = orderedPaths || tab.files.map(f => f.path);
-                    const lastSelectedArray = Array.from(tab.selectedFiles);
-                    const lastSelected = lastSelectedArray[lastSelectedArray.length - 1];
-
-                    const startIdx = paths.indexOf(lastSelected);
-                    const endIdx = paths.indexOf(path);
-
-                    if (startIdx !== -1 && endIdx !== -1) {
-                        const [min, max] = [Math.min(startIdx, endIdx), Math.max(startIdx, endIdx)];
-                        for (let i = min; i <= max; i++) {
-                            newSelected.add(paths[i]);
-                        }
-                    } else {
-                        newSelected.add(path);
-                    }
-                } else {
-                    newSelected.add(path);
-                }
+            const newSelected = new Set(exclusive ? [] : tab.selectedFiles);
+            
+            if (range && tab.selectedFiles.size > 0) {
+                const paths = orderedPaths ?? tab.files.map(f => f.path);
+                const start = paths.indexOf(Array.from(tab.selectedFiles).pop()!);
+                const end = paths.indexOf(path);
+                const [min, max] = [Math.min(start, end), Math.max(start, end)];
+                for (let i = min; i <= max; i++) newSelected.add(paths[i]);
             } else {
-                if (newSelected.has(path)) {
-                    newSelected.delete(path);
-                } else {
-                    newSelected.add(path);
-                }
+                newSelected.has(path) ? newSelected.delete(path) : newSelected.add(path);
             }
             return { ...tab, selectedFiles: newSelected };
-        });
-        return { tabs };
-    }),
+        })
+    })),
 
-    clearSelection: () => set((state) => {
-        const tabs = state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, selectedFiles: new Set<string>() } : tab);
-        return { tabs };
-    }),
+    clearSelection: () => set((state) => ({
+        tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, selectedFiles: new Set() } : tab)
+    })),
 
-    selectAll: () => set((state) => {
-        const tabs = state.tabs.map(tab => {
-            if (tab.id !== state.activeTabId) return tab;
-            return { ...tab, selectedFiles: new Set(tab.files.map(f => f.path)) };
-        });
-        return { tabs };
-    }),
+    selectAll: () => set((state) => ({
+        tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, selectedFiles: new Set(tab.files.map(f => f.path)) } : tab)
+    })),
 
-    invertSelection: () => set((state) => {
-        const tabs = state.tabs.map(tab => {
+    invertSelection: () => set((state) => ({
+        tabs: state.tabs.map(tab => {
             if (tab.id !== state.activeTabId) return tab;
             const newSelected = new Set(tab.files.map(f => f.path));
-            tab.selectedFiles.forEach(path => newSelected.delete(path));
+            tab.selectedFiles.forEach(p => newSelected.delete(p));
             return { ...tab, selectedFiles: newSelected };
-        });
-        return { tabs };
-    }),
+        })
+    })),
 
-    setFocusedIndex: (index) => set((state) => {
-        const tabs = state.tabs.map(tab => {
-            if (tab.id !== state.activeTabId) return tab;
-            return { ...tab, focusedIndex: index };
-        });
-        return { tabs };
-    }),
+    setFocusedIndex: (index) => set((state) => ({
+        tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, focusedIndex: index } : tab)
+    })),
 
     setClipboard: (clipboard) => set({ clipboard }),
-
     triggerRename: () => set(state => ({ renameTriggerId: state.renameTriggerId + 1 })),
+    setViewMode: (mode) => set((state) => ({
+        tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, viewMode: mode } : tab)
+    })),
 
-    setViewMode: (mode) => set((state) => {
-        const tabs = state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, viewMode: mode } : tab);
-        return { tabs };
-    }),
-
-    setSortParams: (column, desc) => set((state) => {
-        const tabs = state.tabs.map(tab => {
-            if (tab.id === state.activeTabId) {
-                const newDesc = desc !== undefined ? desc : (tab.sortBy === column ? !tab.sortDesc : false);
-                return { ...tab, sortBy: column, sortDesc: newDesc };
-            }
-            return tab;
-        });
-        return { tabs };
-    }),
+    setSortParams: (column, desc) => set((state) => ({
+        tabs: state.tabs.map(tab => {
+            if (tab.id !== state.activeTabId) return tab;
+            const sortDesc = desc ?? (tab.sortBy === column ? !tab.sortDesc : false);
+            return { ...tab, sortBy: column, sortDesc };
+        })
+    })),
 
     toggleDetailsPane: () => set(state => ({ showDetailsPane: !state.showDetailsPane })),
-
-    setSearchQuery: (query) => set((state) => {
-        const tabs = state.tabs.map(tab => {
-            if (tab.id === state.activeTabId) {
-                return { ...tab, searchQuery: query };
-            }
-            return tab;
-        });
-        return { tabs };
-    }),
-
-    setLoading: (loading: boolean) => set({ loading }),
+    setSearchQuery: (query) => set((state) => ({
+        tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, searchQuery: query } : tab)
+    })),
+    setLoading: (loading) => set({ loading }),
     openPropertiesDialog: (path) => set({ propertiesDialogTarget: path }),
-
     setShowHiddenFiles: (show) => set({ showHiddenFiles: show }),
     setShowFileExtensions: (show) => set({ showFileExtensions: show }),
     setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),
-
-    updateIconCache: (newIcons) => set((state) => ({
-        iconCache: { ...state.iconCache, ...newIcons }
-    })),
+    updateIconCache: (newIcons) => set((state) => ({ iconCache: { ...state.iconCache, ...newIcons } })),
 }));

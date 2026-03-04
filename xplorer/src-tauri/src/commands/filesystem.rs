@@ -247,6 +247,16 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
     })
 }
 
+fn get_entry_icon_id(is_dir: bool, path_str: &str, extension: Option<String>) -> String {
+    if is_dir {
+        if path_str.ends_with(".app") {
+            return format!("app:{}", path_str);
+        }
+        return "dir".to_string();
+    }
+    format!("ext:{}", extension.unwrap_or_default())
+}
+
 #[tauri::command]
 pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
     let mut entries = Vec::new();
@@ -254,8 +264,9 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
 
     for entry in dir.flatten() {
         let file_name = entry.file_name().to_string_lossy().into_owned();
-
-        if !show_hidden && file_name.starts_with('.') {
+        let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
+        
+        if !show_hidden && is_hidden {
             continue;
         }
 
@@ -263,68 +274,26 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
         let path_str = path_buf.to_string_lossy().into_owned();
         let metadata = entry.metadata().map_err(|e| e.to_string())?;
         let is_dir = metadata.is_dir();
-        let size = metadata.len();
-
-        let modified = metadata
-            .modified()
-            .unwrap_or(UNIX_EPOCH)
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64;
-
-        let created = metadata
-            .created()
-            .unwrap_or(UNIX_EPOCH)
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64;
-
-        let file_type = if is_dir {
-            "folder".to_string()
-        } else {
-            path_buf
-                .extension()
-                .map(|ext| ext.to_string_lossy().into_owned())
-                .unwrap_or_default()
-        };
-
-        let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
-        let is_symlink_val = metadata.file_type().is_symlink();
-        let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
-
-        let icon_id = if is_dir {
-            if path_str.ends_with(".app") {
-                format!("app:{}", path_str)
-            } else {
-                "dir".to_string()
-            }
-        } else {
-            let ext = path_buf
-                .extension()
-                .map(|e| e.to_string_lossy().to_lowercase())
-                .unwrap_or_default();
-            format!("ext:{}", ext)
-        };
+        
+        let modified = metadata.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
+        let created = metadata.created().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
+        let ext = path_buf.extension().map(|e| e.to_string_lossy().to_lowercase());
 
         entries.push(FileEntry {
             name: file_name,
             path: path_str.clone(),
             is_dir,
-            size,
-            size_formatted: if is_dir {
-                String::new()
-            } else {
-                format_size(size)
-            },
+            size: metadata.len(),
+            size_formatted: if is_dir { String::new() } else { format_size(metadata.len()) },
             modified,
             modified_formatted: format_timestamp(modified),
             created,
             created_formatted: format_timestamp(created),
-            file_type,
+            file_type: if is_dir { "folder".to_string() } else { ext.clone().unwrap_or_default() },
             is_hidden,
-            is_symlink: is_symlink_val,
-            permissions,
-            icon_id,
+            is_symlink: metadata.file_type().is_symlink(),
+            permissions: format!("{:o}", metadata.permissions().mode() & 0o777),
+            icon_id: get_entry_icon_id(is_dir, &path_str, ext),
         });
     }
 

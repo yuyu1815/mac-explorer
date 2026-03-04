@@ -61,7 +61,9 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             const searchQuery = activeTab?.searchQuery || '';
             const result = await invoke('list_files_sorted', { path: currentPath, showHidden: false, sortBy, sortDesc, searchQuery });
             setFiles(result as any);
-        } catch (err) { }
+        } catch (err) {
+            console.error('Context menu action failed:', err);
+        }
     };
 
     const handleNewFile = async () => {
@@ -70,7 +72,9 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             let newPath = currentPath.endsWith(sep) ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}${sep}新しいテキスト ドキュメント.txt`;
             await invoke('create_file', { path: newPath });
             refreshFiles();
-        } catch (err) { }
+        } catch (err) {
+            console.error('Context menu action failed:', err);
+        }
     };
 
     const isMultiple = selectedFiles.size > 1;

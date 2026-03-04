@@ -5,51 +5,43 @@ import { ContextMenu } from './ContextMenu';
 import { Folder } from 'lucide-react';
 import { PropertiesDialog } from './PropertiesDialog';
 
-export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean, iconId: string, size?: number }) => {
-    const iconCache = useAppStore(state => state.iconCache);
-    const blobUrl = iconCache[iconId];
-    
-    // フォルダアイコンの基本設定
-    const folderIcon = <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />;
+const FolderIcon = ({ size }: { size: number }) => (
+    <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
+);
 
-    // .app の場合：フォルダの上にアプリのアイコンをバッジとして表示
-    if (iconId.startsWith('app:')) {
-        const badgeSize = Math.floor(size * 0.6);
-        return (
-            <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {folderIcon}
-                {blobUrl && (
-                    <div style={{ 
-                        position: 'absolute', 
-                        bottom: -2, 
-                        right: -2, 
-                        width: badgeSize, 
-                        height: badgeSize, 
-                        backgroundColor: 'var(--bg-main, #ffffff)',
-                        borderRadius: '2px',
-                        padding: '1px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                    }}>
-                        <img src={blobUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    </div>
-                )}
-            </div>
-        );
-    }
+const AppIcon = ({ iconId, size }: { iconId: string, size: number }) => {
+    const blobUrl = useAppStore(state => state.iconCache[iconId]);
+    const badgeSize = Math.floor(size * 0.6);
+    return (
+        <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FolderIcon size={size} />
+            {blobUrl && (
+                <div style={{ 
+                    position: 'absolute', bottom: -2, right: -2, width: badgeSize, height: badgeSize, 
+                    backgroundColor: 'var(--bg-main, #ffffff)', borderRadius: '2px', padding: '1px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                }}>
+                    <img src={blobUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+            )}
+        </div>
+    );
+};
 
-    if (isDir) return folderIcon;
-
-    if (blobUrl) {
-        return <img src={blobUrl} alt="" style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />;
-    }
-
-    // フォールバック
-    return <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+const GenericFileIcon = ({ size }: { size: number }) => (
+    <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="#FFFFFF" stroke="#5D5D5D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
-    </div>;
+    </div>
+);
+
+export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean, iconId: string, size?: number }) => {
+    const blobUrl = useAppStore(state => state.iconCache[iconId]);
+    
+    if (iconId.startsWith('app:')) return <AppIcon iconId={iconId} size={size} />;
+    if (isDir) return <FolderIcon size={size} />;
+    if (blobUrl) return <img src={blobUrl} alt="" style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />;
+    
+    return <GenericFileIcon size={size} />;
 };
 
 export const MainPane = () => {

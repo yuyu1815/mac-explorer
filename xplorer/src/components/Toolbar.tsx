@@ -81,7 +81,9 @@ export const Toolbar = () => {
                 setClipboard(null);
             }
             refreshFiles();
-        } catch (err) { }
+        } catch (err) {
+            console.error('Toolbar action failed:', err);
+        }
     };
 
     const handleCopyTo = async () => {
@@ -134,7 +136,9 @@ export const Toolbar = () => {
             let newPath = currentPath.endsWith(sep) ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}${sep}新しいテキスト ドキュメント.txt`;
             await invoke('create_file', { path: newPath });
             refreshFiles();
-        } catch (err) { }
+        } catch (err) {
+            console.error('Toolbar action failed:', err);
+        }
     };
 
     const handleProperties = async () => {
@@ -154,7 +158,9 @@ export const Toolbar = () => {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: true });
                 refreshFiles();
             }
-        } catch (err) { }
+        } catch (err) {
+            console.error('Toolbar action failed:', err);
+        }
     };
     const handleNewFolder = async () => {
         try {
@@ -162,7 +168,9 @@ export const Toolbar = () => {
             let newPath = currentPath.endsWith(sep) ? `${currentPath}新しいフォルダー` : `${currentPath}${sep}新しいフォルダー`;
             await invoke('create_directory', { path: newPath });
             refreshFiles();
-        } catch (err) { }
+        } catch (err) {
+            console.error('Toolbar action failed:', err);
+        }
     };
 
     const renderHomeTab = () => (
