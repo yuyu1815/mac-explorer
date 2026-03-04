@@ -242,12 +242,16 @@ input:focus {
     border-color: var(--accent-color);
 }
 
+/* テキスト選択を完全に無効化（ファイラーとして適切な挙動） */
 ::selection {
-    background-color: var(--accent-color);
-    color: #FFFFFF;
+    background-color: transparent;
 }
 
-/* Focus Rectangle (Dotted Line) */
-:focus-visible {
+::-moz-selection {
+    background-color: transparent;
+}
+
+/* Focus Rectangle (Dotted Line) - ファイルアイテムのみに適用 */
+.file-item:focus-visible {
     outline: 1px dotted invert;
 }

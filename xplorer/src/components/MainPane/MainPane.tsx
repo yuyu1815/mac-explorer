@@ -539,15 +539,16 @@ export const MainPane = () => {
                         onDoubleClick={(e) => e.stopPropagation()}
                         style={{
                             background: '#FFFFFF',
-                            border: '1px solid black', // Windows 10 uses black or blue border for inline rename
+                            border: '1px solid black',
                             color: '#000000',
-                            padding: '0 2px', // Minimal padding
+                            padding: '0 2px',
                             height: '20px',
                             fontSize: '12px',
                             outline: 'none',
-                            width: '300px', // Allow longer input width natively
+                            width: '300px',
                             maxWidth: '100%',
-                            fontFamily: 'Segoe UI'
+                            fontFamily: 'Segoe UI',
+                            userSelect: 'text'
                         }}
                     />
                     {renameWarning && (
