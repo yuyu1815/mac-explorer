@@ -11,12 +11,39 @@ pub struct FileEntry {
     path: String,
     is_dir: bool,
     size: u64,
+    size_formatted: String,
     modified: i64,
+    modified_formatted: String,
     created: i64,
+    created_formatted: String,
     file_type: String,
     is_hidden: bool,
     is_symlink: bool,
     permissions: String,
+}
+
+fn format_size(bytes: u64) -> String {
+    if bytes < 1024 {
+        format!("{} B", bytes)
+    } else if bytes < 1024 * 1024 {
+        format!("{:.1} KB", bytes as f64 / 1024.0)
+    } else if bytes < 1024 * 1024 * 1024 {
+        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+    } else {
+        format!("{:.1} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+    }
+}
+
+fn format_timestamp(ts: i64) -> String {
+    if ts == 0 {
+        return String::new();
+    }
+    use std::time::SystemTime;
+    let datetime: chrono::DateTime<chrono::Local> = SystemTime::UNIX_EPOCH
+        .checked_add(std::time::Duration::from_secs(ts as u64))
+        .and_then(|t| chrono::DateTime::try_from(t).ok())
+        .unwrap_or_else(chrono::Local::now);
+    datetime.format("%Y/%m/%d %H:%M").to_string()
 }
 
 #[tauri::command]
@@ -107,8 +134,11 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
                 path: path_str,
                 is_dir,
                 size,
+                size_formatted: if is_dir { String::new() } else { format_size(size) },
                 modified,
+                modified_formatted: format_timestamp(modified),
                 created,
+                created_formatted: format_timestamp(created),
                 file_type,
                 is_hidden,
                 is_symlink,
@@ -222,6 +252,8 @@ pub struct VolumeInfo {
     path: String,
     total_bytes: u64,
     free_bytes: u64,
+    total_bytes_formatted: String,
+    free_bytes_formatted: String,
 }
 
 #[tauri::command]
@@ -243,6 +275,8 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
                     path: path_str,
                     total_bytes: total,
                     free_bytes: free,
+                    total_bytes_formatted: format_size(total),
+                    free_bytes_formatted: format_size(free),
                 });
             }
         }
@@ -253,6 +287,8 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
             path: "/".to_string(),
             total_bytes: total,
             free_bytes: free,
+            total_bytes_formatted: format_size(total),
+            free_bytes_formatted: format_size(free),
         });
     }
 
@@ -264,6 +300,8 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
             path: "/".to_string(),
             total_bytes: total,
             free_bytes: free,
+            total_bytes_formatted: format_size(total),
+            free_bytes_formatted: format_size(free),
         });
     }
 
@@ -278,6 +316,8 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
                     path: drive,
                     total_bytes: 0,
                     free_bytes: 0,
+                    total_bytes_formatted: String::new(),
+                    free_bytes_formatted: String::new(),
                 });
             }
         }
@@ -928,8 +968,11 @@ fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntr
                 path: path_str,
                 is_dir,
                 size,
+                size_formatted: if is_dir { String::new() } else { format_size(size) },
                 modified,
+                modified_formatted: format_timestamp(modified),
                 created,
+                created_formatted: format_timestamp(created),
                 file_type,
                 is_hidden,
                 is_symlink: is_symlink_val,

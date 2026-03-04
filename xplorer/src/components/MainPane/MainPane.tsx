@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../../stores/appStore';
-import { format } from 'date-fns';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { Folder, FileText } from 'lucide-react';
 
@@ -286,13 +285,6 @@ export const MainPane = () => {
         } catch (err) {
             console.error('Drop failed', err);
         }
-    };
-
-    const formatSize = (bytes: number, is_dir: boolean) => {
-        if (is_dir) return '';
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return Math.ceil(bytes / 1024) + ' KB';
-        return Math.ceil(bytes / 1024 / 1024) + ' MB';
     };
 
     const handleContextMenu = (e: ReactMouseEvent, path: string | null) => {
@@ -679,13 +671,13 @@ export const MainPane = () => {
                             <FileIcon isDir={file.is_dir} size={16} /> {renderFileName(file)}
                         </td>
                         <td style={{ padding: '0 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                            {format(new Date(file.modified * 1000), 'yyyy/MM/dd HH:mm')}
+                            {file.modified_formatted}
                         </td>
                         <td style={{ padding: '0 6px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {file.file_type}
                         </td>
                         <td style={{ padding: '0 6px', color: 'var(--text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {formatSize(file.size, file.is_dir)}
+                            {file.size_formatted}
                         </td>
                     </tr>
                 ))}

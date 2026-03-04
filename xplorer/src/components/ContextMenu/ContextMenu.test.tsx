@@ -19,8 +19,8 @@ const setupStore = (overrides: Record<string, unknown> = {}) => {
             historyIndex: 0,
             searchQuery: '',
             files: [
-                { path: `${basePath}/file1.txt`, name: 'file1.txt', is_dir: false, size: 100, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' },
-                { path: `${basePath}/file2.txt`, name: 'file2.txt', is_dir: false, size: 200, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' },
+                { path: `${basePath}/file1.txt`, name: 'file1.txt', is_dir: false, size: 100, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '', size_formatted: '100 B', modified_formatted: '2024/01/01 12:00', created_formatted: '2024/01/01 12:00' },
+                { path: `${basePath}/file2.txt`, name: 'file2.txt', is_dir: false, size: 200, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '', size_formatted: '200 B', modified_formatted: '2024/01/01 12:00', created_formatted: '2024/01/01 12:00' },
             ],
             selectedFiles: new Set<string>(),
             focusedIndex: -1,

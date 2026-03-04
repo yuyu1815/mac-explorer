@@ -16,6 +16,8 @@ interface VolumeInfo {
     path: string;
     total_bytes: number;
     free_bytes: number;
+    total_bytes_formatted: string;
+    free_bytes_formatted: string;
 }
 
 const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false }: NodeProps) => {
@@ -95,13 +97,6 @@ const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false }: No
     );
 };
 
-const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
-};
-
 const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
     const { tabs, activeTabId, setCurrentPath } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
@@ -129,7 +124,7 @@ const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
                         <div style={{ width: `${usedPercent}%`, height: '100%', backgroundColor: barColor, borderRadius: '2px' }} />
                     </div>
                     <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>
-                        {formatBytes(vol.free_bytes)} 空き / {formatBytes(vol.total_bytes)}
+                        {vol.free_bytes_formatted} 空き / {vol.total_bytes_formatted}
                     </div>
                 </div>
             )}

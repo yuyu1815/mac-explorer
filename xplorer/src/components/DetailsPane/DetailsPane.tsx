@@ -8,13 +8,6 @@ const formatBytes = (bytes: number): string => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
-const formatDate = (ts: number): string => {
-    if (!ts) return '';
-    const d = new Date(ts * 1000);
-    return d.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
-        + ' ' + d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-};
-
 const fileIcon = (entry: FileEntry): string =>
     entry.is_dir ? '📁' : '📄';
 
@@ -35,9 +28,9 @@ export const DetailsPane = () => {
                     <div className="details-name">{entry.name}</div>
                     <div className="details-props">
                         <DetailRow label="項目の種類" value={entry.is_dir ? 'ファイルフォルダー' : entry.file_type.toUpperCase() + ' ファイル'} />
-                        {!entry.is_dir && <DetailRow label="サイズ" value={formatBytes(entry.size)} />}
-                        <DetailRow label="更新日時" value={formatDate(entry.modified)} />
-                        <DetailRow label="作成日時" value={formatDate(entry.created)} />
+                        {!entry.is_dir && <DetailRow label="サイズ" value={entry.size_formatted} />}
+                        <DetailRow label="更新日時" value={entry.modified_formatted} />
+                        <DetailRow label="作成日時" value={entry.created_formatted} />
                         <DetailRow label="パス" value={entry.path} />
                     </div>
                 </div>
