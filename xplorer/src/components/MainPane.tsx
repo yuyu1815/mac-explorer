@@ -5,13 +5,66 @@ import { ContextMenu } from './ContextMenu';
 import { Folder, FileText } from 'lucide-react';
 import { PropertiesDialog } from './PropertiesDialog';
 
-export const FileIcon = ({ isDir, icon, size = 16 }: { isDir: boolean, icon?: string, size?: number }) => {
-    if (icon) {
-        return <img src={icon} alt="" style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />;
+export const FileIcon = ({ isDir, path, size = 16 }: { isDir: boolean, path: string, size?: number }) => {
+    const ext = path.split('.').pop()?.toLowerCase() || '';
+    const isApp = path.endsWith('.app');
+    
+    // フォルダアイコンの基本設定
+    const folderIcon = <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />;
+
+    // .app の場合：フォルダの上にアプリのアイコンをバッジとして表示
+    if (isApp) {
+        const iconUrl = `icon://localhost${path}`;
+        const badgeSize = Math.floor(size * 0.6); // フォルダの約60%のサイズ
+        return (
+            <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {folderIcon}
+                <div style={{ 
+                    position: 'absolute', 
+                    bottom: -2, 
+                    right: -2, 
+                    width: badgeSize, 
+                    height: badgeSize, 
+                    backgroundColor: 'var(--bg-main, #ffffff)',
+                    borderRadius: '2px',
+                    padding: '1px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                }}>
+                    <img 
+                        src={iconUrl} 
+                        alt="" 
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                </div>
+            </div>
+        );
     }
-    return isDir
-        ? <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
-        : <FileText size={size} fill="#FFFFFF" color="#5D5D5D" strokeWidth={1.5} style={{ flexShrink: 0 }} />
+
+    // 通常のフォルダ
+    if (isDir) {
+        return folderIcon;
+    }
+
+    // ファイルの場合（以前の高速キャッシュロジックを継続）
+    const iconUrl = ext ? `icon://localhost/extension/${ext}` : `icon://localhost${path}`;
+    
+    return <img 
+        src={iconUrl} 
+        alt="" 
+        onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            const parent = e.currentTarget.parentElement;
+            if (parent) {
+                const fallback = document.createElement('div');
+                fallback.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="#FFFFFF" stroke="#5D5D5D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`;
+                parent.appendChild(fallback.firstChild as Node);
+            }
+        }}
+        style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} 
+    />;
 };
 
 export const MainPane = () => {
@@ -687,7 +740,7 @@ export const MainPane = () => {
                         style={{ height: rowHeight, cursor: 'default' }}
                     >
                         <td style={{ padding: '0 4px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: rowHeight }}>
-                            <FileIcon isDir={file.is_dir} icon={file.icon} size={16} /> {renderFileName(file)}
+                            <FileIcon isDir={file.is_dir} path={file.path} size={16} /> {renderFileName(file)}
                         </td>
                         <td style={{ padding: '0 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                             {file.modified_formatted}
@@ -750,7 +803,7 @@ export const MainPane = () => {
                         gap: '6px',
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} icon={file.icon} size={16} />
+                    <FileIcon isDir={file.is_dir} path={file.path} size={16} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{renderFileName(file)}</span>
                 </div>
             ))}
@@ -803,7 +856,7 @@ export const MainPane = () => {
                         textAlign: 'center'
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} icon={file.icon} size={iconSize} />
+                    <FileIcon isDir={file.is_dir} path={file.path} size={iconSize} />
                     <span style={{
                         fontSize: '12px',
                         overflow: 'hidden',
@@ -865,7 +918,7 @@ export const MainPane = () => {
                         gap: '8px'
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} icon={file.icon} size={48} />
+                    <FileIcon isDir={file.is_dir} path={file.path} size={48} />
                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
                         <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{renderFileName(file)}</span>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.file_type}</span>
@@ -923,7 +976,7 @@ export const MainPane = () => {
                         maxWidth: '800px'
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} icon={file.icon} size={32} />
+                    <FileIcon isDir={file.is_dir} path={file.path} size={32} />
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 'bold' }}>{renderFileName(file)}</span>

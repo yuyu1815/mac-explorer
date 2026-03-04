@@ -72,7 +72,7 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
                             <div className="properties-tab-content">
                                 <div className="prop-row prop-header">
                                     <div className="prop-icon">
-                                        <FileIcon isDir={isDir} size={32} />
+                                        <FileIcon isDir={isDir} path={path} size={32} />
                                     </div>
                                     <input
                                         type="text"

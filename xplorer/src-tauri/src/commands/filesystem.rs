@@ -22,9 +22,58 @@ pub struct FileEntry {
     icon: Option<String>,
 }
 
+use dashmap::DashMap;
+use once_cell::sync::Lazy;
+
+// グローバルな拡張子アイコンキャッシュ (拡張子 -> PNGバイナリ)
+static ICON_CACHE: Lazy<DashMap<String, Vec<u8>>> = Lazy::new(DashMap::new);
+
 #[cfg(target_os = "macos")]
-fn get_file_icon(path: &str) -> Option<String> {
-    use base64::{engine::general_purpose, Engine as _};
+pub fn get_icon_by_extension(ext: &str) -> Option<Vec<u8>> {
+    // 1. キャッシュを確認
+    if let Some(data) = ICON_CACHE.get(ext) {
+        return Some(data.clone());
+    }
+
+    // 2. キャッシュにない場合はOSから取得
+    use cocoa::base::{id, nil};
+    use cocoa::foundation::NSString;
+    use objc::{msg_send, sel, sel_impl};
+
+    unsafe {
+        let workspace: id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
+        let ns_ext = NSString::alloc(nil).init_str(ext);
+        
+        // 拡張子からアイコンを取得（ファイルパスより圧倒的に速い）
+        let icon: id = msg_send![workspace, iconForFileType: ns_ext];
+
+        if icon == nil { return None; }
+
+        let tiff_data: id = msg_send![icon, TIFFRepresentation];
+        if tiff_data == nil { return None; }
+
+        let image_rep: id = msg_send![objc::class!(NSBitmapImageRep), imageRepWithData: tiff_data];
+        if image_rep == nil { return None; }
+
+        let png_data: id = msg_send![image_rep, representationUsingType: 4 properties: nil];
+        if png_data == nil { return None; }
+
+        let length: usize = msg_send![png_data, length];
+        let bytes: *const u8 = msg_send![png_data, bytes];
+        let data = std::slice::from_raw_parts(bytes, length).to_vec();
+
+        // キャッシュに保存
+        ICON_CACHE.insert(ext.to_string(), data.clone());
+        Some(data)
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn get_icon_by_extension(_ext: &str) -> Option<Vec<u8>> { None }
+
+#[cfg(target_os = "macos")]
+pub fn get_file_icon_raw(path: &str) -> Option<Vec<u8>> {
+    // 特殊なアイコン（アプリ、画像サムネイルなど）が必要な場合のみこちらを使用
     use cocoa::base::{id, nil};
     use cocoa::foundation::NSString;
     use objc::{msg_send, sel, sel_impl};
@@ -34,43 +83,21 @@ fn get_file_icon(path: &str) -> Option<String> {
         let ns_path = NSString::alloc(nil).init_str(path);
         let icon: id = msg_send![workspace, iconForFile: ns_path];
 
-        if icon == nil {
-            return None;
-        }
+        if icon == nil { return None; }
 
-        // Convert NSImage to PNG data
         let tiff_data: id = msg_send![icon, TIFFRepresentation];
-        if tiff_data == nil {
-            return None;
-        }
+        if tiff_data == nil { return None; }
 
         let image_rep: id = msg_send![objc::class!(NSBitmapImageRep), imageRepWithData: tiff_data];
-        if image_rep == nil {
-            return None;
-        }
+        if image_rep == nil { return None; }
 
-        let png_data: id = msg_send![image_rep, representationUsingType: 4 properties: nil]; // 4 is NSPNGFileType
-        if png_data == nil {
-            return None;
-        }
+        let png_data: id = msg_send![image_rep, representationUsingType: 4 properties: nil];
+        if png_data == nil { return None; }
 
         let length: usize = msg_send![png_data, length];
         let bytes: *const u8 = msg_send![png_data, bytes];
-        let slice = std::slice::from_raw_parts(bytes, length);
-
-        Some(format!(
-            "data:image/png;base64,{}",
-            general_purpose::STANDARD.encode(slice)
-        ))
+        Some(std::slice::from_raw_parts(bytes, length).to_vec())
     }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn get_file_icon(_path: &str) -> Option<String> {
-    // TODO: Linux/Windows icon retrieval.
-    // Linux requires handling various desktop environments (GNOME, KDE)
-    // and searching through icon themes following Freedesktop standards (MIME types -> Icon Names -> Theme Paths).
-    None
 }
 
 #[derive(Serialize)]
@@ -305,7 +332,7 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
             is_hidden,
             is_symlink,
             permissions,
-            icon: get_file_icon(&path_str),
+            icon: None,
         });
     }
 
@@ -723,7 +750,7 @@ fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntr
             is_hidden,
             is_symlink: is_symlink_val,
             permissions,
-            icon: get_file_icon(&path_str),
+            icon: None,
         });
     }
 
