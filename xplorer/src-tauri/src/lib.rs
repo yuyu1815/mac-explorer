@@ -24,6 +24,7 @@ pub fn run() {
             commands::filesystem::list_volumes,
             commands::filesystem::get_parent_path,
             commands::filesystem::complete_path,
+            commands::filesystem::open_terminal_at,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

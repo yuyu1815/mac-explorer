@@ -5,11 +5,14 @@ import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { Folder, FileText } from 'lucide-react';
 import { PropertiesDialog } from '../PropertiesDialog/PropertiesDialog';
 
-export const FileIcon = ({ isDir, size = 16 }: { isDir: boolean, size?: number }) => (
-    isDir
+export const FileIcon = ({ isDir, icon, size = 16 }: { isDir: boolean, icon?: string, size?: number }) => {
+    if (icon) {
+        return <img src={icon} alt="" style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />;
+    }
+    return isDir
         ? <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
         : <FileText size={size} fill="#FFFFFF" color="#5D5D5D" strokeWidth={1.5} style={{ flexShrink: 0 }} />
-);
+};
 
 export const MainPane = () => {
     const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, setLoading, setViewMode, propertiesDialogTarget, openPropertiesDialog, showHiddenFiles, showFileExtensions } = useAppStore();
@@ -684,7 +687,7 @@ export const MainPane = () => {
                         style={{ height: rowHeight, cursor: 'default' }}
                     >
                         <td style={{ padding: '0 4px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: rowHeight }}>
-                            <FileIcon isDir={file.is_dir} size={16} /> {renderFileName(file)}
+                            <FileIcon isDir={file.is_dir} icon={file.icon} size={16} /> {renderFileName(file)}
                         </td>
                         <td style={{ padding: '0 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                             {file.modified_formatted}
@@ -747,7 +750,7 @@ export const MainPane = () => {
                         gap: '6px',
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} size={16} />
+                    <FileIcon isDir={file.is_dir} icon={file.icon} size={16} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{renderFileName(file)}</span>
                 </div>
             ))}
@@ -800,7 +803,7 @@ export const MainPane = () => {
                         textAlign: 'center'
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} size={iconSize} />
+                    <FileIcon isDir={file.is_dir} icon={file.icon} size={iconSize} />
                     <span style={{
                         fontSize: '12px',
                         overflow: 'hidden',
@@ -862,7 +865,7 @@ export const MainPane = () => {
                         gap: '8px'
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} size={48} />
+                    <FileIcon isDir={file.is_dir} icon={file.icon} size={48} />
                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
                         <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{renderFileName(file)}</span>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.file_type}</span>
@@ -920,7 +923,7 @@ export const MainPane = () => {
                         maxWidth: '800px'
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} size={32} />
+                    <FileIcon isDir={file.is_dir} icon={file.icon} size={32} />
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 'bold' }}>{renderFileName(file)}</span>

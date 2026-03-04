@@ -91,8 +91,22 @@ export const NavigationBar = () => {
         return () => clearTimeout(timer);
     }, [editValue, isEditing]);
 
-    const handlePathSubmit = () => {
+    const handlePathSubmit = async () => {
         let finalPath = editValue.trim();
+        const command = finalPath.toLowerCase();
+
+        // "cmd" や "terminal" が入力された場合、現在のパスでターミナルを開く
+        if (command === 'cmd' || command === 'terminal') {
+            try {
+                await invoke('open_terminal_at', { path: currentPath });
+            } catch (e) {
+                console.error('Failed to open terminal:', e);
+            }
+            setEditValue(currentPath);
+            setIsEditing(false);
+            return;
+        }
+
         if (finalPath && finalPath !== currentPath) {
             if (finalPath.length > 1 && (finalPath.endsWith('/') || finalPath.endsWith('\\'))) {
                 finalPath = finalPath.slice(0, -1);
