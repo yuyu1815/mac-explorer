@@ -10,13 +10,13 @@ const FolderIcon = ({ size }: { size: number }) => (
 );
 
 const AppIcon = ({ iconId, size }: { iconId: string, size: number }) => {
-    const iconUrl = `icon://localhost/${iconId}`;
+    const iconUrl = `icon://localhost/${iconId}?v=3`;
     const badgeSize = Math.floor(size * 0.6);
     return (
         <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <FolderIcon size={size} />
-            <div style={{ 
-                position: 'absolute', bottom: -2, right: -2, width: badgeSize, height: badgeSize, 
+            <div style={{
+                position: 'absolute', bottom: -2, right: -2, width: badgeSize, height: badgeSize,
                 backgroundColor: 'var(--bg-main, #ffffff)', borderRadius: '2px', padding: '1px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
             }}>
@@ -29,12 +29,12 @@ const AppIcon = ({ iconId, size }: { iconId: string, size: number }) => {
 export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean, iconId: string, size?: number }) => {
     if (iconId.startsWith('app:')) return <AppIcon iconId={iconId} size={size} />;
     if (isDir) return <FolderIcon size={size} />;
-    
-    const iconUrl = `icon://localhost/${iconId}`;
+
+    const iconUrl = `icon://localhost/${iconId}?v=3`;
     return (
-        <img 
-            src={iconUrl} 
-            alt="" 
+        <img
+            src={iconUrl}
+            alt=""
             onError={(e) => {
                 // If TIFF fails or 404, fallback to generic
                 e.currentTarget.style.display = 'none';
@@ -46,7 +46,7 @@ export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean, iconId:
                     parent.appendChild(fallback);
                 }
             }}
-            style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} 
+            style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }}
         />
     );
 };
