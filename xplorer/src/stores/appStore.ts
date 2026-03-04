@@ -15,6 +15,7 @@ export interface FileEntry {
     is_hidden: boolean;
     is_symlink: boolean;
     permissions: string;
+    icon?: string;
 }
 
 export type ViewMode = 'extra_large_icon' | 'large_icon' | 'medium_icon' | 'small_icon' | 'list' | 'detail' | 'tiles' | 'content';

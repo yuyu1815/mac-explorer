@@ -1,8 +1,8 @@
+#![allow(unexpected_cfgs)]
 use serde::Serialize;
 use std::fs;
-use std::time::UNIX_EPOCH;
-
 use std::os::unix::fs::PermissionsExt;
+use std::time::UNIX_EPOCH;
 
 #[derive(Serialize)]
 pub struct FileEntry {
@@ -24,16 +24,16 @@ pub struct FileEntry {
 
 #[cfg(target_os = "macos")]
 fn get_file_icon(path: &str) -> Option<String> {
+    use base64::{engine::general_purpose, Engine as _};
     use cocoa::base::{id, nil};
-    use cocoa::foundation::{NSString, NSData};
+    use cocoa::foundation::NSString;
     use objc::{msg_send, sel, sel_impl};
-    use base64::{Engine as _, engine::general_purpose};
 
     unsafe {
         let workspace: id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
         let ns_path = NSString::alloc(nil).init_str(path);
         let icon: id = msg_send![workspace, iconForFile: ns_path];
-        
+
         if icon == nil {
             return None;
         }
@@ -58,14 +58,17 @@ fn get_file_icon(path: &str) -> Option<String> {
         let bytes: *const u8 = msg_send![png_data, bytes];
         let slice = std::slice::from_raw_parts(bytes, length);
 
-        Some(format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(slice)))
+        Some(format!(
+            "data:image/png;base64,{}",
+            general_purpose::STANDARD.encode(slice)
+        ))
     }
 }
 
 #[cfg(not(target_os = "macos"))]
 fn get_file_icon(_path: &str) -> Option<String> {
     // TODO: Linux/Windows icon retrieval.
-    // Linux requires handling various desktop environments (GNOME, KDE) 
+    // Linux requires handling various desktop environments (GNOME, KDE)
     // and searching through icon themes following Freedesktop standards (MIME types -> Icon Names -> Theme Paths).
     None
 }
@@ -108,7 +111,7 @@ fn format_timestamp(ts: i64) -> String {
     use std::time::SystemTime;
     let datetime: chrono::DateTime<chrono::Local> = SystemTime::UNIX_EPOCH
         .checked_add(std::time::Duration::from_secs(ts as u64))
-        .and_then(|t| chrono::DateTime::try_from(t).ok())
+        .map(chrono::DateTime::from)
         .unwrap_or_else(chrono::Local::now);
     datetime.format("%Y/%m/%d %H:%M").to_string()
 }
@@ -128,7 +131,7 @@ pub async fn show_properties(path: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| format!("Failed to open properties on Mac: {}", e))?;
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         // Linux is highly dependent on the DE. Fallback to nothing or xdg-open containing dir.
@@ -145,21 +148,43 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
     }
 
     let metadata = std::fs::symlink_metadata(&path_buf).map_err(|e| e.to_string())?;
-    let name = path_buf.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.clone());
-    let location = path_buf.parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
-    
+    let name = path_buf
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.clone());
+    let location = path_buf
+        .parent()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+
     let is_dir = metadata.is_dir();
     let file_type = if is_dir {
         "ファイル フォルダー".to_string()
     } else {
-        path_buf.extension()
+        path_buf
+            .extension()
             .map(|ext| format!("{} ファイル", ext.to_string_lossy().to_uppercase()))
             .unwrap_or_else(|| "ファイル".to_string())
     };
 
-    let created = metadata.created().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
-    let modified = metadata.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
-    let accessed = metadata.accessed().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
+    let created = metadata
+        .created()
+        .unwrap_or(UNIX_EPOCH)
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    let modified = metadata
+        .modified()
+        .unwrap_or(UNIX_EPOCH)
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    let accessed = metadata
+        .accessed()
+        .unwrap_or(UNIX_EPOCH)
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
 
     let mut size_bytes = metadata.len();
     let mut contains_files = 0;
@@ -187,7 +212,11 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
 
     // Windows "Size on disk" is typically cluster size aligned. We'll approximate for now.
     let cluster_size = 4096;
-    let size_on_disk_bytes = if size_bytes == 0 { 0 } else { ((size_bytes + cluster_size - 1) / cluster_size) * cluster_size };
+    let size_on_disk_bytes = if size_bytes == 0 {
+        0
+    } else {
+        size_bytes.div_ceil(cluster_size) * cluster_size
+    };
 
     let is_readonly = metadata.permissions().mode() & 0o222 == 0;
 
@@ -217,62 +246,67 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
     let mut entries = Vec::new();
     let dir = fs::read_dir(&path).map_err(|e| e.to_string())?;
 
-    for entry_res in dir {
-        if let Ok(entry) = entry_res {
-            let file_name = entry.file_name().to_string_lossy().into_owned();
-            
-            if !show_hidden && file_name.starts_with('.') {
-                continue;
-            }
+    for entry in dir.flatten() {
+        let file_name = entry.file_name().to_string_lossy().into_owned();
 
-            let path_buf = entry.path();
-            let path_str = path_buf.to_string_lossy().into_owned();
-            let metadata = entry.metadata().map_err(|e| e.to_string())?;
-            let is_dir = metadata.is_dir();
-            let size = metadata.len();
-            
-            let modified = metadata.modified()
-                .unwrap_or(UNIX_EPOCH)
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
-                
-            let created = metadata.created()
-                .unwrap_or(UNIX_EPOCH)
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
-
-            let file_type = if is_dir {
-                "folder".to_string()
-            } else {
-                path_buf.extension()
-                    .map(|ext| ext.to_string_lossy().into_owned())
-                    .unwrap_or_default()
-            };
-
-            let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
-            let is_symlink = metadata.file_type().is_symlink();
-            
-            let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
-
-            entries.push(FileEntry {
-                name: file_name,
-                path: path_str.clone(),
-                is_dir,
-                size,
-                size_formatted: if is_dir { String::new() } else { format_size(size) },
-                modified,
-                modified_formatted: format_timestamp(modified),
-                created,
-                created_formatted: format_timestamp(created),
-                file_type,
-                is_hidden,
-                is_symlink,
-                permissions,
-                icon: get_file_icon(&path_str),
-            });
+        if !show_hidden && file_name.starts_with('.') {
+            continue;
         }
+
+        let path_buf = entry.path();
+        let path_str = path_buf.to_string_lossy().into_owned();
+        let metadata = entry.metadata().map_err(|e| e.to_string())?;
+        let is_dir = metadata.is_dir();
+        let size = metadata.len();
+
+        let modified = metadata
+            .modified()
+            .unwrap_or(UNIX_EPOCH)
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+
+        let created = metadata
+            .created()
+            .unwrap_or(UNIX_EPOCH)
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+
+        let file_type = if is_dir {
+            "folder".to_string()
+        } else {
+            path_buf
+                .extension()
+                .map(|ext| ext.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        };
+
+        let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
+        let is_symlink = metadata.file_type().is_symlink();
+
+        let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
+
+        entries.push(FileEntry {
+            name: file_name,
+            path: path_str.clone(),
+            is_dir,
+            size,
+            size_formatted: if is_dir {
+                String::new()
+            } else {
+                format_size(size)
+            },
+            modified,
+            modified_formatted: format_timestamp(modified),
+            created,
+            created_formatted: format_timestamp(created),
+            file_type,
+            is_hidden,
+            is_symlink,
+            permissions,
+            icon: get_file_icon(&path_str),
+        });
     }
 
     Ok(entries)
@@ -285,10 +319,16 @@ fn is_symlink(_name: &str) -> bool {
 #[tauri::command]
 pub async fn open_file_default(path: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
-    std::process::Command::new("open").arg(&path).spawn().map_err(|e| e.to_string())?;
-    
+    std::process::Command::new("open")
+        .arg(&path)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
     #[cfg(target_os = "linux")]
-    std::process::Command::new("xdg-open").arg(&path).spawn().map_err(|e| e.to_string())?;
+    std::process::Command::new("xdg-open")
+        .arg(&path)
+        .spawn()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -307,7 +347,7 @@ pub async fn copy_files(sources: Vec<String>, dest: String) -> Result<(), String
         }
         let file_name = src_path.file_name().ok_or("Invalid file name")?;
         let dest_path = std::path::Path::new(&dest).join(file_name);
-        
+
         // 単純化のため、ディレクトリの再帰的コピーはPhase2の要件として一旦除外（またはここではコピー不可とするか、簡単な再帰を実装）
         // 現状はファイルのコピーのみをサポート（シンプルさ優先）
         if src_path.is_file() {
@@ -326,7 +366,7 @@ pub async fn move_files(sources: Vec<String>, dest: String) -> Result<(), String
         }
         let file_name = src_path.file_name().ok_or("Invalid file name")?;
         let dest_path = std::path::Path::new(&dest).join(file_name);
-        
+
         fs::rename(&src, &dest_path).map_err(|e| format!("Failed to move {}: {}", src, e))?;
     }
     Ok(())
@@ -339,11 +379,15 @@ pub async fn delete_files(paths: Vec<String>, to_trash: bool) -> Result<(), Stri
     } else {
         for path in paths {
             let p = std::path::Path::new(&path);
-            if !p.exists() { continue; }
+            if !p.exists() {
+                continue;
+            }
             if p.is_dir() {
-                fs::remove_dir_all(&path).map_err(|e| format!("Failed to delete dir {}: {}", path, e))?;
+                fs::remove_dir_all(&path)
+                    .map_err(|e| format!("Failed to delete dir {}: {}", path, e))?;
             } else {
-                fs::remove_file(&path).map_err(|e| format!("Failed to delete file {}: {}", path, e))?;
+                fs::remove_file(&path)
+                    .map_err(|e| format!("Failed to delete file {}: {}", path, e))?;
             }
         }
     }
@@ -407,14 +451,17 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
         }
         // ルートも追加
         let (total, free) = get_statvfs_info("/");
-        volumes.insert(0, VolumeInfo {
-            name: "Macintosh HD".to_string(),
-            path: "/".to_string(),
-            total_bytes: total,
-            free_bytes: free,
-            total_bytes_formatted: format_size(total),
-            free_bytes_formatted: format_size(free),
-        });
+        volumes.insert(
+            0,
+            VolumeInfo {
+                name: "Macintosh HD".to_string(),
+                path: "/".to_string(),
+                total_bytes: total,
+                free_bytes: free,
+                total_bytes_formatted: format_size(total),
+                free_bytes_formatted: format_size(free),
+            },
+        );
     }
 
     #[cfg(target_os = "linux")]
@@ -441,8 +488,9 @@ fn get_statvfs_info(path: &str) -> (u64, u64) {
         let mut stat = MaybeUninit::<libc::statvfs>::uninit();
         if libc::statvfs(c_path.as_ptr(), stat.as_mut_ptr()) == 0 {
             let stat = stat.assume_init();
-            let total = stat.f_blocks as u64 * stat.f_frsize as u64;
-            let free = stat.f_bavail as u64 * stat.f_frsize as u64;
+            // stat.f_frsize is already u64 on macOS, but f_blocks/f_bavail are u32
+            let total = u64::from(stat.f_blocks) * stat.f_frsize;
+            let free = u64::from(stat.f_bavail) * stat.f_frsize;
             (total, free)
         } else {
             (0, 0)
@@ -465,7 +513,7 @@ pub async fn open_terminal_at(path: String) -> Result<(), String> {
         // AppleScriptでTerminal.appを開き、cdコマンドで指定パスに移動
         let script = format!(
             "tell application \"Terminal\"\n  activate\n  do script \"cd '{}'\"\nend tell",
-            path.replace("'", "'\\''")
+            path.replace('\'', "'\\''")
         );
         std::process::Command::new("osascript")
             .arg("-e")
@@ -534,7 +582,11 @@ pub async fn list_files_sorted(
             _ => std::cmp::Ordering::Equal,
         };
 
-        if sort_desc { ordering.reverse() } else { ordering }
+        if sort_desc {
+            ordering.reverse()
+        } else {
+            ordering
+        }
     });
 
     Ok(entries)
@@ -612,67 +664,68 @@ fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntr
     let mut entries = Vec::new();
     let dir = fs::read_dir(path).map_err(|e| e.to_string())?;
 
-    for entry_res in dir {
-        if let Ok(entry) = entry_res {
-            let file_name = entry.file_name().to_string_lossy().into_owned();
+    for entry in dir.flatten() {
+        let file_name = entry.file_name().to_string_lossy().into_owned();
 
-            if !show_hidden && file_name.starts_with('.') {
-                continue;
-            }
-
-            let path_buf = entry.path();
-            let path_str = path_buf.to_string_lossy().into_owned();
-            let metadata = entry.metadata().map_err(|e| e.to_string())?;
-            let is_dir = metadata.is_dir();
-            let size = metadata.len();
-
-            let modified = metadata
-                .modified()
-                .unwrap_or(UNIX_EPOCH)
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
-
-            let created = metadata
-                .created()
-                .unwrap_or(UNIX_EPOCH)
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
-
-            let file_type = if is_dir {
-                "folder".to_string()
-            } else {
-                path_buf
-                    .extension()
-                    .map(|ext| ext.to_string_lossy().into_owned())
-                    .unwrap_or_default()
-            };
-
-            let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
-            let is_symlink_val = metadata.file_type().is_symlink();
-
-            let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
-
-            entries.push(FileEntry {
-                name: file_name,
-                path: path_str.clone(),
-                is_dir,
-                size,
-                size_formatted: if is_dir { String::new() } else { format_size(size) },
-                modified,
-                modified_formatted: format_timestamp(modified),
-                created,
-                created_formatted: format_timestamp(created),
-                file_type,
-                is_hidden,
-                is_symlink: is_symlink_val,
-                permissions,
-                icon: get_file_icon(&path_str),
-            });
+        if !show_hidden && file_name.starts_with('.') {
+            continue;
         }
+
+        let path_buf = entry.path();
+        let path_str = path_buf.to_string_lossy().into_owned();
+        let metadata = entry.metadata().map_err(|e| e.to_string())?;
+        let is_dir = metadata.is_dir();
+        let size = metadata.len();
+
+        let modified = metadata
+            .modified()
+            .unwrap_or(UNIX_EPOCH)
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+
+        let created = metadata
+            .created()
+            .unwrap_or(UNIX_EPOCH)
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+
+        let file_type = if is_dir {
+            "folder".to_string()
+        } else {
+            path_buf
+                .extension()
+                .map(|ext| ext.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        };
+
+        let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
+        let is_symlink_val = metadata.file_type().is_symlink();
+
+        let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
+
+        entries.push(FileEntry {
+            name: file_name,
+            path: path_str.clone(),
+            is_dir,
+            size,
+            size_formatted: if is_dir {
+                String::new()
+            } else {
+                format_size(size)
+            },
+            modified,
+            modified_formatted: format_timestamp(modified),
+            created,
+            created_formatted: format_timestamp(created),
+            file_type,
+            is_hidden,
+            is_symlink: is_symlink_val,
+            permissions,
+            icon: get_file_icon(&path_str),
+        });
     }
 
     Ok(entries)
 }
-
