@@ -9,6 +9,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::filesystem::list_directory,
+            commands::filesystem::list_files_sorted,
             commands::filesystem::open_file_default,
             commands::filesystem::show_properties,
             commands::filesystem::create_directory,
@@ -19,6 +20,8 @@ pub fn run() {
             commands::filesystem::create_file,
             commands::filesystem::get_home_dir,
             commands::filesystem::list_volumes,
+            commands::filesystem::get_parent_path,
+            commands::filesystem::complete_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

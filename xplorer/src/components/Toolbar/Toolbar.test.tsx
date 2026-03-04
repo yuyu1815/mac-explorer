@@ -25,7 +25,8 @@ describe('Toolbar Component', () => {
                 viewMode: 'detail',
                 sortBy: 'name',
                 sortDesc: false,
-                focusedIndex: -1
+                focusedIndex: -1,
+                searchQuery: ''
             }],
             activeTabId: 'tab1',
             clipboard: null

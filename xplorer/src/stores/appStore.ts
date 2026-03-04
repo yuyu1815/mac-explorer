@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface FileEntry {
     name: string;
@@ -157,29 +158,36 @@ export const useAppStore = create<AppState>((set) => ({
         return { tabs };
     }),
 
-    goUp: () => set((state) => {
-        const tabs = state.tabs.map(tab => {
-            if (tab.id !== state.activeTabId) return tab;
-            const parts = tab.currentPath.split(/[/\\]/).filter(Boolean);
-            if (parts.length > 1) {
-                parts.pop();
-                const parent = tab.currentPath.startsWith('/') ? '/' + parts.join('/') : parts.join('\\');
-                const newHistory = tab.history.slice(0, tab.historyIndex + 1);
+    goUp: async () => {
+        const state = useAppStore.getState();
+        const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+        if (!activeTab) return;
+
+        try {
+            const parent = await invoke<string>('get_parent_path', { path: activeTab.currentPath });
+            if (parent && parent !== activeTab.currentPath) {
+                const newHistory = activeTab.history.slice(0, activeTab.historyIndex + 1);
                 newHistory.push(parent);
-                return {
-                    ...tab,
-                    currentPath: parent,
-                    history: newHistory,
-                    historyIndex: newHistory.length - 1,
-                    selectedFiles: new Set<string>(),
-                    focusedIndex: -1,
-                    searchQuery: '', // Clear search query on navigation
-                };
+                set((state) => ({
+                    tabs: state.tabs.map(tab =>
+                        tab.id === state.activeTabId
+                            ? {
+                                ...tab,
+                                currentPath: parent,
+                                history: newHistory,
+                                historyIndex: newHistory.length - 1,
+                                selectedFiles: new Set<string>(),
+                                focusedIndex: -1,
+                                searchQuery: '',
+                            }
+                            : tab
+                    )
+                }));
             }
-            return tab;
-        });
-        return { tabs };
-    }),
+        } catch (error) {
+            console.error('Failed to get parent path:', error);
+        }
+    },
 
     setFiles: (files) => set((state) => {
         const tabs = state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, files } : tab);

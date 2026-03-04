@@ -53,7 +53,13 @@ export const MainPane = () => {
 
         const fetchFiles = async () => {
             try {
-                const result = await invoke('list_directory', { path: currentPath, showHidden: false });
+                const result = await invoke('list_files_sorted', {
+                    path: currentPath,
+                    showHidden: false,
+                    sortBy,
+                    sortDesc,
+                    searchQuery: searchQuery || ''
+                });
                 setFiles(result as any);
             } catch (err) {
                 console.error('Failed to list directory', err);
@@ -61,7 +67,7 @@ export const MainPane = () => {
         };
 
         fetchFiles();
-    }, [currentPath, activeTabId, setFiles, setCurrentPath]);
+    }, [currentPath, activeTabId, setFiles, setCurrentPath, sortBy, sortDesc, searchQuery]);
 
     // リネーム開始時にinputをフォーカス＆全選択
     useEffect(() => {
@@ -88,7 +94,13 @@ export const MainPane = () => {
     const refreshFiles = async () => {
         setLoading(true);
         try {
-            const result = await invoke('list_directory', { path: currentPath, showHidden: false });
+            const result = await invoke('list_files_sorted', {
+                path: currentPath,
+                showHidden: false,
+                sortBy,
+                sortDesc,
+                searchQuery: searchQuery || ''
+            });
             setFiles(result as any);
         } catch (err) {
             console.error('Failed to refresh directory', err);
@@ -483,27 +495,8 @@ export const MainPane = () => {
         }
     };
 
-    const filteredFiles = searchQuery
-        ? files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-        : files;
-
-    const sortedFiles = [...filteredFiles].sort((a, b) => {
-        let valA: any = a[sortBy as keyof typeof a];
-        let valB: any = b[sortBy as keyof typeof b];
-
-        if (sortBy !== 'file_type' && a.is_dir !== b.is_dir) {
-            return a.is_dir ? -1 : 1;
-        }
-
-        if (typeof valA === 'string') {
-            valA = valA.toLowerCase();
-            valB = (valB as string).toLowerCase();
-        }
-
-        if (valA < valB) return sortDesc ? 1 : -1;
-        if (valA > valB) return sortDesc ? -1 : 1;
-        return 0;
-    });
+    // Rust側のlist_files_sortedでソート済みのファイル一覧をそのまま使用
+    const sortedFiles = files;
 
     const SortIndicator = ({ column }: { column: string }) => {
         if (sortBy !== column) return null;

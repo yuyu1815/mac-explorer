@@ -75,11 +75,12 @@ export const NavigationBar = () => {
                     searchPrefix = editValue.substring(lastSepIndex + 1).toLowerCase();
                 }
 
-                const res = await invoke<any[]>('list_directory', { path: dirPath, showHidden: false });
-                const filtered = res
-                    .filter(item => item.is_dir && item.name.toLowerCase().startsWith(searchPrefix))
-                    .sort((a, b) => a.name.localeCompare(b.name));
-                setPathSuggestions(filtered);
+                const res = await invoke<{ name: string; path: string }[]>('complete_path', {
+                    dirPath: dirPath,
+                    prefix: searchPrefix,
+                    showHidden: false
+                });
+                setPathSuggestions(res);
                 setSuggestionIndex(-1);
             } catch (e) {
                 setPathSuggestions([]);

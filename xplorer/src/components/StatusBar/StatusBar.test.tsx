@@ -17,7 +17,8 @@ const createTestState = (overrides: Partial<{
         focusedIndex: -1,
         viewMode: 'detail' as const,
         sortBy: 'name' as const,
-        sortDesc: false
+        sortDesc: false,
+        searchQuery: ''
     }],
     activeTabId: 'test-tab',
     clipboard: null

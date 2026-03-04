@@ -309,6 +309,62 @@ fn get_statvfs_info(_path: &str) -> (u64, u64) {
     (0, 0)
 }
 
+// --- list_files_sorted コマンド ---
+
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListFilesSortedArgs {
+    pub path: String,
+    pub show_hidden: bool,
+    pub sort_by: String,       // "name" | "modified" | "file_type" | "size"
+    pub sort_desc: bool,
+    pub search_query: String,  // 空文字なら全ファイル返却
+}
+
+#[tauri::command]
+pub async fn list_files_sorted(args: ListFilesSortedArgs) -> Result<Vec<FileEntry>, String> {
+    let mut entries = list_directory(args.path, args.show_hidden).await?;
+
+    // フィルタリング: search_query が空でない場合、ファイル名の部分一致（大文字小文字区別なし）
+    if !args.search_query.is_empty() {
+        let query_lower = args.search_query.to_lowercase();
+        entries.retain(|e| e.name.to_lowercase().contains(&query_lower));
+    }
+
+    // ソート
+    let sort_by = args.sort_by.as_str();
+    let sort_desc = args.sort_desc;
+
+    // sort_by != "file_type" の場合：ディレクトリを常に先頭に配置
+    let dirs_first = sort_by != "file_type";
+
+    entries.sort_by(|a, b| {
+        // ディレクトリ優先（dirs_first が true の場合）
+        if dirs_first {
+            match (a.is_dir, b.is_dir) {
+                (true, false) => return std::cmp::Ordering::Less,
+                (false, true) => return std::cmp::Ordering::Greater,
+                _ => {}
+            }
+        }
+
+        // カラム値によるソート
+        let ordering = match sort_by {
+            "name" => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            "modified" => a.modified.cmp(&b.modified),
+            "file_type" => a.file_type.to_lowercase().cmp(&b.file_type.to_lowercase()),
+            "size" => a.size.cmp(&b.size),
+            _ => std::cmp::Ordering::Equal,
+        };
+
+        if sort_desc { ordering.reverse() } else { ordering }
+    });
+
+    Ok(entries)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -538,5 +594,168 @@ mod tests {
         // テスト後のクリーンアップ: /tmp 内を元の状態に戻す
         let _ = fs::remove_dir_all(&base_path);
     }
+}
+
+// ============================================
+// get_parent_path command
+// ============================================
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetParentPathArgs {
+    pub path: String,
+}
+
+/// 与えられたパスの親ディレクトリパスを返す
+/// Unix/Windows両方のパス区切り文字に対応
+#[tauri::command]
+pub async fn get_parent_path(args: GetParentPathArgs) -> Result<String, String> {
+    if args.path.is_empty() {
+        return Err("Path cannot be empty".to_string());
+    }
+
+    let path = args.path;
+
+    // パス区切り文字で分割（/ と \ の両方に対応）
+    let segments: Vec<&str> = path.split(|c| c == '/' || c == '\\').collect();
+
+    // 空のセグメントを除外（連続する区切り文字や末尾の区切り文字対策）
+    let non_empty: Vec<&str> = segments.into_iter().filter(|s| !s.is_empty()).collect();
+
+    // ルートディレクトリまたはセグメントが1つ以下の場合は自分自身を返す
+    if non_empty.len() <= 1 {
+        // Unix ルート
+        if path.starts_with('/') {
+            return Ok("/".to_string());
+        }
+        // Windows ドライブレター (C:\ など)
+        if path.contains(':') {
+            let drive_end = path.find(':').unwrap() + 1;
+            let drive = &path[..drive_end];
+            return Ok(format!("{}\\", drive));
+        }
+        return Ok(path);
+    }
+
+    // 最後のセグメントを削除して再構築
+    let parent_segments = &non_empty[..non_empty.len() - 1];
+
+    // 元のパスが / で始まる場合は Unix パス
+    if path.starts_with('/') {
+        return Ok(format!("/{}", parent_segments.join("/")));
+    }
+
+    // 元のパスが \ を含むか : を含む場合は Windows パス
+    if path.contains('\\') || path.contains(':') {
+        return Ok(parent_segments.join("\\"));
+    }
+
+    // それ以外は Unix スタイル
+    Ok(parent_segments.join("/"))
+}
+
+// ============================================
+// complete_path command
+// ============================================
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletePathArgs {
+    pub dir_path: String,
+    pub prefix: String,
+    pub show_hidden: bool,
+}
+
+/// パス補完候補を返す（ディレクトリのみ、前方一致フィルタリング付き）
+#[tauri::command]
+pub async fn complete_path(args: CompletePathArgs) -> Result<Vec<FileEntry>, String> {
+    // list_directory の内部ロジックを呼び出し
+    let entries = list_directory_internal(&args.dir_path, args.show_hidden)?;
+
+    // ディレクトリのみを抽出し、プレフィックスでフィルタリング
+    let prefix_lower = args.prefix.to_lowercase();
+    let mut filtered: Vec<FileEntry> = entries
+        .into_iter()
+        .filter(|e| e.is_dir)
+        .filter(|e| e.name.to_lowercase().starts_with(&prefix_lower))
+        .collect();
+
+    // アルファベット順（昇順）でソート
+    filtered.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+
+    Ok(filtered)
+}
+
+/// list_directory の同期版内部実装
+fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
+    let mut entries = Vec::new();
+    let dir = fs::read_dir(path).map_err(|e| e.to_string())?;
+
+    for entry_res in dir {
+        if let Ok(entry) = entry_res {
+            let file_name = entry.file_name().to_string_lossy().into_owned();
+
+            if !show_hidden && file_name.starts_with('.') {
+                continue;
+            }
+
+            let path_buf = entry.path();
+            let path_str = path_buf.to_string_lossy().into_owned();
+            let metadata = entry.metadata().map_err(|e| e.to_string())?;
+            let is_dir = metadata.is_dir();
+            let size = metadata.len();
+
+            let modified = metadata
+                .modified()
+                .unwrap_or(UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs() as i64;
+
+            let created = metadata
+                .created()
+                .unwrap_or(UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs() as i64;
+
+            let file_type = if is_dir {
+                "folder".to_string()
+            } else {
+                path_buf
+                    .extension()
+                    .map(|ext| ext.to_string_lossy().into_owned())
+                    .unwrap_or_default()
+            };
+
+            let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
+            let is_symlink_val = metadata.file_type().is_symlink();
+
+            #[cfg(unix)]
+            let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
+
+            #[cfg(not(unix))]
+            let permissions = if metadata.permissions().readonly() {
+                "444".to_string()
+            } else {
+                "666".to_string()
+            };
+
+            entries.push(FileEntry {
+                name: file_name,
+                path: path_str,
+                is_dir,
+                size,
+                modified,
+                created,
+                file_type,
+                is_hidden,
+                is_symlink: is_symlink_val,
+                permissions,
+            });
+        }
+    }
+
+    Ok(entries)
 }
 

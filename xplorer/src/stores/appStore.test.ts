@@ -14,7 +14,8 @@ describe('AppStore - Tab Management', () => {
                 focusedIndex: -1,
                 viewMode: 'detail',
                 sortBy: 'name',
-                sortDesc: false
+                sortDesc: false,
+                searchQuery: ''
             }],
             activeTabId: 'default-tab',
             clipboard: null
@@ -75,7 +76,8 @@ describe('AppStore - Navigation History', () => {
                 focusedIndex: -1,
                 viewMode: 'detail',
                 sortBy: 'name',
-                sortDesc: false
+                sortDesc: false,
+                searchQuery: ''
             }],
             activeTabId: 'test-tab',
             clipboard: null
@@ -144,7 +146,8 @@ describe('AppStore - Selection and Clipboard', () => {
                 focusedIndex: -1,
                 viewMode: 'detail',
                 sortBy: 'name',
-                sortDesc: false
+                sortDesc: false,
+                searchQuery: ''
             }],
             activeTabId: 'tab1',
             clipboard: null
