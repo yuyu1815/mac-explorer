@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { useAppStore } from '../../stores/appStore';
-import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, Folder } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, ChevronDown, Folder } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 export const NavigationBar = () => {
-    const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles } = useAppStore();
+    const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const canGoBack = activeTab ? activeTab.historyIndex > 0 : false;
     const canGoForward = activeTab ? activeTab.historyIndex < activeTab.history.length - 1 : false;
+    const searchQuery = activeTab?.searchQuery || '';
     const currentPath = activeTab?.currentPath || 'C:\\'; // default to something so it doesn't crash
     const folderName = currentPath.split(/[/\\]/).pop() || 'エクスプローラー';
 
@@ -20,6 +21,7 @@ export const NavigationBar = () => {
     const [dropdownItems, setDropdownItems] = useState<{ name: string, path: string }[]>([]);
     const [pathSuggestions, setPathSuggestions] = useState<{ name: string, path: string }[]>([]);
     const [suggestionIndex, setSuggestionIndex] = useState(-1);
+    const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
 
     useEffect(() => {
         setEditValue(currentPath);
@@ -157,7 +159,10 @@ export const NavigationBar = () => {
 
     // Click outside to close dropdown
     useEffect(() => {
-        const handleOutsideClick = () => setDropdownPath(null);
+        const handleOutsideClick = () => {
+            setDropdownPath(null);
+            setShowHistoryDropdown(false);
+        };
         document.addEventListener('mousedown', handleOutsideClick);
         return () => document.removeEventListener('mousedown', handleOutsideClick);
     }, []);
@@ -331,14 +336,42 @@ export const NavigationBar = () => {
                 ) : (
                     renderBreadcrumbs()
                 )}
+
+                {/* History Dropdown Toggle */}
+                <div
+                    className="history-dropdown-toggle"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowHistoryDropdown(!showHistoryDropdown);
+                        setDropdownPath(null);
+                    }}
+                >
+                    <ChevronDown size={14} color="var(--text-muted)" />
+                </div>
+                {showHistoryDropdown && activeTab && (
+                    <div className="breadcrumb-dropdown" style={{ right: 0, left: 'auto', minWidth: '300px' }}>
+                        {[...activeTab.history].reverse().map((path, idx) => (
+                            <div key={idx} className="breadcrumb-dropdown-item" onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentPath(path);
+                                setShowHistoryDropdown(false);
+                            }}>
+                                <Folder size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
+                                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{path}</span>
+                            </div>
+                        ))}
+                        {activeTab.history.length === 0 && <div className="breadcrumb-dropdown-item" style={{ color: '#888' }}>履歴がありません</div>}
+                    </div>
+                )}
             </div>
 
-            {/* Search Box */}
             {/* Search Box */}
             <div className="win10-search-bar">
                 <input
                     ref={searchInputRef}
                     placeholder={`${folderName} の検索`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     style={{
                         border: 'none',
                         outline: 'none',
@@ -458,6 +491,20 @@ export const NavigationBar = () => {
                     border: 1px solid transparent;
                 }
                 .breadcrumb-arrow:hover {
+                    background-color: var(--hover-bg);
+                    border: 1px solid var(--hover-border);
+                }
+
+                .history-dropdown-toggle {
+                    width: 24px;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    border: 1px solid transparent;
+                }
+                .history-dropdown-toggle:hover {
                     background-color: var(--hover-bg);
                     border: 1px solid var(--hover-border);
                 }

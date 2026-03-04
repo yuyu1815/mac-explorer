@@ -12,25 +12,30 @@ const FileIcon = ({ isDir, size = 16 }: { isDir: boolean, size?: number }) => (
 );
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, setSortParams, renameTriggerId, clipboard, setClipboard } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, setLoading, setViewMode } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
     const files = activeTab?.files || [];
+    const searchQuery = activeTab?.searchQuery || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
     const viewMode = activeTab?.viewMode || 'detail';
     const sortBy = activeTab?.sortBy || 'name';
     const sortDesc = activeTab?.sortDesc || false;
 
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, target: string | null } | null>(null);
+    const [showProperties, setShowProperties] = useState(false);
+    const [dragTarget, setDragTarget] = useState<string | null>(null);
     const [renamingPath, setRenamingPath] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
     const [renameWarning, setRenameWarning] = useState<string | null>(null);
     const renameInputRef = useRef<HTMLInputElement>(null);
+    const renameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [colWidths, setColWidths] = useState({ name: 0, modified: 150, file_type: 120, size: 100 });
     const [iconSize, setIconSize] = useState(48);
     const [marquee, setMarquee] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
     const paneRef = useRef<HTMLDivElement>(null);
+    const [batchRename, setBatchRename] = useState<{ prefix: string; startNum: number } | null>(null);
 
     // Context menu opening ignores default behavior
     useEffect(() => {
@@ -80,13 +85,34 @@ export const MainPane = () => {
     }, [renameTriggerId]);
 
     const refreshFiles = async () => {
+        setLoading(true);
         try {
             const result = await invoke('list_directory', { path: currentPath, showHidden: false });
             setFiles(result as any);
         } catch (err) {
             console.error('Failed to refresh directory', err);
+        } finally {
+            setLoading(false);
         }
     };
+
+    // Per-folder view settings (localStorage)
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(`viewMode:${currentPath}`);
+            if (saved && (saved === 'detail' || saved === 'list' || saved === 'icon')) {
+                setViewMode(saved as any);
+            }
+        } catch { /* localStorage unavailable */ }
+    }, [currentPath]);
+
+    useEffect(() => {
+        try {
+            if (currentPath && viewMode) {
+                localStorage.setItem(`viewMode:${currentPath}`, viewMode);
+            }
+        } catch { /* localStorage unavailable */ }
+    }, [viewMode, currentPath]);
 
     const startRename = (path: string) => {
         const fileName = path.split('/').pop() || path.split('\\').pop() || '';
@@ -145,6 +171,109 @@ export const MainPane = () => {
         }
     };
 
+    const handleDragStart = (e: React.DragEvent, file: { path: string; name: string; is_dir: boolean }) => {
+        if (renamingPath === file.path) {
+            e.preventDefault();
+            return;
+        }
+
+        const isSelected = selectedFiles.has(file.path);
+        const dragCount = isSelected ? selectedFiles.size : 1;
+        const paths = isSelected ? Array.from(selectedFiles) : [file.path];
+
+        if (!isSelected) {
+            toggleSelection(file.path, true);
+        }
+
+        e.dataTransfer.setData('application/json', JSON.stringify({ sourcePaths: paths }));
+        e.dataTransfer.effectAllowed = 'copyMove';
+
+        const ghost = document.createElement('div');
+        ghost.style.position = 'absolute';
+        ghost.style.top = '-1000px';
+        ghost.style.left = '-1000px';
+        ghost.style.background = 'var(--bg-color, #ffffff)';
+        ghost.style.border = '1px solid var(--border-color, #ccc)';
+        ghost.style.padding = '4px 8px';
+        ghost.style.borderRadius = '4px';
+        ghost.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+        ghost.style.display = 'flex';
+        ghost.style.alignItems = 'center';
+        ghost.style.gap = '6px';
+        ghost.style.fontFamily = '"Segoe UI", sans-serif';
+        ghost.style.fontSize = '12px';
+        ghost.style.color = 'var(--text-color, #000)';
+        ghost.style.zIndex = '9999';
+
+        const iconChar = file.is_dir ? '📁' : '📄';
+        let badgeHtml = '';
+        if (dragCount > 1) {
+            badgeHtml = `<div style="background: #0078D7; color: white; border-radius: 10px; padding: 0 6px; font-size: 10px; font-weight: bold; margin-left: 4px; display: flex; align-items: center; justify-content: center; height: 16px;">${dragCount}</div>`;
+        }
+
+        ghost.innerHTML = `
+            <span>${iconChar}</span>
+            <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${file.name}</span>
+            ${badgeHtml}
+        `;
+
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, 15, 15);
+
+        setTimeout(() => {
+            if (document.body.contains(ghost)) {
+                document.body.removeChild(ghost);
+            }
+        }, 0);
+    };
+
+    const handleDragOverItem = (e: React.DragEvent, file: { path: string; is_dir: boolean }) => {
+        if (file.is_dir && !selectedFiles.has(file.path)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = e.ctrlKey || e.metaKey || e.altKey ? 'copy' : 'move';
+        }
+    };
+
+    const handleDragEnterItem = (_e: React.DragEvent, file: { path: string; is_dir: boolean }) => {
+        if (file.is_dir && !selectedFiles.has(file.path)) {
+            setDragTarget(file.path);
+        }
+    };
+
+    const handleDragLeaveItem = (_e: React.DragEvent, file: { path: string; is_dir: boolean }) => {
+        if (dragTarget === file.path) {
+            setDragTarget(null);
+        }
+    };
+
+    const handleDropItem = async (e: React.DragEvent, file: { path: string; is_dir: boolean }) => {
+        if (!file.is_dir || selectedFiles.has(file.path)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setDragTarget(null);
+        try {
+            const data = e.dataTransfer.getData('application/json');
+            if (data) {
+                const { sourcePaths } = JSON.parse(data);
+                const isCopy = e.ctrlKey || e.metaKey || e.altKey;
+
+                // Prevent dropping into itself or its own subdirectories
+                const sep = file.path.includes('\\') ? '\\' : '/';
+                const invalidDrop = sourcePaths.some((p: string) => file.path === p || file.path.startsWith(p + sep));
+                if (invalidDrop) return;
+
+                if (isCopy) {
+                    await invoke('copy_files', { sources: sourcePaths, dest: file.path });
+                } else {
+                    await invoke('move_files', { sources: sourcePaths, dest: file.path });
+                }
+                await refreshFiles();
+            }
+        } catch (err) {
+            console.error('Drop failed', err);
+        }
+    };
+
     const formatSize = (bytes: number, is_dir: boolean) => {
         if (is_dir) return '';
         if (bytes < 1024) return bytes + ' B';
@@ -165,6 +294,32 @@ export const MainPane = () => {
 
     const handleKeyDown = async (e: KeyboardEvent) => {
         if (renamingPath) return;
+
+        // Ctrl+T 新規タブ
+        if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+            e.preventDefault();
+            addTab();
+            return;
+        }
+
+        // Ctrl+Tab タブ切替
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
+            e.preventDefault();
+            const { tabs, activeTabId, setActiveTab } = useAppStore.getState();
+            const idx = tabs.findIndex(t => t.id === activeTabId);
+            const next = e.shiftKey
+                ? (idx - 1 + tabs.length) % tabs.length
+                : (idx + 1) % tabs.length;
+            setActiveTab(tabs[next].id);
+            return;
+        }
+
+        // Alt+Enter プロパティ
+        if (e.altKey && e.key === 'Enter') {
+            e.preventDefault();
+            setShowProperties(true);
+            return;
+        }
 
         // Ctrl+A 全選択
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
@@ -242,7 +397,11 @@ export const MainPane = () => {
                 : Math.max(focusedIndex - 1, 0);
 
             setFocusedIndex(nextIndex);
-            toggleSelection(sortedFiles[nextIndex].path, true);
+            if (e.shiftKey) {
+                toggleSelection(sortedFiles[nextIndex].path, false, true, sortedFiles.map(f => f.path));
+            } else if (!e.ctrlKey) {
+                toggleSelection(sortedFiles[nextIndex].path, true);
+            }
             return;
         }
 
@@ -298,6 +457,15 @@ export const MainPane = () => {
             return;
         }
 
+        // Ctrl+M 一括リネーム
+        if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+            e.preventDefault();
+            if (selectedFiles.size > 1) {
+                setBatchRename({ prefix: 'File', startNum: 1 });
+            }
+            return;
+        }
+
         // タイプアヘッド検索（英数字キー入力でファイル名ジャンプ）
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
             typeAheadBuffer.current += e.key.toLowerCase();
@@ -314,7 +482,11 @@ export const MainPane = () => {
         }
     };
 
-    const sortedFiles = [...files].sort((a, b) => {
+    const filteredFiles = searchQuery
+        ? files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        : files;
+
+    const sortedFiles = [...filteredFiles].sort((a, b) => {
         let valA: any = a[sortBy as keyof typeof a];
         let valB: any = b[sortBy as keyof typeof b];
 
@@ -400,9 +572,21 @@ export const MainPane = () => {
                 </div>
             );
         }
-        return <span>{file.name}</span>;
-    };
+        if (!searchQuery) return <span>{file.name}</span>;
 
+        const parts = file.name.split(new RegExp(`(${searchQuery})`, 'gi'));
+        return (
+            <span>
+                {parts.map((part: string, i: number) =>
+                    part.toLowerCase() === searchQuery.toLowerCase() ? (
+                        <span key={i} style={{ backgroundColor: '#FFE200', color: '#000' }}>{part}</span>
+                    ) : (
+                        part
+                    )
+                )}
+            </span>
+        );
+    };
     const rowHeight = '22px'; // Extreme density
 
     const handleColumnResize = (column: 'modified' | 'file_type' | 'size', startX: number) => {
@@ -458,16 +642,32 @@ export const MainPane = () => {
                 </tr>
             </thead>
             <tbody>
-                {sortedFiles.map(file => (
+                {sortedFiles.map((file, index) => (
                     <tr
                         key={file.path}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, file)}
+                        onDragOver={(e) => handleDragOverItem(e, file)}
+                        onDragEnter={(e) => handleDragEnterItem(e, file)}
+                        onDragLeave={(e) => handleDragLeaveItem(e, file)}
+                        onDrop={(e) => handleDropItem(e, file)}
+                        tabIndex={0}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (renamingPath) return;
-                            toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey);
+                            if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
+
+                            const isAlreadySelected = selectedFiles.has(file.path) && selectedFiles.size === 1;
+                            if (isAlreadySelected && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                                renameTimeoutRef.current = setTimeout(() => {
+                                    startRename(file.path);
+                                }, 500);
+                            }
+                            toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, sortedFiles.map(f => f.path));
                         }}
                         onDoubleClick={(e) => {
                             e.stopPropagation();
+                            if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
                             if (renamingPath) return;
                             handleDoubleClick(file);
                         }}
@@ -475,7 +675,7 @@ export const MainPane = () => {
                             e.stopPropagation();
                             handleContextMenu(e, file.path);
                         }}
-                        className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
+                        className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${index % 2 === 1 ? ' zebra' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
                         style={{ height: rowHeight, cursor: 'default' }}
                     >
                         <td style={{ padding: '0 4px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: rowHeight }}>
@@ -501,13 +701,28 @@ export const MainPane = () => {
             {sortedFiles.map(file => (
                 <div
                     key={file.path}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, file)}
+                    onDragOver={(e) => handleDragOverItem(e, file)}
+                    onDragEnter={(e) => handleDragEnterItem(e, file)}
+                    onDragLeave={(e) => handleDragLeaveItem(e, file)}
+                    onDrop={(e) => handleDropItem(e, file)}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (renamingPath) return;
-                        toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey);
+                        if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
+
+                        const isAlreadySelected = selectedFiles.has(file.path) && selectedFiles.size === 1;
+                        if (isAlreadySelected && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                            renameTimeoutRef.current = setTimeout(() => {
+                                startRename(file.path);
+                            }, 500);
+                        }
+                        toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, sortedFiles.map(f => f.path));
                     }}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
+                        if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
                         if (renamingPath) return;
                         handleDoubleClick(file);
                     }}
@@ -515,7 +730,7 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
-                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
                     style={{
                         cursor: 'default',
                         padding: '0 6px',
@@ -538,13 +753,28 @@ export const MainPane = () => {
             {sortedFiles.map(file => (
                 <div
                     key={file.path}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, file)}
+                    onDragOver={(e) => handleDragOverItem(e, file)}
+                    onDragEnter={(e) => handleDragEnterItem(e, file)}
+                    onDragLeave={(e) => handleDragLeaveItem(e, file)}
+                    onDrop={(e) => handleDropItem(e, file)}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (renamingPath) return;
-                        toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey);
+                        if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
+
+                        const isAlreadySelected = selectedFiles.has(file.path) && selectedFiles.size === 1;
+                        if (isAlreadySelected && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                            renameTimeoutRef.current = setTimeout(() => {
+                                startRename(file.path);
+                            }, 500);
+                        }
+                        toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, sortedFiles.map(f => f.path));
                     }}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
+                        if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current);
                         if (renamingPath) return;
                         handleDoubleClick(file);
                     }}
@@ -552,7 +782,7 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
-                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}`}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
                     style={{
                         cursor: 'default',
                         padding: '4px',
@@ -648,6 +878,11 @@ export const MainPane = () => {
             className="main-pane-container"
             style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto', outline: 'none', position: 'relative' }}
             onClick={() => { if (!renamingPath && !marquee) clearSelection(); }}
+            onDoubleClick={(e) => {
+                if ((e.target as HTMLElement).closest('.file-item')) return;
+                if ((e.target as HTMLElement).closest('th')) return;
+                goUp();
+            }}
             onContextMenu={(e) => handleContextMenu(e, null)}
             onKeyDown={handleKeyDown}
             onMouseDown={handleMarqueeStart}
@@ -678,6 +913,62 @@ export const MainPane = () => {
                     onStartRename={startRename}
                     onCreateFolder={handleCreateFolder}
                 />
+            )}
+
+            {showProperties && (
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    background: '#f0f0f0', border: '1px solid #ccc', boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                    padding: '20px', zIndex: 2000, width: '300px', fontFamily: 'Segoe UI'
+                }}>
+                    <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'normal' }}>プロパティ</h3>
+                    <div style={{ fontSize: '12px' }}>
+                        <p>選択された項目: {selectedFiles.size}</p>
+                        <p>この機能は現在モック版です。</p>
+                    </div>
+                    <div style={{ textAlign: 'right', marginTop: '15px' }}>
+                        <button onClick={() => setShowProperties(false)} style={{ padding: '4px 12px' }}>OK</button>
+                    </div>
+                </div>
+            )}
+
+            {batchRename && (
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    background: 'var(--bg-main, #f0f0f0)', border: '1px solid var(--border-color, #ccc)',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.2)', padding: '20px', zIndex: 2000, width: '340px',
+                    fontFamily: '"Segoe UI", sans-serif', borderRadius: '4px'
+                }}>
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>一括リネーム</h3>
+                    <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label>プレフィックス:
+                            <input value={batchRename.prefix} onChange={e => setBatchRename({ ...batchRename, prefix: e.target.value })}
+                                style={{ marginLeft: '8px', padding: '2px 6px', width: '140px' }} />
+                        </label>
+                        <label>開始番号:
+                            <input type="number" value={batchRename.startNum} onChange={e => setBatchRename({ ...batchRename, startNum: parseInt(e.target.value) || 1 })}
+                                style={{ marginLeft: '8px', padding: '2px 6px', width: '60px' }} />
+                        </label>
+                        <div style={{ fontSize: '11px', color: '#888' }}>
+                            例: {batchRename.prefix} ({batchRename.startNum}).ext, {batchRename.prefix} ({batchRename.startNum + 1}).ext, ...
+                        </div>
+                    </div>
+                    <div style={{ textAlign: 'right', marginTop: '15px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => setBatchRename(null)} style={{ padding: '4px 12px' }}>キャンセル</button>
+                        <button onClick={async () => {
+                            const paths = Array.from(selectedFiles);
+                            let num = batchRename.startNum;
+                            for (const p of paths) {
+                                const ext = p.includes('.') ? '.' + p.split('.').pop() : '';
+                                const newName = `${batchRename.prefix} (${num})${ext}`;
+                                try { await invoke('rename_file', { path: p, newName }); } catch (err) { console.error(err); }
+                                num++;
+                            }
+                            setBatchRename(null);
+                            await refreshFiles();
+                        }} style={{ padding: '4px 12px', backgroundColor: '#0078D7', color: 'white', border: 'none', borderRadius: '2px' }}>実行</button>
+                    </div>
+                </div>
             )}
 
             {marqueeRect && (

@@ -88,12 +88,11 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                         }}
                     />
                     <ContextMenuSeparator />
-                    <ContextMenuItem icon={<FolderPlus size={16} />} label="新規作成(W) >" onClick={() => { }} />
-                    {/* Nested placeholder for future submenu */}
-                    <div style={{ marginLeft: '28px', padding: '4px', fontSize: '11px', color: '#666' }}>
-                        <span style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => handleAction(onCreateFolder)}>📁 フォルダ</span>
-                        <span style={{ cursor: 'pointer' }} onClick={() => handleAction(handleNewFile)}>📄 テキスト文書</span>
-                    </div>
+                    <ContextSubMenuItem icon={<FolderPlus size={16} />} label="新規作成(W)">
+                        <ContextMenuItem icon={<FolderPlus size={16} />} label="フォルダー(F)" onClick={() => handleAction(onCreateFolder)} />
+                        <ContextMenuSeparator />
+                        <ContextMenuItem icon={<Edit2 size={16} />} label="テキスト ドキュメント" onClick={() => handleAction(handleNewFile)} />
+                    </ContextSubMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem icon={<Settings size={16} />} label="プロパティ(R)" onClick={() => handleAction(async () => {
                         await invoke('show_properties', { path: currentPath });
@@ -113,6 +112,10 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     <ContextMenuItem icon={<Copy size={16} />} label="コピー(C)" onClick={() => handleAction(() => {
                         setClipboard({ files: pathsToActOn, operation: 'copy' });
                     })} />
+                    {/* Copy Path */}
+                    <ContextMenuItem icon={<Clipboard size={16} />} label="パスのコピー(P)" onClick={() => handleAction(() => {
+                        navigator.clipboard.writeText(pathsToActOn.join('\n'));
+                    })} />
                     <ContextMenuSeparator />
                     {!isMultiple && (
                         <ContextMenuItem icon={<Edit2 size={16} />} label="名前の変更(M)" onClick={() => handleAction(() => {
@@ -124,6 +127,10 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                             await invoke('delete_files', { paths: pathsToActOn, toTrash: true });
                             await refreshFiles();
                         }
+                    })} />
+                    <ContextMenuSeparator />
+                    <ContextMenuItem icon={<Settings size={16} />} label="プロパティ(R)" onClick={() => handleAction(async () => {
+                        if (targetPath) await invoke('show_properties', { path: targetPath });
                     })} />
                 </>
             )}
@@ -199,29 +206,71 @@ const ContextMenuItem = ({ icon, label, onClick, disabled = false }: { icon?: Re
                     position: relative;
                 }
                 .win32-context-item.hovered {
-                    background-color: var(--accent-color, #0078D7);
-                    color: #FFFFFF;
+                    background-color: #E5F3FF;
                 }
                 .win32-context-item.disabled {
                     color: #A0A0A0;
                 }
                 .win32-context-icon {
-                    width: 28px;
+                    width: 24px;
                     display: flex;
                     justify-content: center;
                     align-items: center;
-                    flex-shrink: 0;
+                    color: #555555;
                 }
                 .win32-context-label {
                     flex: 1;
                     padding-left: 8px;
                     padding-right: 16px;
                 }
+                
+                .win32-context-submenu-container {
+                    position: relative;
+                }
+                .win32-context-submenu {
+                    position: absolute;
+                    top: 0;
+                    left: 100%;
+                    background-color: #FFFFFF;
+                    border: 1px solid #A0A0A0;
+                    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+                    padding: 2px 0;
+                    min-width: 200px;
+                    z-index: 1001;
+                    display: none;
+                }
+                .win32-context-submenu-container:hover .win32-context-submenu {
+                    display: block;
+                }
+
+                @media (prefers-color-scheme: dark) {
+                    .win32-context-item.hovered {
+                        background-color: #444444;
+                    }
+                    .win32-context-icon {
+                        color: #AAAAAA;
+                    }
+                    .win32-context-submenu {
+                        background-color: #2B2B2B;
+                        border: 1px solid #4D4D4D;
+                    }
+                }
             `}</style>
         </div>
     );
 };
 
+const ContextSubMenuItem = ({ icon, label, children }: { icon?: React.ReactNode, label: string, children: React.ReactNode }) => {
+    return (
+        <div className="win32-context-submenu-container">
+            <ContextMenuItem icon={icon} label={label + " ▸"} />
+            <div className="win32-context-submenu">
+                <div className="win32-ContextMenu-gutter"></div>
+                {children}
+            </div>
+        </div>
+    );
+};
 const ContextMenuSeparator = () => (
     <div className="win32-context-separator">
         <style>{`

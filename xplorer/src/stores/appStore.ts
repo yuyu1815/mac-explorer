@@ -27,6 +27,7 @@ export interface Tab {
     viewMode: ViewMode;
     sortBy: SortColumn;
     sortDesc: boolean;
+    searchQuery: string;
 }
 
 interface AppState {
@@ -35,6 +36,7 @@ interface AppState {
     clipboard: { files: string[], operation: 'copy' | 'cut' } | null;
     renameTriggerId: number;
     showDetailsPane: boolean;
+    loading: boolean;
 
     // Actions
     addTab: (path?: string) => void;
@@ -46,7 +48,7 @@ interface AppState {
     goForward: () => void;
     goUp: () => void;
     setFiles: (files: FileEntry[]) => void;
-    toggleSelection: (path: string, exclusive?: boolean, range?: boolean) => void;
+    toggleSelection: (path: string, exclusive?: boolean, range?: boolean, orderedPaths?: string[]) => void;
     clearSelection: () => void;
     selectAll: () => void;
     invertSelection: () => void;
@@ -57,20 +59,25 @@ interface AppState {
     setViewMode: (mode: ViewMode) => void;
     setSortParams: (column: SortColumn, desc?: boolean) => void;
     toggleDetailsPane: () => void;
+    setSearchQuery: (query: string) => void;
+    setLoading: (loading: boolean) => void;
 }
 
-const createNewTab = (id: string, path: string = ''): Tab => ({
-    id,
-    currentPath: path,
-    history: path ? [path] : [],
-    historyIndex: path ? 0 : -1,
-    files: [],
-    selectedFiles: new Set(),
-    focusedIndex: -1,
-    viewMode: 'detail',
-    sortBy: 'name',
-    sortDesc: false
-});
+const createNewTab = (id: string, path: string = ''): Tab => {
+    return {
+        id,
+        currentPath: path,
+        history: path ? [path] : [],
+        historyIndex: path ? 0 : -1,
+        files: [],
+        selectedFiles: new Set(),
+        focusedIndex: -1,
+        viewMode: 'detail',
+        sortBy: 'name',
+        sortDesc: false,
+        searchQuery: '', // Added searchQuery
+    };
+};
 
 export const useAppStore = create<AppState>((set) => ({
     tabs: [createNewTab('default-tab')],
@@ -78,6 +85,7 @@ export const useAppStore = create<AppState>((set) => ({
     clipboard: null,
     renameTriggerId: 0,
     showDetailsPane: false,
+    loading: false,
 
     addTab: (path) => set((state) => {
         const id = `tab-${Date.now()}`;
@@ -112,7 +120,8 @@ export const useAppStore = create<AppState>((set) => ({
                 history: newHistory,
                 historyIndex: newHistory.length - 1,
                 selectedFiles: new Set<string>(),
-                focusedIndex: -1
+                focusedIndex: -1,
+                searchQuery: '', // Clear search query on path change
             };
         });
         return { tabs };
@@ -126,7 +135,8 @@ export const useAppStore = create<AppState>((set) => ({
                 historyIndex: tab.historyIndex - 1,
                 currentPath: tab.history[tab.historyIndex - 1],
                 selectedFiles: new Set<string>(),
-                focusedIndex: -1
+                focusedIndex: -1,
+                searchQuery: '', // Clear search query on navigation
             };
         });
         return { tabs };
@@ -140,7 +150,8 @@ export const useAppStore = create<AppState>((set) => ({
                 historyIndex: tab.historyIndex + 1,
                 currentPath: tab.history[tab.historyIndex + 1],
                 selectedFiles: new Set<string>(),
-                focusedIndex: -1
+                focusedIndex: -1,
+                searchQuery: '', // Clear search query on navigation
             };
         });
         return { tabs };
@@ -161,7 +172,8 @@ export const useAppStore = create<AppState>((set) => ({
                     history: newHistory,
                     historyIndex: newHistory.length - 1,
                     selectedFiles: new Set<string>(),
-                    focusedIndex: -1
+                    focusedIndex: -1,
+                    searchQuery: '', // Clear search query on navigation
                 };
             }
             return tab;
@@ -174,10 +186,9 @@ export const useAppStore = create<AppState>((set) => ({
         return { tabs };
     }),
 
-    toggleSelection: (path, exclusive = false, range = false) => set((state) => {
+    toggleSelection: (path, exclusive = false, range = false, orderedPaths = undefined) => set((state) => {
         const tabs = state.tabs.map(tab => {
             if (tab.id !== state.activeTabId) return tab;
-
             let newSelected = new Set(tab.selectedFiles);
 
             if (exclusive) {
@@ -185,7 +196,7 @@ export const useAppStore = create<AppState>((set) => ({
                 newSelected.add(path);
             } else if (range) {
                 if (tab.selectedFiles.size > 0 && tab.files.length > 0) {
-                    const paths = tab.files.map(f => f.path);
+                    const paths = orderedPaths || tab.files.map(f => f.path);
                     const lastSelectedArray = Array.from(tab.selectedFiles);
                     const lastSelected = lastSelectedArray[lastSelectedArray.length - 1];
 
@@ -266,5 +277,17 @@ export const useAppStore = create<AppState>((set) => ({
         return { tabs };
     }),
 
-    toggleDetailsPane: () => set(state => ({ showDetailsPane: !state.showDetailsPane }))
+    toggleDetailsPane: () => set(state => ({ showDetailsPane: !state.showDetailsPane })),
+
+    setSearchQuery: (query) => set((state) => {
+        const tabs = state.tabs.map(tab => {
+            if (tab.id === state.activeTabId) {
+                return { ...tab, searchQuery: query };
+            }
+            return tab;
+        });
+        return { tabs };
+    }),
+
+    setLoading: (loading) => set({ loading }),
 }));

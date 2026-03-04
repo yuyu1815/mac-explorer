@@ -42,6 +42,7 @@ const setupStore = (overrides: Record<string, unknown> = {}) => {
             viewMode: 'detail' as const,
             sortBy: 'name' as const,
             sortDesc: false,
+            searchQuery: '',
         }],
         activeTabId: 'tab1',
         clipboard: null,
@@ -306,7 +307,7 @@ describe('MainPane — コンテキストメニュー操作', () => {
 
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
         fireEvent.contextMenu(container);
-        fireEvent.click(screen.getByText(/フォルダ/));
+        fireEvent.click(screen.getByText('フォルダー(F)'));
 
         await waitFor(() => {
             expect(invoke).toHaveBeenCalledWith('create_directory', { path: `${basePath}/新しいフォルダー` });
@@ -336,7 +337,7 @@ describe('MainPane — コンテキストメニュー操作', () => {
 
         const file1 = screen.getByText('file1.txt').closest('tr')!;
         fireEvent.contextMenu(file1);
-        fireEvent.click(screen.getByText(/コピー/));
+        fireEvent.click(screen.getByText('コピー(C)'));
 
         expect(useAppStore.getState().clipboard).toEqual({
             files: [`${basePath}/file1.txt`],

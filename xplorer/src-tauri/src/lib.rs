@@ -18,6 +18,7 @@ pub fn run() {
             commands::filesystem::rename_file,
             commands::filesystem::create_file,
             commands::filesystem::get_home_dir,
+            commands::filesystem::list_volumes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

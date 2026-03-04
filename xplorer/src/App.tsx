@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TitleBar } from './components/TitleBar/TitleBar';
 import { NavigationBar } from './components/NavigationBar/NavigationBar';
 import { SidePanel } from './components/SidePanel/SidePanel';
@@ -11,7 +11,30 @@ import './styles/global.css';
 
 function App() {
   const showDetailsPane = useAppStore(s => s.showDetailsPane);
+  const { goBack, goForward, goUp } = useAppStore();
   const [sideWidth, setSideWidth] = useState(200);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Input要素などにフォーカスが当たっている場合は無視する
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.altKey) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          goBack();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          goForward();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          goUp();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goBack, goForward, goUp]);
 
   const handleSideResize = (e: React.MouseEvent) => {
     e.preventDefault();

@@ -17,6 +17,7 @@ const setupStore = (overrides: Record<string, unknown> = {}) => {
             currentPath: basePath,
             history: [basePath],
             historyIndex: 0,
+            searchQuery: '',
             files: [
                 { path: `${basePath}/file1.txt`, name: 'file1.txt', is_dir: false, size: 100, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' },
                 { path: `${basePath}/file2.txt`, name: 'file2.txt', is_dir: false, size: 200, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' },
@@ -83,7 +84,7 @@ describe('ContextMenu — 空白右クリック（targetPath=null）', () => {
     it('新規作成の下層にあるフォルダをクリックすると onCreateFolder が呼ばれる', async () => {
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
-        fireEvent.click(screen.getByText(/フォルダ/));
+        fireEvent.click(screen.getByText('フォルダー(F)'));
 
         await waitFor(() => {
             expect(defaultProps.onCreateFolder).toHaveBeenCalled();
@@ -109,7 +110,7 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
 
         expect(screen.getByText(/開く/)).toBeInTheDocument();
         expect(screen.getByText(/切り取り/)).toBeInTheDocument();
-        expect(screen.getByText(/コピー/)).toBeInTheDocument();
+        expect(screen.getByText('コピー(C)')).toBeInTheDocument();
         expect(screen.getByText(/名前の変更/)).toBeInTheDocument();
         expect(screen.getByText(/削除/)).toBeInTheDocument();
     });
@@ -122,7 +123,7 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
 
     it('コピークリックでクリップボードに "copy" がセットされる', () => {
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
-        fireEvent.click(screen.getByText(/コピー/));
+        fireEvent.click(screen.getByText('コピー(C)'));
         expect(useAppStore.getState().clipboard).toEqual({ files: [targetFile], operation: 'copy' });
     });
 
@@ -183,7 +184,7 @@ describe('ContextMenu — 複数選択時の制御', () => {
         expect(screen.queryByText(/名前の変更/)).not.toBeInTheDocument();
 
         expect(screen.getByText(/切り取り/)).toBeInTheDocument();
-        expect(screen.getByText(/コピー/)).toBeInTheDocument();
+        expect(screen.getByText('コピー(C)')).toBeInTheDocument();
         expect(screen.getByText(/削除/)).toBeInTheDocument();
     });
 

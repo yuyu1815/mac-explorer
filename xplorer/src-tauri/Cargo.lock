@@ -6282,6 +6282,7 @@ version = "0.1.0"
 dependencies = [
  "glob",
  "image",
+ "libc",
  "mime_guess",
  "notify",
  "serde",

@@ -212,6 +212,23 @@ body {
     opacity: 0.5;
 }
 
+/* ゼブラスタイルの追加 */
+.file-item.zebra {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+@media (prefers-color-scheme: dark) {
+    .file-item.zebra {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+}
+
+.file-item.drag-target {
+    background-color: var(--selection-bg, #CCE8FF) !important;
+    outline: 2px solid var(--accent-color, #0078D7);
+    outline-offset: -2px;
+}
+
 /* Form Inputs / General selection */
 input,
 textarea {

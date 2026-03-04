@@ -216,6 +216,99 @@ pub async fn get_home_dir() -> Result<String, String> {
         .map_err(|_| "Could not determine home directory".to_string())
 }
 
+#[derive(Serialize)]
+pub struct VolumeInfo {
+    name: String,
+    path: String,
+    total_bytes: u64,
+    free_bytes: u64,
+}
+
+#[tauri::command]
+pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
+    let mut volumes = Vec::new();
+
+    #[cfg(target_os = "macos")]
+    {
+        // /Volumes 配下のマウントポイントを列挙
+        if let Ok(entries) = fs::read_dir("/Volumes") {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = entry.file_name().to_string_lossy().into_owned();
+                let path_str = path.to_string_lossy().into_owned();
+
+                let (total, free) = get_statvfs_info(&path_str);
+                volumes.push(VolumeInfo {
+                    name,
+                    path: path_str,
+                    total_bytes: total,
+                    free_bytes: free,
+                });
+            }
+        }
+        // ルートも追加
+        let (total, free) = get_statvfs_info("/");
+        volumes.insert(0, VolumeInfo {
+            name: "Macintosh HD".to_string(),
+            path: "/".to_string(),
+            total_bytes: total,
+            free_bytes: free,
+        });
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let (total, free) = get_statvfs_info("/");
+        volumes.push(VolumeInfo {
+            name: "/".to_string(),
+            path: "/".to_string(),
+            total_bytes: total,
+            free_bytes: free,
+        });
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // Windowsではドライブレターを列挙
+        for letter in b'A'..=b'Z' {
+            let drive = format!("{}:\\", letter as char);
+            if std::path::Path::new(&drive).exists() {
+                volumes.push(VolumeInfo {
+                    name: format!("ローカルディスク ({}:)", letter as char),
+                    path: drive,
+                    total_bytes: 0,
+                    free_bytes: 0,
+                });
+            }
+        }
+    }
+
+    Ok(volumes)
+}
+
+#[cfg(unix)]
+fn get_statvfs_info(path: &str) -> (u64, u64) {
+    use std::ffi::CString;
+    use std::mem::MaybeUninit;
+    let c_path = CString::new(path).unwrap_or_default();
+    unsafe {
+        let mut stat = MaybeUninit::<libc::statvfs>::uninit();
+        if libc::statvfs(c_path.as_ptr(), stat.as_mut_ptr()) == 0 {
+            let stat = stat.assume_init();
+            let total = stat.f_blocks as u64 * stat.f_frsize as u64;
+            let free = stat.f_bavail as u64 * stat.f_frsize as u64;
+            (total, free)
+        } else {
+            (0, 0)
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn get_statvfs_info(_path: &str) -> (u64, u64) {
+    (0, 0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

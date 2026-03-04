@@ -9,7 +9,7 @@ const formatSize = (bytes: number): string => {
 };
 
 export const StatusBar = () => {
-    const { tabs, activeTabId, setViewMode } = useAppStore();
+    const { tabs, activeTabId, setViewMode, loading } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const files = activeTab?.files || [];
@@ -34,6 +34,11 @@ export const StatusBar = () => {
             className="win10-status-bar"
             data-testid="statusbar"
         >
+            {loading && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', overflow: 'hidden' }}>
+                    <div className="status-loading-bar" />
+                </div>
+            )}
             <div className="status-left">
                 <span>{totalCount} 個の項目</span>
                 {selectedCount > 0 && (
@@ -73,6 +78,17 @@ export const StatusBar = () => {
                     color: var(--text-main);
                     user-select: none;
                     cursor: default;
+                    position: relative;
+                }
+                .status-loading-bar {
+                    height: 100%;
+                    width: 30%;
+                    background: linear-gradient(90deg, transparent, #0078D7, transparent);
+                    animation: statusLoading 1.2s infinite;
+                }
+                @keyframes statusLoading {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(400%); }
                 }
                 .status-left {
                     display: flex;
