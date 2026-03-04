@@ -62,17 +62,6 @@ pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
 #[cfg(not(target_os = "macos"))]
 pub fn get_icon_binary(_id: &str) -> Option<Vec<u8>> { None }
 
-#[tauri::command]
-pub async fn get_icons_batch(ids: Vec<String>) -> Result<HashMap<String, Vec<u8>>, String> {
-    let mut map = HashMap::new();
-    for id in ids {
-        if let Some(data) = get_icon_binary(&id) {
-            map.insert(id, data);
-        }
-    }
-    Ok(map)
-}
-
 #[derive(Serialize)]
 pub struct DetailedProperties {
     name: String,

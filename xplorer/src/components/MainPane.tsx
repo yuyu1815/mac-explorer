@@ -10,42 +10,49 @@ const FolderIcon = ({ size }: { size: number }) => (
 );
 
 const AppIcon = ({ iconId, size }: { iconId: string, size: number }) => {
-    const blobUrl = useAppStore(state => state.iconCache[iconId]);
+    const iconUrl = `icon://localhost/${iconId}`;
     const badgeSize = Math.floor(size * 0.6);
     return (
         <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <FolderIcon size={size} />
-            {blobUrl && (
-                <div style={{ 
-                    position: 'absolute', bottom: -2, right: -2, width: badgeSize, height: badgeSize, 
-                    backgroundColor: 'var(--bg-main, #ffffff)', borderRadius: '2px', padding: '1px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                }}>
-                    <img src={blobUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                </div>
-            )}
+            <div style={{ 
+                position: 'absolute', bottom: -2, right: -2, width: badgeSize, height: badgeSize, 
+                backgroundColor: 'var(--bg-main, #ffffff)', borderRadius: '2px', padding: '1px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+            }}>
+                <img src={iconUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
         </div>
     );
 };
 
-const GenericFileIcon = ({ size }: { size: number }) => (
-    <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="#FFFFFF" stroke="#5D5D5D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
-    </div>
-);
-
 export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean, iconId: string, size?: number }) => {
-    const blobUrl = useAppStore(state => state.iconCache[iconId]);
-    
     if (iconId.startsWith('app:')) return <AppIcon iconId={iconId} size={size} />;
     if (isDir) return <FolderIcon size={size} />;
-    if (blobUrl) return <img src={blobUrl} alt="" style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />;
     
-    return <GenericFileIcon size={size} />;
+    const iconUrl = `icon://localhost/${iconId}`;
+    return (
+        <img 
+            src={iconUrl} 
+            alt="" 
+            onError={(e) => {
+                // If TIFF fails or 404, fallback to generic
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent && !parent.querySelector('.fallback-icon')) {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'fallback-icon';
+                    fallback.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="#FFFFFF" stroke="#5D5D5D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`;
+                    parent.appendChild(fallback);
+                }
+            }}
+            style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} 
+        />
+    );
 };
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, setLoading, setViewMode, propertiesDialogTarget, openPropertiesDialog, showHiddenFiles, showFileExtensions, iconCache, updateIconCache } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, setLoading, setViewMode, propertiesDialogTarget, openPropertiesDialog, showHiddenFiles, showFileExtensions } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -69,35 +76,6 @@ export const MainPane = () => {
     const paneRef = useRef<HTMLDivElement>(null);
     const marqueeJustEnded = useRef(false);
     const [batchRename, setBatchRename] = useState<{ prefix: string; startNum: number } | null>(null);
-
-    // Fetch Icons Batch
-    useEffect(() => {
-        if (files.length === 0) return;
-
-        const missingIds = Array.from(new Set(files.map(f => f.icon_id)))
-            .filter(id => !iconCache[id]);
-
-        if (missingIds.length === 0) return;
-
-        const fetchIcons = async () => {
-            try {
-                // get_icons_batch returns HashMap<String, Vec<u8>>
-                const result = await invoke<Record<string, number[]>>('get_icons_batch', { ids: missingIds });
-                const newIcons: Record<string, string> = {};
-                
-                for (const [id, bytes] of Object.entries(result)) {
-                    console.log(`[DEBUG] Received icon binary for ${id}, size: ${bytes.length} bytes`);
-                    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/tiff' });
-                    newIcons[id] = URL.createObjectURL(blob);
-                }
-                updateIconCache(newIcons);
-            } catch (err) {
-                console.error('Failed to fetch icons batch', err);
-            }
-        };
-
-        fetchIcons();
-    }, [files, iconCache, updateIconCache]);
 
     // Context menu opening ignores default behavior
     useEffect(() => {
@@ -131,11 +109,18 @@ export const MainPane = () => {
         fetchFiles();
     }, [currentPath, activeTabId, setFiles, setCurrentPath, sortBy, sortDesc, searchQuery, showHiddenFiles]);
 
+    // リボン等からの外部リネームトリガー監視
+    useEffect(() => {
+        if (renameTriggerId > 0 && selectedFiles.size === 1) {
+            const targetPath = Array.from(selectedFiles)[0];
+            startRename(targetPath);
+        }
+    }, [renameTriggerId, selectedFiles]);
+
     // リネーム開始時にinputをフォーカス＆全選択
     useEffect(() => {
         if (renamingPath && renameInputRef.current) {
             renameInputRef.current.focus();
-            // 拡張子を除いた名前部分のみを選択
             const dotIndex = renameValue.lastIndexOf('.');
             if (dotIndex > 0) {
                 renameInputRef.current.setSelectionRange(0, dotIndex);
@@ -143,15 +128,7 @@ export const MainPane = () => {
                 renameInputRef.current.select();
             }
         }
-    }, [renamingPath]);
-
-    // リボン等からの外部リネームトリガー監視
-    useEffect(() => {
-        if (renameTriggerId > 0 && selectedFiles.size === 1) {
-            const targetPath = Array.from(selectedFiles)[0];
-            startRename(targetPath);
-        }
-    }, [renameTriggerId]);
+    }, [renamingPath, renameValue]);
 
     const refreshFiles = async () => {
         setLoading(true);
@@ -179,7 +156,7 @@ export const MainPane = () => {
                 setViewMode(saved as any);
             }
         } catch { /* localStorage unavailable */ }
-    }, [currentPath]);
+    }, [currentPath, setViewMode]);
 
     useEffect(() => {
         try {
@@ -341,7 +318,6 @@ export const MainPane = () => {
                 const { sourcePaths } = JSON.parse(data);
                 const isCopy = e.ctrlKey || e.metaKey || e.altKey;
 
-                // Prevent dropping into itself or its own subdirectories
                 const sep = file.path.includes('\\') ? '\\' : '/';
                 const invalidDrop = sourcePaths.some((p: string) => file.path === p || file.path.startsWith(p + sep));
                 if (invalidDrop) return;
@@ -372,14 +348,12 @@ export const MainPane = () => {
     const handleKeyDown = async (e: KeyboardEvent) => {
         if (renamingPath) return;
 
-        // Ctrl+T 新規タブ
         if ((e.ctrlKey || e.metaKey) && e.key === 't') {
             e.preventDefault();
             addTab();
             return;
         }
 
-        // Ctrl+Tab タブ切替
         if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
             e.preventDefault();
             const { tabs, activeTabId, setActiveTab } = useAppStore.getState();
@@ -391,7 +365,6 @@ export const MainPane = () => {
             return;
         }
 
-        // Alt+Enter プロパティ
         if (e.altKey && e.key === 'Enter') {
             e.preventDefault();
             const paths = Array.from(selectedFiles);
@@ -399,21 +372,18 @@ export const MainPane = () => {
             return;
         }
 
-        // Ctrl+A 全選択
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             e.preventDefault();
             selectAll();
             return;
         }
 
-        // Ctrl+Shift+N 新規フォルダ
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
             e.preventDefault();
             handleCreateFolder();
             return;
         }
 
-        // Ctrl+Shift+C パスコピー
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
             e.preventDefault();
             const paths = Array.from(selectedFiles);
@@ -423,7 +393,6 @@ export const MainPane = () => {
             return;
         }
 
-        // Ctrl+C ファイルコピー
         if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'c' || e.key === 'C')) {
             if (selectedFiles.size > 0) {
                 e.preventDefault();
@@ -432,7 +401,6 @@ export const MainPane = () => {
             return;
         }
 
-        // Ctrl+X ファイル切り取り
         if ((e.ctrlKey || e.metaKey) && (e.key === 'x' || e.key === 'X')) {
             if (selectedFiles.size > 0) {
                 e.preventDefault();
@@ -441,7 +409,6 @@ export const MainPane = () => {
             return;
         }
 
-        // Ctrl+V ファイル貼り付け
         if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
             e.preventDefault();
             if (clipboard) {
@@ -456,14 +423,12 @@ export const MainPane = () => {
             return;
         }
 
-        // F5 リフレッシュ
         if (e.key === 'F5') {
             e.preventDefault();
             await refreshFiles();
             return;
         }
 
-        // 矢印キーでフォーカス移動
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             const focusedIndex = activeTab?.focusedIndex ?? -1;
@@ -483,7 +448,6 @@ export const MainPane = () => {
             return;
         }
 
-        // Home / End キー
         if (e.key === 'Home' || e.key === 'End') {
             e.preventDefault();
             if (sortedFiles.length === 0) return;
@@ -493,7 +457,6 @@ export const MainPane = () => {
             return;
         }
 
-        // Enter でフォルダを開く/ファイル実行
         if (e.key === 'Enter' && selectedFiles.size === 1) {
             const targetPath = Array.from(selectedFiles)[0];
             const targetFile = files.find(f => f.path === targetPath);
@@ -503,14 +466,12 @@ export const MainPane = () => {
             return;
         }
 
-        // Backspace で履歴を戻る
         if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
             e.preventDefault();
             goBack();
             return;
         }
 
-        // Shift+Delete 完全削除
         if (e.key === 'Delete' && e.shiftKey && selectedFiles.size > 0) {
             if (confirm(`選択した${selectedFiles.size}項目を完全に削除しますか？（元に戻せません）`)) {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: false });
@@ -519,7 +480,6 @@ export const MainPane = () => {
             return;
         }
 
-        // Delete ゴミ箱へ移動
         if (e.key === 'Delete' && selectedFiles.size > 0) {
             if (confirm(`選択した${selectedFiles.size}項目をゴミ箱に移動しますか？`)) {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: true });
@@ -528,14 +488,12 @@ export const MainPane = () => {
             return;
         }
 
-        // F2 リネーム（拡張子除外選択）
         if (e.key === 'F2' && selectedFiles.size === 1) {
             const targetPath = Array.from(selectedFiles)[0];
             startRename(targetPath);
             return;
         }
 
-        // Ctrl+M 一括リネーム
         if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
             e.preventDefault();
             if (selectedFiles.size > 1) {
@@ -544,7 +502,6 @@ export const MainPane = () => {
             return;
         }
 
-        // タイプアヘッド検索（英数字キー入力でファイル名ジャンプ）
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
             typeAheadBuffer.current += e.key.toLowerCase();
             if (typeAheadTimer.current) clearTimeout(typeAheadTimer.current);
@@ -560,7 +517,6 @@ export const MainPane = () => {
         }
     };
 
-    // Rust側のlist_files_sortedでソート済みのファイル一覧をそのまま使用
     const sortedFiles = files;
 
     const SortIndicator = ({ column }: { column: string }) => {
@@ -568,7 +524,7 @@ export const MainPane = () => {
         return <span style={{ marginLeft: '4px', fontSize: '9px', color: '#666' }}>{sortDesc ? '▼' : '▲'}</span>;
     };
 
-    const INVALID_CHARS = /[/:\\*?"<>|]/g; // Extended invalid chars per Windows
+    const INVALID_CHARS = /[/:\\*?"<>|]/g;
 
     const renderFileName = (file: any) => {
         if (renamingPath === file.path) {
@@ -653,7 +609,7 @@ export const MainPane = () => {
             </span>
         );
     };
-    const rowHeight = '22px'; // Extreme density
+    const rowHeight = '22px';
 
     const handleColumnResize = (column: 'modified' | 'file_type' | 'size', startX: number) => {
         const startWidth = colWidths[column];
@@ -999,7 +955,6 @@ export const MainPane = () => {
     );
 
     const handleMarqueeStart = (e: React.MouseEvent) => {
-        // Only start marquee from blank area (left button, no file-item clicked)
         if (e.button !== 0) return;
         if ((e.target as HTMLElement).closest('.file-item')) return;
         if ((e.target as HTMLElement).closest('th')) return;
@@ -1019,7 +974,6 @@ export const MainPane = () => {
             const my = ev.clientY - rect.top + pane.scrollTop;
             setMarquee(prev => prev ? { ...prev, x: mx, y: my } : null);
 
-            // select items that intersect
             const selX = Math.min(startX, mx);
             const selY = Math.min(startY, my);
             const selW = Math.abs(mx - startX);
@@ -1037,7 +991,6 @@ export const MainPane = () => {
                     if (path) newSelected.add(path);
                 }
             });
-            // Apply selection via store — clear first, then add intersecting
             const { clearSelection: clr, toggleSelection: tog } = useAppStore.getState();
             clr();
             newSelected.forEach(p => tog(p, false));
