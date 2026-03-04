@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, FileEntry } from '../stores/appStore';
+import { useAppStore } from '../stores/appStore';
 import { ContextMenu } from './ContextMenu';
 import { Folder } from 'lucide-react';
 import { PropertiesDialog } from './PropertiesDialog';

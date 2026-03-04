@@ -288,6 +288,10 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
                 .unwrap_or_default()
         };
 
+        let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
+        let is_symlink_val = metadata.file_type().is_symlink();
+        let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
+
         let icon_id = if is_dir {
             if path_str.ends_with(".app") {
                 format!("app:{}", path_str)
@@ -318,7 +322,7 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
             created_formatted: format_timestamp(created),
             file_type,
             is_hidden,
-            is_symlink,
+            is_symlink: is_symlink_val,
             permissions,
             icon_id,
         });
@@ -714,6 +718,10 @@ fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntr
                 .map(|ext| ext.to_string_lossy().into_owned())
                 .unwrap_or_default()
         };
+
+        let is_hidden = file_name.starts_with('.') || is_symlink(file_name.as_str());
+        let is_symlink_val = metadata.file_type().is_symlink();
+        let permissions = format!("{:o}", metadata.permissions().mode() & 0o777);
 
         let icon_id = if is_dir {
             if path_str.ends_with(".app") {
