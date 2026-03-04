@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '../stores/appStore';
 import { invoke } from '@tauri-apps/api/core';
 import {
     ClipboardPaste, Scissors, Copy, Link as LinkIcon, Edit2, Trash2, FolderPlus,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '../stores/appStore';
 import { ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard, LayoutGrid, ArrowDownAZ, RefreshCw, Settings } from 'lucide-react';
 
 interface ContextMenuProps {

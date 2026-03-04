@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MainPane } from '../../../components/MainPane/MainPane';
-import { useAppStore } from '../../../stores/appStore';
+import { MainPane } from '../../components/MainPane';
+import { useAppStore } from '../../stores/appStore';
 import { invoke } from '@tauri-apps/api/core';
 
 vi.mock('@tauri-apps/api/core', () => ({

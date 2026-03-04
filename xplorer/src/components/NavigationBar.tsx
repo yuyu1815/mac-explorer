@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '../stores/appStore';
 import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, ChevronDown, Folder } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 

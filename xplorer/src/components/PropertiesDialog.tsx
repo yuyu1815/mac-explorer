@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { FileIcon } from '../MainPane/MainPane';
-import './PropertiesDialog.css';
+import { FileIcon } from './MainPane';
+import '../styles/components/PropertiesDialog.css';
 
 interface PropertiesDialogProps {
     path: string;

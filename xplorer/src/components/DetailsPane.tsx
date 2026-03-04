@@ -1,4 +1,4 @@
-import { useAppStore, FileEntry } from '../../stores/appStore';
+import { useAppStore, FileEntry } from '../stores/appStore';
 
 const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 バイト';

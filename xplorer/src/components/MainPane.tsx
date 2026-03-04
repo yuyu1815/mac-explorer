@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore } from '../../stores/appStore';
-import { ContextMenu } from '../ContextMenu/ContextMenu';
+import { useAppStore } from '../stores/appStore';
+import { ContextMenu } from './ContextMenu';
 import { Folder, FileText } from 'lucide-react';
-import { PropertiesDialog } from '../PropertiesDialog/PropertiesDialog';
+import { PropertiesDialog } from './PropertiesDialog';
 
 export const FileIcon = ({ isDir, icon, size = 16 }: { isDir: boolean, icon?: string, size?: number }) => {
     if (icon) {

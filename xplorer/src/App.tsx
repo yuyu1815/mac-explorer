@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { TitleBar } from './components/TitleBar/TitleBar';
-import { NavigationBar } from './components/NavigationBar/NavigationBar';
-import { SidePanel } from './components/SidePanel/SidePanel';
-import { MainPane } from './components/MainPane/MainPane';
-import { StatusBar } from './components/StatusBar/StatusBar';
-import { Toolbar } from './components/Toolbar/Toolbar';
-import { DetailsPane } from './components/DetailsPane/DetailsPane';
+import { TitleBar } from './components/TitleBar';
+import { NavigationBar } from './components/NavigationBar';
+import { SidePanel } from './components/SidePanel';
+import { MainPane } from './components/MainPane';
+import { StatusBar } from './components/StatusBar';
+import { Toolbar } from './components/Toolbar';
+import { DetailsPane } from './components/DetailsPane';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
 

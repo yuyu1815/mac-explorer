@@ -1,8 +1,8 @@
 /// <reference types="@testing-library/jest-dom" />
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Toolbar } from '../../../components/Toolbar/Toolbar';
-import { useAppStore } from '../../../stores/appStore';
+import { Toolbar } from '../../components/Toolbar';
+import { useAppStore } from '../../stores/appStore';
 
 vi.mock('@tauri-apps/api/core', () => ({
     invoke: vi.fn(),

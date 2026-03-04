@@ -1,4 +1,4 @@
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '../stores/appStore';
 import { AlignJustify, LayoutGrid } from 'lucide-react';
 
 const formatSize = (bytes: number): string => {
