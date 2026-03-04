@@ -62,7 +62,7 @@ export const MainPane = () => {
                 });
                 setFiles(result as any);
             } catch (err) {
-                console.error('Failed to list directory', err);
+                console.error('Failed to list_files_sorted', err);
             }
         };
 

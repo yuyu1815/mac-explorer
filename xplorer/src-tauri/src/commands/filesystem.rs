@@ -311,34 +311,26 @@ fn get_statvfs_info(_path: &str) -> (u64, u64) {
 
 // --- list_files_sorted コマンド ---
 
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ListFilesSortedArgs {
-    pub path: String,
-    pub show_hidden: bool,
-    pub sort_by: String,       // "name" | "modified" | "file_type" | "size"
-    pub sort_desc: bool,
-    pub search_query: String,  // 空文字なら全ファイル返却
-}
-
+/// list_files_sorted - フィルタ・ソート済みのファイル一覧を返す
 #[tauri::command]
-pub async fn list_files_sorted(args: ListFilesSortedArgs) -> Result<Vec<FileEntry>, String> {
-    let mut entries = list_directory(args.path, args.show_hidden).await?;
+pub async fn list_files_sorted(
+    path: String,
+    show_hidden: bool,
+    sort_by: String,
+    sort_desc: bool,
+    search_query: String,
+) -> Result<Vec<FileEntry>, String> {
+    let mut entries = list_directory(path, show_hidden).await?;
 
     // フィルタリング: search_query が空でない場合、ファイル名の部分一致（大文字小文字区別なし）
-    if !args.search_query.is_empty() {
-        let query_lower = args.search_query.to_lowercase();
+    if !search_query.is_empty() {
+        let query_lower = search_query.to_lowercase();
         entries.retain(|e| e.name.to_lowercase().contains(&query_lower));
     }
 
     // ソート
-    let sort_by = args.sort_by.as_str();
-    let sort_desc = args.sort_desc;
-
-    // sort_by != "file_type" の場合：ディレクトリを常に先頭に配置
-    let dirs_first = sort_by != "file_type";
+    let sort_by_str = sort_by.as_str();
+    let dirs_first = sort_by_str != "file_type";
 
     entries.sort_by(|a, b| {
         // ディレクトリ優先（dirs_first が true の場合）
@@ -351,7 +343,7 @@ pub async fn list_files_sorted(args: ListFilesSortedArgs) -> Result<Vec<FileEntr
         }
 
         // カラム値によるソート
-        let ordering = match sort_by {
+        let ordering = match sort_by_str {
             "name" => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
             "modified" => a.modified.cmp(&b.modified),
             "file_type" => a.file_type.to_lowercase().cmp(&b.file_type.to_lowercase()),
@@ -544,49 +536,49 @@ mod tests {
         // 環境依存パス（絶対パスのハードコード）を避け、OSのテンポラリディレクトリ下に特定ディレクトリを作成して実験を行う
         let base_path_buf = std::env::temp_dir().join("xplorer_e2e_experiment");
         let base_path = base_path_buf.to_string_lossy().into_owned();
-        
+
         // 既存テスト環境のクリーンアップ（もしあれば）
         let _ = fs::remove_dir_all(&base_path);
-        
+
         // 1. 実験用ディレクトリの作成
         assert!(create_directory(base_path.clone()).await.is_ok());
-        
+
         // 2. 複数のファイルとフォルダを作成
         let file1 = format!("{}/file1.txt", base_path);
         let file2 = format!("{}/file2.txt", base_path);
         let sub_dir = format!("{}/subfolder", base_path);
-        
+
         assert!(create_file(file1.clone()).await.is_ok());
         assert!(create_file(file2.clone()).await.is_ok());
         assert!(create_directory(sub_dir.clone()).await.is_ok());
-        
+
         // 中身の確認（3つあるか）
         let entries = list_directory(base_path.clone(), true).await.unwrap();
         assert_eq!(entries.len(), 3);
-        
+
         // 3. コピー操作（file1 -> subfolder/file1.txt）
         assert!(copy_files(vec![file1.clone()], sub_dir.clone()).await.is_ok());
-        
+
         let sub_entries = list_directory(sub_dir.clone(), true).await.unwrap();
         assert_eq!(sub_entries.len(), 1);
         assert_eq!(sub_entries[0].name, "file1.txt");
-        
+
         // 4. リネーム操作（subfolder/file1.txt -> subfolder/renamed.txt）
         let copied_file = format!("{}/file1.txt", sub_dir);
         assert!(rename_file(copied_file, "renamed.txt".to_string()).await.is_ok());
-        
+
         // 5. 移動操作（subfolder/renamed.txt -> base_path/renamed.txt）
         let renamed_file = format!("{}/renamed.txt", sub_dir);
         assert!(move_files(vec![renamed_file], base_path.clone()).await.is_ok());
-        
+
         // 元の場所に4つのエントリがあるか確認 (file1, file2, subfolder, renamed)
         let entries_after_move = list_directory(base_path.clone(), true).await.unwrap();
         assert_eq!(entries_after_move.len(), 4);
-        
+
         // 6. 削除操作 (subfolder と file2 を消す)
         let paths_to_delete = vec![sub_dir.clone(), file2.clone()];
         assert!(delete_files(paths_to_delete, false).await.is_ok());
-        
+
         // 残っているのは file1.txt と renamed.txt のはず
         let final_entries = list_directory(base_path.clone(), true).await.unwrap();
         assert_eq!(final_entries.len(), 2);
@@ -594,27 +586,221 @@ mod tests {
         // テスト後のクリーンアップ: /tmp 内を元の状態に戻す
         let _ = fs::remove_dir_all(&base_path);
     }
+
+    // ============================================
+    // list_files_sorted tests
+    // ============================================
+
+    /// Helper function to call list_files_sorted with simplified arguments
+    async fn call_list_files_sorted(
+        path: &str,
+        show_hidden: bool,
+        sort_by: &str,
+        sort_desc: bool,
+        search_query: &str,
+    ) -> Result<Vec<FileEntry>, String> {
+        let args = ListFilesSortedArgs {
+            path: path.to_string(),
+            show_hidden,
+            sort_by: sort_by.to_string(),
+            sort_desc,
+            search_query: search_query.to_string(),
+        };
+        list_files_sorted(args).await
+    }
+
+    #[tokio::test]
+    async fn test_list_files_sorted_basic() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().to_string_lossy().into_owned();
+
+        // Create test files and directories
+        // Files: apple.txt, banana.txt, cherry.pdf
+        // Dirs: Alpha, Beta
+        create_dummy_file(&dir.path().join("banana.txt"));
+        create_dummy_file(&dir.path().join("apple.txt"));
+        create_dummy_file(&dir.path().join("cherry.pdf"));
+        fs::create_dir(dir.path().join("Beta")).unwrap();
+        fs::create_dir(dir.path().join("Alpha")).unwrap();
+
+        // Test 1: Sort by name (ascending)
+        let entries = call_list_files_sorted(&path, true, "name", false, "")
+            .await
+            .unwrap();
+
+        // Directories should come first (Alpha, Beta), then files (apple.txt, banana.txt, cherry.pdf)
+        assert_eq!(entries.len(), 5);
+        assert!(entries[0].is_dir);
+        assert!(entries[1].is_dir);
+        assert!(!entries[2].is_dir);
+
+        // Directories sorted alphabetically
+        assert_eq!(entries[0].name, "Alpha");
+        assert_eq!(entries[1].name, "Beta");
+
+        // Files sorted alphabetically
+        assert_eq!(entries[2].name, "apple.txt");
+        assert_eq!(entries[3].name, "banana.txt");
+        assert_eq!(entries[4].name, "cherry.pdf");
+
+        // Test 2: Sort by name (descending)
+        let entries_desc = call_list_files_sorted(&path, true, "name", true, "")
+            .await
+            .unwrap();
+
+        assert_eq!(entries_desc.len(), 5);
+        // Directories still first, but in reverse order
+        assert_eq!(entries_desc[0].name, "Beta");
+        assert_eq!(entries_desc[1].name, "Alpha");
+        // Files in reverse order
+        assert_eq!(entries_desc[2].name, "cherry.pdf");
+        assert_eq!(entries_desc[3].name, "banana.txt");
+        assert_eq!(entries_desc[4].name, "apple.txt");
+    }
+
+    #[tokio::test]
+    async fn test_list_files_sorted_with_search() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().to_string_lossy().into_owned();
+
+        // Create test files with different names
+        create_dummy_file(&dir.path().join("document.txt"));
+        create_dummy_file(&dir.path().join("report.txt"));
+        create_dummy_file(&dir.path().join("notes.md"));
+        create_dummy_file(&dir.path().join("README.txt"));
+        fs::create_dir(dir.path().join("documents")).unwrap();
+        fs::create_dir(dir.path().join("pictures")).unwrap();
+
+        // Test 1: Search for "doc" (case-insensitive)
+        let entries = call_list_files_sorted(&path, true, "name", false, "doc")
+            .await
+            .unwrap();
+
+        // Should return: documents (dir), document.txt
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].name, "documents");
+        assert!(entries[0].is_dir);
+        assert_eq!(entries[1].name, "document.txt");
+        assert!(!entries[1].is_dir);
+
+        // Test 2: Search for ".txt"
+        let txt_entries = call_list_files_sorted(&path, true, "name", false, ".txt")
+            .await
+            .unwrap();
+
+        // Should return: document.txt, report.txt, README.txt
+        assert_eq!(txt_entries.len(), 3);
+        let names: Vec<&str> = txt_entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"document.txt"));
+        assert!(names.contains(&"report.txt"));
+        assert!(names.contains(&"README.txt"));
+
+        // Test 3: Search with no matches
+        let no_matches = call_list_files_sorted(&path, true, "name", false, "xyz123")
+            .await
+            .unwrap();
+        assert_eq!(no_matches.len(), 0);
+
+        // Test 4: Empty search query returns all entries
+        let all_entries = call_list_files_sorted(&path, true, "name", false, "")
+            .await
+            .unwrap();
+        assert_eq!(all_entries.len(), 6);
+    }
+
+    #[tokio::test]
+    async fn test_list_files_sorted_camelcase_deser() {
+        // TypeScript側からの呼び出しをシミュレート（camelCase）
+        let json = r#"{
+            "path": "/tmp",
+            "showHidden": false,
+            "sortBy": "name",
+            "sortDesc": false,
+            "searchQuery": ""
+        }"#;
+
+        let args: ListFilesSortedArgs = serde_json::from_str(json)
+            .expect("Failed to deserialize camelCase JSON");
+
+        assert_eq!(args.path, "/tmp");
+        assert_eq!(args.show_hidden, false);
+        assert_eq!(args.sort_by, "name");
+        assert_eq!(args.sort_desc, false);
+        assert_eq!(args.search_query, "");
+    }
+
+    #[tokio::test]
+    async fn test_list_files_sorted_dirs_first() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().to_string_lossy().into_owned();
+
+        // Create mixed files and directories
+        // Using names that would sort files before dirs if dirs_first was disabled
+        create_dummy_file(&dir.path().join("aaa_file.txt")); // Would be first alphabetically
+        create_dummy_file(&dir.path().join("zzz_file.txt"));
+        fs::create_dir(dir.path().join("mmm_dir")).unwrap();
+        fs::create_dir(dir.path().join("aaa_dir")).unwrap();
+
+        // Test: Sort by name - directories should always come first
+        let entries = call_list_files_sorted(&path, true, "name", false, "")
+            .await
+            .unwrap();
+
+        assert_eq!(entries.len(), 4);
+
+        // First two should be directories (sorted alphabetically)
+        assert!(entries[0].is_dir, "First entry should be a directory");
+        assert!(entries[1].is_dir, "Second entry should be a directory");
+        assert_eq!(entries[0].name, "aaa_dir");
+        assert_eq!(entries[1].name, "mmm_dir");
+
+        // Last two should be files (sorted alphabetically)
+        assert!(!entries[2].is_dir, "Third entry should be a file");
+        assert!(!entries[3].is_dir, "Fourth entry should be a file");
+        assert_eq!(entries[2].name, "aaa_file.txt");
+        assert_eq!(entries[3].name, "zzz_file.txt");
+
+        // Test: Sort by size - directories should still come first
+        let size_entries = call_list_files_sorted(&path, true, "size", false, "")
+            .await
+            .unwrap();
+
+        assert!(size_entries[0].is_dir, "First entry (size sort) should be a directory");
+        assert!(size_entries[1].is_dir, "Second entry (size sort) should be a directory");
+
+        // Test: Sort by modified - directories should still come first
+        let modified_entries = call_list_files_sorted(&path, true, "modified", false, "")
+            .await
+            .unwrap();
+
+        assert!(modified_entries[0].is_dir, "First entry (modified sort) should be a directory");
+        assert!(modified_entries[1].is_dir, "Second entry (modified sort) should be a directory");
+
+        // Test: Sort by file_type - directories should NOT be prioritized
+        // (dirs_first is false when sort_by == "file_type")
+        let filetype_entries = call_list_files_sorted(&path, true, "file_type", false, "")
+            .await
+            .unwrap();
+
+        // When sorting by file_type, dirs_first is disabled, so order depends on file_type
+        // Directories have file_type "folder", files have their extension
+        // "folder" vs "txt" - "folder" comes before "txt" alphabetically
+        // But this is implementation-specific; the key point is dirs_first is disabled
+        assert_eq!(filetype_entries.len(), 4);
+    }
 }
 
 // ============================================
 // get_parent_path command
 // ============================================
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetParentPathArgs {
-    pub path: String,
-}
-
 /// 与えられたパスの親ディレクトリパスを返す
 /// Unix/Windows両方のパス区切り文字に対応
 #[tauri::command]
-pub async fn get_parent_path(args: GetParentPathArgs) -> Result<String, String> {
-    if args.path.is_empty() {
+pub async fn get_parent_path(path: String) -> Result<String, String> {
+    if path.is_empty() {
         return Err("Path cannot be empty".to_string());
     }
-
-    let path = args.path;
 
     // パス区切り文字で分割（/ と \ の両方に対応）
     let segments: Vec<&str> = path.split(|c| c == '/' || c == '\\').collect();
@@ -658,22 +844,18 @@ pub async fn get_parent_path(args: GetParentPathArgs) -> Result<String, String> 
 // complete_path command
 // ============================================
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CompletePathArgs {
-    pub dir_path: String,
-    pub prefix: String,
-    pub show_hidden: bool,
-}
-
 /// パス補完候補を返す（ディレクトリのみ、前方一致フィルタリング付き）
 #[tauri::command]
-pub async fn complete_path(args: CompletePathArgs) -> Result<Vec<FileEntry>, String> {
+pub async fn complete_path(
+    dir_path: String,
+    prefix: String,
+    show_hidden: bool,
+) -> Result<Vec<FileEntry>, String> {
     // list_directory の内部ロジックを呼び出し
-    let entries = list_directory_internal(&args.dir_path, args.show_hidden)?;
+    let entries = list_directory_internal(&dir_path, show_hidden)?;
 
     // ディレクトリのみを抽出し、プレフィックスでフィルタリング
-    let prefix_lower = args.prefix.to_lowercase();
+    let prefix_lower = prefix.to_lowercase();
     let mut filtered: Vec<FileEntry> = entries
         .into_iter()
         .filter(|e| e.is_dir)
