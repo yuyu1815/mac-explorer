@@ -2,6 +2,9 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 pub mod commands;
 
+// Re-export for integration tests
+pub use commands::{file_ops, utils};
+
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

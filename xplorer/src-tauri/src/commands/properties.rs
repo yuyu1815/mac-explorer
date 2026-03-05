@@ -67,6 +67,15 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
         .as_secs() as i64;
 
     let size_bytes = metadata.len();
+    let cluster_size = 4096;
+    let size_on_disk_bytes = if is_dir {
+        0
+    } else if size_bytes == 0 {
+        0
+    } else {
+        size_bytes.div_ceil(cluster_size) * cluster_size
+    };
+
     let is_readonly = metadata.permissions().mode() & 0o222 == 0;
     let is_hidden = name.starts_with('.');
 
@@ -81,11 +90,11 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
         } else {
             format_size(size_bytes)
         },
-        size_on_disk_bytes: 0,
+        size_on_disk_bytes,
         size_on_disk_formatted: if is_dir {
             String::new()
         } else {
-            format_size(size_bytes)
+            format_size(size_on_disk_bytes)
         },
         contains_files: 0,
         contains_folders: 0,
@@ -246,15 +255,20 @@ pub async fn get_detailed_properties_streaming(
         .unwrap_or_default()
         .as_secs() as i64;
 
-    let mut size_bytes = metadata.len();
-    let mut contains_files = 0;
-    let mut contains_folders = 0;
+    let size_bytes = metadata.len();
+    let contains_files = 0;
+    let contains_folders = 0;
+
+    const CLUSTER_SIZE: u64 = 4096;
 
     if is_dir {
         let path_clone = path_buf.clone();
         tokio::task::spawn_blocking(move || {
             let mut dirs_to_visit = vec![path_clone.clone()];
             let mut counter = 0u32;
+            let mut size_bytes = 0u64;
+            let mut contains_files = 0u32;
+            let mut contains_folders = 0u32;
             let emit_interval = 50;
 
             while let Some(current_dir) = dirs_to_visit.pop() {
@@ -271,9 +285,12 @@ pub async fn get_detailed_properties_streaming(
 
                             counter += 1;
                             if counter.is_multiple_of(emit_interval) {
+                                let size_on_disk = if size_bytes == 0 { 0 } else { size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE };
                                 let _ = channel.send(PropertyProgress {
                                     size_bytes,
                                     size_formatted: format_size(size_bytes),
+                                    size_on_disk_bytes: size_on_disk,
+                                    size_on_disk_formatted: format_size(size_on_disk),
                                     contains_files,
                                     contains_folders,
                                     complete: false,
@@ -284,29 +301,34 @@ pub async fn get_detailed_properties_streaming(
                 }
             }
 
+            let size_on_disk = if size_bytes == 0 { 0 } else { size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE };
             let _ = channel.send(PropertyProgress {
                 size_bytes,
                 size_formatted: format_size(size_bytes),
+                size_on_disk_bytes: size_on_disk,
+                size_on_disk_formatted: format_size(size_on_disk),
                 contains_files,
                 contains_folders,
                 complete: true,
             });
         });
     } else {
+        let size_on_disk = if size_bytes == 0 { 0 } else { size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE };
         let _ = channel.send(PropertyProgress {
             size_bytes,
             size_formatted: format_size(size_bytes),
+            size_on_disk_bytes: size_on_disk,
+            size_on_disk_formatted: format_size(size_on_disk),
             contains_files: 0,
             contains_folders: 0,
             complete: true,
         });
     }
 
-    let cluster_size = 4096;
     let size_on_disk_bytes = if size_bytes == 0 {
         0
     } else {
-        size_bytes.div_ceil(cluster_size) * cluster_size
+        size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE
     };
 
     let is_readonly = metadata.permissions().mode() & 0o222 == 0;

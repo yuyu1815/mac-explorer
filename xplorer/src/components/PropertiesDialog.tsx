@@ -7,6 +7,8 @@ import '../styles/components/PropertiesDialog.css';
 interface PropertyProgress {
     size_bytes: number;
     size_formatted: string;
+    size_on_disk_bytes: number;
+    size_on_disk_formatted: string;
     contains_files: number;
     contains_folders: number;
     complete: boolean;
@@ -70,6 +72,8 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
                             ...prev,
                             size_bytes: progress.size_bytes,
                             size_formatted: progress.size_formatted,
+                            size_on_disk_bytes: progress.size_on_disk_bytes,
+                            size_on_disk_formatted: progress.size_on_disk_formatted,
                             contains_files: progress.contains_files,
                             contains_folders: progress.contains_folders,
                         } : null);

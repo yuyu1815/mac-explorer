@@ -24,6 +24,8 @@ pub struct FileEntry {
 pub struct PropertyProgress {
     pub size_bytes: u64,
     pub size_formatted: String,
+    pub size_on_disk_bytes: u64,
+    pub size_on_disk_formatted: String,
     pub contains_files: u32,
     pub contains_folders: u32,
     pub complete: bool,
