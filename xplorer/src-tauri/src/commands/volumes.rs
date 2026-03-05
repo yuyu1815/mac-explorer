@@ -40,19 +40,6 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
         );
     }
 
-    #[cfg(target_os = "linux")]
-    {
-        let (total, free) = get_statvfs_info("/");
-        volumes.push(VolumeInfo {
-            name: "/".to_string(),
-            path: "/".to_string(),
-            total_bytes: total,
-            free_bytes: free,
-            total_bytes_formatted: format_size(total),
-            free_bytes_formatted: format_size(free),
-        });
-    }
-
     Ok(volumes)
 }
 

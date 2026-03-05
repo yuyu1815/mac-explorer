@@ -20,11 +20,6 @@ pub async fn show_properties(path: String) -> Result<(), String> {
             .map_err(|e| format!("Failed to open properties on Mac: {}", e))?;
     }
 
-    #[cfg(target_os = "linux")]
-    {
-        // Linux is highly dependent on the DE. Fallback to nothing.
-    }
-
     Ok(())
 }
 

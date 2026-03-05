@@ -1,6 +1,6 @@
 #![allow(unexpected_cfgs)]
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-mod commands;
+pub mod commands;
 
 use tauri::Manager;
 
