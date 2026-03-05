@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MainPane } from '../../components/MainPane';
 import { useAppStore } from '../../stores/appStore';
 import { invoke } from '@tauri-apps/api/core';
@@ -103,7 +103,9 @@ describe('MainPane — ダブルクリック操作', () => {
         const srcRow = screen.getByText('src').closest('tr')!;
 
         // Act
-        fireEvent.doubleClick(srcRow);
+        await act(async () => {
+            fireEvent.doubleClick(srcRow);
+        });
 
         // Assert
         const tab = useAppStore.getState().tabs[0];
@@ -117,7 +119,9 @@ describe('MainPane — ダブルクリック操作', () => {
         const fileRow = screen.getByText('file1.txt').closest('tr')!;
 
         // Act
-        fireEvent.doubleClick(fileRow);
+        await act(async () => {
+            fireEvent.doubleClick(fileRow);
+        });
 
         // Assert
         await waitFor(() => {
@@ -140,7 +144,9 @@ describe('MainPane — 選択操作とUI反映', () => {
         const row = screen.getByText('file1.txt').closest('tr')!;
 
         // Act
-        fireEvent.click(row);
+        await act(async () => {
+            fireEvent.click(row);
+        });
 
         // Assert
         expect(useAppStore.getState().tabs[0].selectedFiles.has(`${basePath}/file1.txt`)).toBe(true);
@@ -155,8 +161,10 @@ describe('MainPane — 選択操作とUI反映', () => {
         const srcRow = screen.getByText('src').closest('tr')!;
 
         // Act
-        fireEvent.click(file1Row);
-        fireEvent.click(srcRow, { ctrlKey: true });
+        await act(async () => {
+            fireEvent.click(file1Row);
+            fireEvent.click(srcRow, { ctrlKey: true });
+        });
 
         // Assert
         const selected = useAppStore.getState().tabs[0].selectedFiles;
@@ -170,12 +178,16 @@ describe('MainPane — 選択操作とUI反映', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const row = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(row);
+        await act(async () => {
+            fireEvent.click(row);
+        });
         expect(useAppStore.getState().tabs[0].selectedFiles.size).toBe(1);
         const container = row.closest('div[tabindex="0"]')!;
 
         // Act
-        fireEvent.click(container);
+        await act(async () => {
+            fireEvent.click(container);
+        });
 
         // Assert
         expect(useAppStore.getState().tabs[0].selectedFiles.size).toBe(0);
@@ -194,11 +206,15 @@ describe('MainPane — インラインリネーム', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(file1);
+        await act(async () => {
+            fireEvent.click(file1);
+        });
         const container = file1.closest('div[tabIndex="0"]')!;
 
         // Act
-        fireEvent.keyDown(container, { key: 'F2' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'F2' });
+        });
 
         // Assert
         const input = screen.getByTestId('rename-input') as HTMLInputElement;
@@ -211,14 +227,20 @@ describe('MainPane — インラインリネーム', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(file1);
+        await act(async () => {
+            fireEvent.click(file1);
+        });
         const container = file1.closest('div[tabIndex="0"]')!;
-        fireEvent.keyDown(container, { key: 'F2' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'F2' });
+        });
         const input = screen.getByTestId('rename-input');
 
         // Act
-        fireEvent.change(input, { target: { value: 'renamed.txt' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
+        await act(async () => {
+            fireEvent.change(input, { target: { value: 'renamed.txt' } });
+            fireEvent.keyDown(input, { key: 'Enter' });
+        });
 
         // Assert
         await waitFor(() => {
@@ -235,14 +257,20 @@ describe('MainPane — インラインリネーム', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(file1);
+        await act(async () => {
+            fireEvent.click(file1);
+        });
         const container = file1.closest('div[tabIndex="0"]')!;
-        fireEvent.keyDown(container, { key: 'F2' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'F2' });
+        });
         const input = screen.getByTestId('rename-input');
 
         // Act
-        fireEvent.change(input, { target: { value: 'something.txt' } });
-        fireEvent.keyDown(input, { key: 'Escape' });
+        await act(async () => {
+            fireEvent.change(input, { target: { value: 'something.txt' } });
+            fireEvent.keyDown(input, { key: 'Escape' });
+        });
 
         // Assert
         expect(invoke).not.toHaveBeenCalledWith('rename_file', expect.anything());
@@ -254,13 +282,19 @@ describe('MainPane — インラインリネーム', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(file1);
+        await act(async () => {
+            fireEvent.click(file1);
+        });
         const container = file1.closest('div[tabIndex="0"]')!;
-        fireEvent.keyDown(container, { key: 'F2' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'F2' });
+        });
         const input = screen.getByTestId('rename-input');
 
         // Act
-        fireEvent.keyDown(input, { key: 'Enter' });
+        await act(async () => {
+            fireEvent.keyDown(input, { key: 'Enter' });
+        });
 
         // Assert
         expect(invoke).not.toHaveBeenCalledWith('rename_file', expect.anything());
@@ -273,7 +307,9 @@ describe('MainPane — インラインリネーム', () => {
         const container = screen.getByText('file1.txt').closest('div[tabIndex="0"]')!;
 
         // Act
-        fireEvent.keyDown(container, { key: 'F2' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'F2' });
+        });
 
         // Assert
         expect(screen.queryByTestId('rename-input')).not.toBeInTheDocument();
@@ -284,13 +320,19 @@ describe('MainPane — インラインリネーム', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(file1);
+        await act(async () => {
+            fireEvent.click(file1);
+        });
         const container = file1.closest('div[tabIndex="0"]')!;
-        fireEvent.keyDown(container, { key: 'F2' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'F2' });
+        });
         const input = screen.getByTestId('rename-input');
 
         // Act
-        fireEvent.change(input, { target: { value: 'test/file:name.txt' } });
+        await act(async () => {
+            fireEvent.change(input, { target: { value: 'test/file:name.txt' } });
+        });
 
         // Assert
         expect((input as HTMLInputElement).value).toBe('testfilename.txt');
@@ -311,11 +353,15 @@ describe('MainPane — コンテキストメニュー操作', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(file1);
-        fireEvent.contextMenu(file1);
+        await act(async () => {
+            fireEvent.click(file1);
+            fireEvent.contextMenu(file1);
+        });
 
         // Act
-        fireEvent.click(screen.getByText(/名前の変更/));
+        await act(async () => {
+            fireEvent.click(screen.getByText(/名前の変更/));
+        });
 
         // Assert
         const input = screen.getByTestId('rename-input') as HTMLInputElement;
@@ -328,10 +374,14 @@ describe('MainPane — コンテキストメニュー操作', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
-        fireEvent.contextMenu(container);
+        await act(async () => {
+            fireEvent.contextMenu(container);
+        });
 
         // Act
-        fireEvent.click(screen.getByText('フォルダー(F)'));
+        await act(async () => {
+            fireEvent.click(screen.getByText('フォルダー(F)'));
+        });
 
         // Assert
         await waitFor(() => {
@@ -344,10 +394,14 @@ describe('MainPane — コンテキストメニュー操作', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.contextMenu(file1);
+        await act(async () => {
+            fireEvent.contextMenu(file1);
+        });
 
         // Act
-        fireEvent.click(screen.getByText(/削除/));
+        await act(async () => {
+            fireEvent.click(screen.getByText(/削除/));
+        });
 
         // Assert
         expect(window.confirm).toHaveBeenCalled();
@@ -363,10 +417,14 @@ describe('MainPane — コンテキストメニュー操作', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.contextMenu(file1);
+        await act(async () => {
+            fireEvent.contextMenu(file1);
+        });
 
         // Act
-        fireEvent.click(screen.getByText('コピー(C)'));
+        await act(async () => {
+            fireEvent.click(screen.getByText('コピー(C)'));
+        });
 
         // Assert
         expect(useAppStore.getState().clipboard).toEqual({
@@ -376,8 +434,10 @@ describe('MainPane — コンテキストメニュー操作', () => {
 
         // Act
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
-        fireEvent.contextMenu(container);
-        fireEvent.click(screen.getByText(/貼り付け/));
+        await act(async () => {
+            fireEvent.contextMenu(container);
+            fireEvent.click(screen.getByText(/貼り付け/));
+        });
 
         // Assert
         expect(invoke).toHaveBeenCalledWith('copy_files', {
@@ -391,19 +451,27 @@ describe('MainPane — コンテキストメニュー操作', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.contextMenu(file1);
+        await act(async () => {
+            fireEvent.contextMenu(file1);
+        });
 
         // Act
-        fireEvent.click(screen.getByText(/切り取り/));
+        await act(async () => {
+            fireEvent.click(screen.getByText(/切り取り/));
+        });
 
         // Assert
         expect(useAppStore.getState().clipboard?.operation).toBe('cut');
 
         // Act
-        useAppStore.getState().setCurrentPath(`${basePath}/src`);
+        await act(async () => {
+            useAppStore.getState().setCurrentPath(`${basePath}/src`);
+        });
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
-        fireEvent.contextMenu(container);
-        fireEvent.click(screen.getByText(/貼り付け/));
+        await act(async () => {
+            fireEvent.contextMenu(container);
+            fireEvent.click(screen.getByText(/貼り付け/));
+        });
 
         // Assert
         expect(invoke).toHaveBeenCalledWith('move_files', {
@@ -429,11 +497,15 @@ describe('MainPane — キーボード操作', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(file1);
+        await act(async () => {
+            fireEvent.click(file1);
+        });
         const container = file1.closest('div[tabIndex="0"]')!;
 
         // Act
-        fireEvent.keyDown(container, { key: 'Delete' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'Delete' });
+        });
 
         // Assert
         expect(window.confirm).toHaveBeenCalled();
@@ -450,7 +522,9 @@ describe('MainPane — キーボード操作', () => {
         const container = screen.getByText('file1.txt').closest('div[tabIndex="0"]')!;
 
         // Act
-        fireEvent.keyDown(container, { key: 'Delete' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'Delete' });
+        });
 
         // Assert
         expect(window.confirm).not.toHaveBeenCalled();
@@ -470,11 +544,15 @@ describe('MainPane — キャンセル操作', () => {
         render(<MainPane />);
         await waitFor(() => expect(screen.getByText('file1.txt')).toBeInTheDocument());
         const file1 = screen.getByText('file1.txt').closest('tr')!;
-        fireEvent.click(file1);
+        await act(async () => {
+            fireEvent.click(file1);
+        });
         const container = file1.closest('div[tabIndex="0"]')!;
 
         // Act
-        fireEvent.keyDown(container, { key: 'Delete' });
+        await act(async () => {
+            fireEvent.keyDown(container, { key: 'Delete' });
+        });
 
         // Assert
         expect(window.confirm).toHaveBeenCalled();
@@ -496,14 +574,18 @@ describe('MainPane — ソート', () => {
         const nameHeader = screen.getByText('名前').closest('th')!;
 
         // Act
-        fireEvent.click(nameHeader);
+        await act(async () => {
+            fireEvent.click(nameHeader);
+        });
 
         // Assert
         expect(useAppStore.getState().tabs[0].sortBy).toBe('name');
         expect(useAppStore.getState().tabs[0].sortDesc).toBe(true);
 
         // Act
-        fireEvent.click(nameHeader);
+        await act(async () => {
+            fireEvent.click(nameHeader);
+        });
 
         // Assert
         expect(useAppStore.getState().tabs[0].sortDesc).toBe(false);
@@ -516,7 +598,9 @@ describe('MainPane — ソート', () => {
         const sizeHeader = screen.getByText('サイズ').closest('th')!;
 
         // Act
-        fireEvent.click(sizeHeader);
+        await act(async () => {
+            fireEvent.click(sizeHeader);
+        });
 
         // Assert
         expect(useAppStore.getState().tabs[0].sortBy).toBe('size');
@@ -537,7 +621,9 @@ describe('MainPane — タブ操作', () => {
         const callsBefore = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_files_sorted').length;
 
         // Act
-        useAppStore.getState().addTab(basePath);
+        await act(async () => {
+            useAppStore.getState().addTab(basePath);
+        });
 
         // Assert
         await waitFor(() => {
@@ -548,10 +634,14 @@ describe('MainPane — タブ操作', () => {
 
     it('タブ切替時にファイル一覧が再取得される', async () => {
         // Arrange
-        useAppStore.getState().addTab('/another/path');
+        await act(async () => {
+            useAppStore.getState().addTab('/another/path');
+        });
         const tab2Id = useAppStore.getState().activeTabId;
         const tab1Id = useAppStore.getState().tabs[0].id;
-        useAppStore.getState().setActiveTab(tab1Id);
+        await act(async () => {
+            useAppStore.getState().setActiveTab(tab1Id);
+        });
         render(<MainPane />);
         await waitFor(() => {
             expect(invoke).toHaveBeenCalledWith('list_files_sorted', { path: basePath, showHidden: false, sortBy: 'name', sortDesc: false, searchQuery: '' });
@@ -559,7 +649,9 @@ describe('MainPane — タブ操作', () => {
         const callsBefore = vi.mocked(invoke).mock.calls.filter(c => c[0] === 'list_files_sorted').length;
 
         // Act
-        useAppStore.getState().setActiveTab(tab2Id);
+        await act(async () => {
+            useAppStore.getState().setActiveTab(tab2Id);
+        });
 
         // Assert
         await waitFor(() => {
