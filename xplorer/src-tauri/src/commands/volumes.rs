@@ -7,38 +7,35 @@ use super::utils::format_size;
 pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
     let mut volumes = Vec::new();
 
-    #[cfg(target_os = "macos")]
-    {
-        if let Ok(entries) = fs::read_dir("/Volumes") {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                let name = entry.file_name().to_string_lossy().into_owned();
-                let path_str = path.to_string_lossy().into_owned();
+    if let Ok(entries) = fs::read_dir("/Volumes") {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let path_str = path.to_string_lossy().into_owned();
 
-                let (total, free) = get_statvfs_info(&path_str);
-                volumes.push(VolumeInfo {
-                    name,
-                    path: path_str,
-                    total_bytes: total,
-                    free_bytes: free,
-                    total_bytes_formatted: format_size(total),
-                    free_bytes_formatted: format_size(free),
-                });
-            }
-        }
-        let (total, free) = get_statvfs_info("/");
-        volumes.insert(
-            0,
-            VolumeInfo {
-                name: "Macintosh HD".to_string(),
-                path: "/".to_string(),
+            let (total, free) = get_statvfs_info(&path_str);
+            volumes.push(VolumeInfo {
+                name,
+                path: path_str,
                 total_bytes: total,
                 free_bytes: free,
                 total_bytes_formatted: format_size(total),
                 free_bytes_formatted: format_size(free),
-            },
-        );
+            });
+        }
     }
+    let (total, free) = get_statvfs_info("/");
+    volumes.insert(
+        0,
+        VolumeInfo {
+            name: "Macintosh HD".to_string(),
+            path: "/".to_string(),
+            total_bytes: total,
+            free_bytes: free,
+            total_bytes_formatted: format_size(total),
+            free_bytes_formatted: format_size(free),
+        },
+    );
 
     Ok(volumes)
 }

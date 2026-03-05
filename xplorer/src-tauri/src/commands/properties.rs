@@ -7,19 +7,15 @@ use super::utils::{format_size, format_timestamp};
 
 #[tauri::command]
 pub async fn show_properties(path: String) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        let script = format!(
-            "tell application \"Finder\" to open information window of (POSIX file \"{}\" as alias)",
-            path
-        );
-        std::process::Command::new("osascript")
-            .arg("-e")
-            .arg(&script)
-            .spawn()
-            .map_err(|e| format!("Failed to open properties on Mac: {}", e))?;
-    }
-
+    let script = format!(
+        "tell application \"Finder\" to open information window of (POSIX file \"{}\" as alias)",
+        path
+    );
+    std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .spawn()
+        .map_err(|e| format!("Failed to open properties: {}", e))?;
     Ok(())
 }
 

@@ -29,7 +29,6 @@ pub fn format_timestamp(ts: i64) -> String {
 #[tauri::command]
 pub async fn get_home_dir() -> Result<String, String> {
     std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| "Could not determine home directory".to_string())
 }
 
@@ -62,12 +61,10 @@ pub async fn get_parent_path(path: String) -> Result<String, String> {
 /// デフォルトアプリでファイルを開く
 #[tauri::command]
 pub async fn open_file_default(path: String) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
     std::process::Command::new("open")
         .arg(&path)
         .spawn()
         .map_err(|e| e.to_string())?;
-
     Ok(())
 }
 
@@ -79,18 +76,15 @@ pub async fn open_terminal_at(path: String) -> Result<(), String> {
         return Err(format!("Not a directory: {}", path));
     }
 
-    #[cfg(target_os = "macos")]
-    {
-        let script = format!(
-            "tell application \"Terminal\"\n  activate\n  do script \"cd '{}'\"\nend tell",
-            path.replace('\'', "'\\''")
-        );
-        std::process::Command::new("osascript")
-            .arg("-e")
-            .arg(&script)
-            .spawn()
-            .map_err(|e| format!("Failed to open terminal: {}", e))?;
-    }
+    let script = format!(
+        "tell application \"Terminal\"\n  activate\n  do script \"cd '{}'\"\nend tell",
+        path.replace('\'', "'\\''")
+    );
+    std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .spawn()
+        .map_err(|e| format!("Failed to open terminal: {}", e))?;
 
     Ok(())
 }

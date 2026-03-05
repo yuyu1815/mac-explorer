@@ -19,7 +19,6 @@ fn hash_id(id: &str) -> String {
 }
 
 /// アイコンバイナリ取得（キャッシュ付き）
-#[cfg(target_os = "macos")]
 pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
     // 1. メモリキャッシュ
     if let Some(data) = ICON_CACHE.get(id) {
@@ -114,9 +113,4 @@ pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
     }
 
     Some(png_data)
-}
-
-#[cfg(not(target_os = "macos"))]
-pub fn get_icon_binary(_id: &str) -> Option<Vec<u8>> {
-    None
 }
