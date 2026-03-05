@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, Channel } from '@tauri-apps/api/core';
 import { FileIcon } from './MainPane';
 import { useAppStore } from '../stores/appStore';
 import '../styles/components/PropertiesDialog.css';
+
+interface PropertyProgress {
+    size_bytes: number;
+    size_formatted: string;
+    contains_files: number;
+    contains_folders: number;
+    complete: boolean;
+}
 
 interface PropertiesDialogProps {
     path: string;
@@ -40,19 +48,53 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
     const iconId = entry?.icon_id || (isDir ? 'dir' : '');
 
     useEffect(() => {
+        let mounted = true;
+
         const fetchProperties = async () => {
             try {
                 setLoading(true);
-                const data: DetailedProperties = await invoke('get_detailed_properties', { path });
+                // まず基本情報を取得
+                const data: DetailedProperties = await invoke('get_basic_properties', { path });
+                if (!mounted) return;
                 setProps(data);
                 setNameInputValue(data.name);
+
+                // フォルダの場合は即座にUIを表示して、バックグラウンドで計算
+                if (data.file_type === 'ファイル フォルダー') {
+                    setLoading(false);
+
+                    const channel = new Channel<PropertyProgress>((progress) => {
+                        if (!mounted) return;
+                        // 進捗をリアルタイムに反映
+                        setProps(prev => prev ? {
+                            ...prev,
+                            size_bytes: progress.size_bytes,
+                            size_formatted: progress.size_formatted,
+                            contains_files: progress.contains_files,
+                            contains_folders: progress.contains_folders,
+                        } : null);
+                    });
+
+                    await invoke('get_detailed_properties_streaming', {
+                        path,
+                        channel,
+                    });
+                } else {
+                    setLoading(false);
+                }
             } catch (err: any) {
-                setError(err.toString());
-            } finally {
-                setLoading(false);
+                if (mounted) {
+                    setError(err.toString());
+                    setLoading(false);
+                }
             }
         };
+
         fetchProperties();
+
+        return () => {
+            mounted = false;
+        };
     }, [path]);
 
     return (
