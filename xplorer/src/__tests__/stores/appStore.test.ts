@@ -17,7 +17,6 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 describe('AppStore - Tab Management', () => {
     beforeEach(() => {
-        // Reset store
         useAppStore.setState({
             tabs: [{
                 id: 'default-tab',
@@ -37,25 +36,40 @@ describe('AppStore - Tab Management', () => {
     });
 
     it('should add a new tab', () => {
+        // Arrange
         const store = useAppStore.getState();
+
+        // Act
         store.addTab('/test');
+
+        // Assert
         expect(useAppStore.getState().tabs.length).toBe(2);
         expect(useAppStore.getState().tabs[1].currentPath).toBe('/test');
     });
 
     it('should switch active tab', () => {
+        // Arrange
         const store = useAppStore.getState();
         store.addTab('/test');
         const newTabId = useAppStore.getState().tabs[1].id;
+
+        // Act
         store.setActiveTab(newTabId);
+
+        // Assert
         expect(useAppStore.getState().activeTabId).toBe(newTabId);
     });
 
     it('should close a tab', () => {
+        // Arrange
         const store = useAppStore.getState();
         store.addTab('/test');
         const idToClose = useAppStore.getState().tabs[0].id;
+
+        // Act
         store.closeTab(idToClose);
+
+        // Assert
         expect(useAppStore.getState().tabs.length).toBe(1);
         expect(useAppStore.getState().tabs[0].currentPath).toBe('/test');
     });
@@ -82,8 +96,13 @@ describe('AppStore - Navigation', () => {
     });
 
     it('should update path and history', () => {
+        // Arrange
         const store = useAppStore.getState();
+
+        // Act
         store.setCurrentPath('/users');
+
+        // Assert
         const activeTab = useAppStore.getState().tabs[0];
         expect(activeTab.currentPath).toBe('/users');
         expect(activeTab.history).toContain('/users');
@@ -91,21 +110,33 @@ describe('AppStore - Navigation', () => {
     });
 
     it('should go back and forward', () => {
+        // Arrange
         const store = useAppStore.getState();
         store.setCurrentPath('/a');
         store.setCurrentPath('/b');
-        
+
+        // Act
         store.goBack();
+
+        // Assert
         expect(useAppStore.getState().tabs[0].currentPath).toBe('/a');
-        
+
+        // Act
         store.goForward();
+
+        // Assert
         expect(useAppStore.getState().tabs[0].currentPath).toBe('/b');
     });
 
     it('should go up to parent directory', async () => {
+        // Arrange
         const store = useAppStore.getState();
         store.setCurrentPath('/parent/child');
+
+        // Act
         await store.goUp();
+
+        // Assert
         const activeTab = useAppStore.getState().tabs[0];
         expect(activeTab.currentPath).toBe('/parent');
     });
@@ -137,31 +168,54 @@ describe('AppStore - Selection and Clipboard', () => {
     });
 
     it('should toggle selection', () => {
+        // Arrange
         const store = useAppStore.getState();
+
+        // Act
         store.toggleSelection('/f1.txt');
+
+        // Assert
         expect(useAppStore.getState().tabs[0].selectedFiles.has('/f1.txt')).toBe(true);
-        
+
+        // Act
         store.toggleSelection('/f1.txt');
+
+        // Assert
         expect(useAppStore.getState().tabs[0].selectedFiles.has('/f1.txt')).toBe(false);
     });
 
     it('should select all', () => {
+        // Arrange
         const store = useAppStore.getState();
+
+        // Act
         store.selectAll();
+
+        // Assert
         expect(useAppStore.getState().tabs[0].selectedFiles.size).toBe(3);
     });
 
     it('should clear selection', () => {
+        // Arrange
         const store = useAppStore.getState();
         store.selectAll();
+
+        // Act
         store.clearSelection();
+
+        // Assert
         expect(useAppStore.getState().tabs[0].selectedFiles.size).toBe(0);
     });
 
     it('should set clipboard', () => {
+        // Arrange
         const store = useAppStore.getState();
         const clip = { files: ['/f1.txt'], operation: 'copy' as const };
+
+        // Act
         store.setClipboard(clip);
+
+        // Assert
         expect(useAppStore.getState().clipboard).toEqual(clip);
     });
 });

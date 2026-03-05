@@ -3,60 +3,142 @@ mod format_size {
 
     #[test]
     fn test_zero_bytes() {
-        assert_eq!(format_size(0), "0 B");
+        // Arrange
+        let input = 0;
+        let expected = "0 B";
+
+        // Act
+        let result = format_size(input);
+
+        // Assert
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn test_one_byte() {
-        assert_eq!(format_size(1), "1 B");
+        // Arrange
+        let input = 1;
+        let expected = "1 B";
+
+        // Act
+        let result = format_size(input);
+
+        // Assert
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn test_bytes_boundary() {
-        assert_eq!(format_size(1023), "1023 B");
-        assert_eq!(format_size(1024), "1.0 KB");
+        // Arrange
+        let just_under_kb = 1023;
+        let exactly_kb = 1024;
+
+        // Act
+        let result_under = format_size(just_under_kb);
+        let result_exact = format_size(exactly_kb);
+
+        // Assert
+        assert_eq!(result_under, "1023 B");
+        assert_eq!(result_exact, "1.0 KB");
     }
 
     #[test]
     fn test_kilobytes() {
-        assert_eq!(format_size(1536), "1.5 KB");
-        assert_eq!(format_size(2048), "2.0 KB");
+        // Arrange
+        let one_half_kb = 1536;
+        let two_kb = 2048;
+
+        // Act
+        let result_1_5 = format_size(one_half_kb);
+        let result_2 = format_size(two_kb);
+
+        // Assert
+        assert_eq!(result_1_5, "1.5 KB");
+        assert_eq!(result_2, "2.0 KB");
     }
 
     #[test]
     fn test_kb_mb_boundary() {
-        assert_eq!(format_size(1048575).ends_with("KB"), true);
-        assert_eq!(format_size(1024 * 1024), "1.0 MB");
+        // Arrange
+        let just_under_mb: u64 = 1048575;
+        let exactly_mb: u64 = 1024 * 1024;
+
+        // Act
+        let result_under = format_size(just_under_mb);
+        let result_exact = format_size(exactly_mb);
+
+        // Assert
+        assert!(result_under.ends_with("KB"));
+        assert_eq!(result_exact, "1.0 MB");
     }
 
     #[test]
     fn test_megabytes() {
-        assert_eq!(format_size(1572864), "1.5 MB");
-        assert_eq!(format_size(10 * 1024 * 1024), "10.0 MB");
+        // Arrange
+        let one_half_mb = 1572864;
+        let ten_mb = 10 * 1024 * 1024;
+
+        // Act
+        let result_1_5 = format_size(one_half_mb);
+        let result_10 = format_size(ten_mb);
+
+        // Assert
+        assert_eq!(result_1_5, "1.5 MB");
+        assert_eq!(result_10, "10.0 MB");
     }
 
     #[test]
     fn test_mb_gb_boundary() {
+        // Arrange
         let just_under_gb: u64 = 1024 * 1024 * 1024 - 1;
-        assert!(format_size(just_under_gb).ends_with("MB"));
-        assert_eq!(format_size(1024 * 1024 * 1024), "1.0 GB");
+        let exactly_gb: u64 = 1024 * 1024 * 1024;
+
+        // Act
+        let result_under = format_size(just_under_gb);
+        let result_exact = format_size(exactly_gb);
+
+        // Assert
+        assert!(result_under.ends_with("MB"));
+        assert_eq!(result_exact, "1.0 GB");
     }
 
     #[test]
     fn test_gigabytes() {
-        assert_eq!(format_size(1536 * 1024 * 1024), "1.5 GB");
-        assert_eq!(format_size(10 * 1024 * 1024 * 1024), "10.0 GB");
+        // Arrange
+        let one_half_gb: u64 = 1536 * 1024 * 1024;
+        let ten_gb: u64 = 10 * 1024 * 1024 * 1024;
+
+        // Act
+        let result_1_5 = format_size(one_half_gb);
+        let result_10 = format_size(ten_gb);
+
+        // Assert
+        assert_eq!(result_1_5, "1.5 GB");
+        assert_eq!(result_10, "10.0 GB");
     }
 
     #[test]
     fn test_large_values() {
+        // Arrange
         let tb: u64 = 1000 * 1024 * 1024 * 1024;
-        assert_eq!(format_size(tb), "1000.0 GB");
+        let expected = "1000.0 GB";
+
+        // Act
+        let result = format_size(tb);
+
+        // Assert
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn test_max_value() {
-        let result = format_size(u64::MAX);
+        // Arrange
+        let max_value = u64::MAX;
+
+        // Act
+        let result = format_size(max_value);
+
+        // Assert
         assert!(result.ends_with("GB"));
     }
 }
@@ -66,25 +148,51 @@ mod format_timestamp {
 
     #[test]
     fn test_zero_timestamp() {
-        assert_eq!(format_timestamp(0), "");
+        // Arrange
+        let input = 0;
+        let expected = "";
+
+        // Act
+        let result = format_timestamp(input);
+
+        // Assert
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn test_unix_epoch() {
-        let result = format_timestamp(1);
+        // Arrange
+        let input = 1;
+
+        // Act
+        let result = format_timestamp(input);
+
+        // Assert
         assert!(!result.is_empty());
     }
 
     #[test]
     fn test_known_date() {
-        let result = format_timestamp(1704067200);
+        // Arrange
+        let input = 1704067200; // 2024-01-01
+
+        // Act
+        let result = format_timestamp(input);
+
+        // Assert
         assert!(result.contains("2024"));
         assert!(result.contains("01"));
     }
 
     #[test]
     fn test_negative_timestamp_far_past() {
-        let result = format_timestamp(-1);
+        // Arrange
+        let input = -1;
+
+        // Act
+        let result = format_timestamp(input);
+
+        // Assert
         assert!(!result.is_empty() || result.is_empty());
     }
 }
@@ -94,41 +202,81 @@ mod get_parent_path {
 
     #[tokio::test]
     async fn test_empty_path() {
-        let result = get_parent_path("".to_string()).await;
+        // Arrange
+        let input = "".to_string();
+
+        // Act
+        let result = get_parent_path(input).await;
+
+        // Assert
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_root_path() {
-        let result = get_parent_path("/".to_string()).await;
+        // Arrange
+        let input = "/".to_string();
+        let expected = "/";
+
+        // Act
+        let result = get_parent_path(input).await;
+
+        // Assert
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "/");
+        assert_eq!(result.unwrap(), expected);
     }
 
     #[tokio::test]
     async fn test_single_directory() {
-        let result = get_parent_path("/Users".to_string()).await;
+        // Arrange
+        let input = "/Users".to_string();
+        let expected = "/";
+
+        // Act
+        let result = get_parent_path(input).await;
+
+        // Assert
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "/");
+        assert_eq!(result.unwrap(), expected);
     }
 
     #[tokio::test]
     async fn test_nested_path() {
-        let result = get_parent_path("/Users/yuyu/Documents".to_string()).await;
+        // Arrange
+        let input = "/Users/yuyu/Documents".to_string();
+        let expected = "/Users/yuyu";
+
+        // Act
+        let result = get_parent_path(input).await;
+
+        // Assert
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "/Users/yuyu");
+        assert_eq!(result.unwrap(), expected);
     }
 
     #[tokio::test]
     async fn test_deeply_nested_path() {
-        let result = get_parent_path("/a/b/c/d/e/f".to_string()).await;
+        // Arrange
+        let input = "/a/b/c/d/e/f".to_string();
+        let expected = "/a/b/c/d/e";
+
+        // Act
+        let result = get_parent_path(input).await;
+
+        // Assert
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "/a/b/c/d/e");
+        assert_eq!(result.unwrap(), expected);
     }
 
     #[tokio::test]
     async fn test_trailing_slash() {
-        let result = get_parent_path("/Users/yuyu/".to_string()).await;
+        // Arrange
+        let input = "/Users/yuyu/".to_string();
+
+        // Act
+        let result = get_parent_path(input).await;
+
+        // Assert
         assert!(result.is_ok());
         let parent = result.unwrap();
         assert!(parent == "/Users" || parent == "/Users/yuyu");
@@ -136,14 +284,27 @@ mod get_parent_path {
 
     #[tokio::test]
     async fn test_relative_path() {
-        let result = get_parent_path("folder/subfolder".to_string()).await;
+        // Arrange
+        let input = "folder/subfolder".to_string();
+        let expected = "folder";
+
+        // Act
+        let result = get_parent_path(input).await;
+
+        // Assert
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "folder");
+        assert_eq!(result.unwrap(), expected);
     }
 
     #[tokio::test]
     async fn test_single_relative_directory() {
-        let result = get_parent_path("folder".to_string()).await;
+        // Arrange
+        let input = "folder".to_string();
+
+        // Act
+        let result = get_parent_path(input).await;
+
+        // Assert
         assert!(result.is_ok());
         let parent = result.unwrap();
         assert!(parent.is_empty() || parent == "folder");
@@ -155,7 +316,12 @@ mod get_home_dir {
 
     #[tokio::test]
     async fn test_returns_home() {
+        // Arrange - no setup needed for home directory
+
+        // Act
         let result = get_home_dir().await;
+
+        // Assert
         assert!(result.is_ok());
         let home = result.unwrap();
         assert!(!home.is_empty());
@@ -170,47 +336,69 @@ mod create_directory {
 
     #[tokio::test]
     async fn test_create_single_directory() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let new_dir = temp.path().join("new_folder");
 
+        // Act
         let result = create_directory(new_dir.to_string_lossy().to_string()).await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(new_dir.exists());
     }
 
     #[tokio::test]
     async fn test_create_nested_directories() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let nested = temp.path().join("a/b/c/d/e");
 
+        // Act
         let result = create_directory(nested.to_string_lossy().to_string()).await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(nested.exists());
     }
 
     #[tokio::test]
     async fn test_create_existing_directory() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let existing = temp.path().join("existing");
         fs::create_dir(&existing).unwrap();
 
+        // Act
         let result = create_directory(existing.to_string_lossy().to_string()).await;
+
+        // Assert
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_create_directory_with_special_chars() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let special = temp.path().join("folder with spaces");
 
+        // Act
         let result = create_directory(special.to_string_lossy().to_string()).await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(special.exists());
     }
 
     #[tokio::test]
     async fn test_create_directory_invalid_path() {
-        let result = create_directory("/root/unauthorized_dir_test".to_string()).await;
+        // Arrange
+        let invalid_path = "/root/unauthorized_dir_test".to_string();
+
+        // Act
+        let result = create_directory(invalid_path).await;
+
+        // Assert
         assert!(result.is_err());
     }
 }
@@ -223,44 +411,58 @@ mod create_file {
 
     #[tokio::test]
     async fn test_create_simple_file() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("test.txt");
 
+        // Act
         let result = create_file(file_path.to_string_lossy().to_string()).await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(file_path.exists());
     }
 
     #[tokio::test]
     async fn test_create_file_overwrites_existing() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("existing.txt");
-
         let mut file = fs::File::create(&file_path).unwrap();
         file.write_all(b"original content").unwrap();
 
+        // Act
         let result = create_file(file_path.to_string_lossy().to_string()).await;
-        assert!(result.is_ok());
 
+        // Assert
+        assert!(result.is_ok());
         let metadata = fs::metadata(&file_path).unwrap();
         assert_eq!(metadata.len(), 0);
     }
 
     #[tokio::test]
     async fn test_create_file_with_extension() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("document.pdf");
 
+        // Act
         let result = create_file(file_path.to_string_lossy().to_string()).await;
+
+        // Assert
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_create_file_nonexistent_parent() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("nonexistent/test.txt");
 
+        // Act
         let result = create_file(file_path.to_string_lossy().to_string()).await;
+
+        // Assert
         assert!(result.is_err());
     }
 }
@@ -272,20 +474,22 @@ mod copy_files {
 
     #[tokio::test]
     async fn test_copy_single_file() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let src = temp.path().join("source.txt");
         let dest_dir = temp.path().join("dest");
-
         fs::write(&src, "test content").unwrap();
         fs::create_dir(&dest_dir).unwrap();
 
+        // Act
         let result = copy_files(
             vec![src.to_string_lossy().to_string()],
             dest_dir.to_string_lossy().to_string(),
         )
         .await;
-        assert!(result.is_ok());
 
+        // Assert
+        assert!(result.is_ok());
         let copied = dest_dir.join("source.txt");
         assert!(copied.exists());
         assert_eq!(fs::read_to_string(&copied).unwrap(), "test content");
@@ -293,10 +497,10 @@ mod copy_files {
 
     #[tokio::test]
     async fn test_copy_multiple_files() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
-
         let files: Vec<_> = (0..5)
             .map(|i| {
                 let path = temp.path().join(format!("file{}.txt", i));
@@ -305,9 +509,11 @@ mod copy_files {
             })
             .collect();
 
+        // Act
         let result = copy_files(files, dest_dir.to_string_lossy().to_string()).await;
-        assert!(result.is_ok());
 
+        // Assert
+        assert!(result.is_ok());
         for i in 0..5 {
             assert!(dest_dir.join(format!("file{}.txt", i)).exists());
         }
@@ -315,42 +521,53 @@ mod copy_files {
 
     #[tokio::test]
     async fn test_copy_nonexistent_file_skipped() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
+        // Act
         let result = copy_files(
             vec!["/nonexistent/file.txt".to_string()],
             dest_dir.to_string_lossy().to_string(),
         )
         .await;
+
+        // Assert
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_copy_empty_list() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
+        // Act
         let result = copy_files(vec![], dest_dir.to_string_lossy().to_string()).await;
+
+        // Assert
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_copy_directory_skipped() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let src_dir = temp.path().join("source_dir");
         let dest_dir = temp.path().join("dest");
-
         fs::create_dir(&src_dir).unwrap();
         fs::create_dir(&dest_dir).unwrap();
 
+        // Act
         let result = copy_files(
             vec![src_dir.to_string_lossy().to_string()],
             dest_dir.to_string_lossy().to_string(),
         )
         .await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(!dest_dir.join("source_dir").exists());
     }
@@ -364,30 +581,32 @@ mod move_files {
 
     #[tokio::test]
     async fn test_move_single_file() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let src = temp.path().join("source.txt");
         let dest_dir = temp.path().join("dest");
-
         fs::write(&src, "test content").unwrap();
         fs::create_dir(&dest_dir).unwrap();
 
+        // Act
         let result = move_files(
             vec![src.to_string_lossy().to_string()],
             dest_dir.to_string_lossy().to_string(),
         )
         .await;
-        assert!(result.is_ok());
 
+        // Assert
+        assert!(result.is_ok());
         assert!(!src.exists());
         assert!(dest_dir.join("source.txt").exists());
     }
 
     #[tokio::test]
     async fn test_move_multiple_files() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
-
         let files: Vec<_> = (0..3)
             .map(|i| {
                 let path = temp.path().join(format!("file{}.txt", i));
@@ -396,9 +615,11 @@ mod move_files {
             })
             .collect();
 
+        // Act
         let result = move_files(files.clone(), dest_dir.to_string_lossy().to_string()).await;
-        assert!(result.is_ok());
 
+        // Assert
+        assert!(result.is_ok());
         for f in &files {
             assert!(!Path::new(f).exists());
         }
@@ -409,15 +630,19 @@ mod move_files {
 
     #[tokio::test]
     async fn test_move_nonexistent_file_skipped() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
+        // Act
         let result = move_files(
             vec!["/nonexistent/file.txt".to_string()],
             dest_dir.to_string_lossy().to_string(),
         )
         .await;
+
+        // Assert
         assert!(result.is_ok());
     }
 }
@@ -430,17 +655,22 @@ mod delete_files {
 
     #[tokio::test]
     async fn test_delete_single_file() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let file = temp.path().join("to_delete.txt");
         fs::write(&file, "content").unwrap();
 
+        // Act
         let result = delete_files(vec![file.to_string_lossy().to_string()], false).await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(!file.exists());
     }
 
     #[tokio::test]
     async fn test_delete_directory_with_contents() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let dir = temp.path().join("to_delete");
         fs::create_dir(&dir).unwrap();
@@ -448,26 +678,33 @@ mod delete_files {
         fs::create_dir(dir.join("subdir")).unwrap();
         fs::write(dir.join("subdir/file2.txt"), "content").unwrap();
 
+        // Act
         let result = delete_files(vec![dir.to_string_lossy().to_string()], false).await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(!dir.exists());
     }
 
     #[tokio::test]
     async fn test_delete_empty_directory() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let dir = temp.path().join("empty_dir");
         fs::create_dir(&dir).unwrap();
 
+        // Act
         let result = delete_files(vec![dir.to_string_lossy().to_string()], false).await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(!dir.exists());
     }
 
     #[tokio::test]
     async fn test_delete_multiple_files() {
+        // Arrange
         let temp = TempDir::new().unwrap();
-
         let files: Vec<_> = (0..3)
             .map(|i| {
                 let path = temp.path().join(format!("file{}.txt", i));
@@ -476,7 +713,10 @@ mod delete_files {
             })
             .collect();
 
+        // Act
         let result = delete_files(files.clone(), false).await;
+
+        // Assert
         assert!(result.is_ok());
         for f in &files {
             assert!(!Path::new(f).exists());
@@ -485,17 +725,27 @@ mod delete_files {
 
     #[tokio::test]
     async fn test_delete_nonexistent_file_skipped() {
-        let result = delete_files(vec!["/nonexistent/file.txt".to_string()], false).await;
+        // Arrange
+        let nonexistent = "/nonexistent/file.txt".to_string();
+
+        // Act
+        let result = delete_files(vec![nonexistent], false).await;
+
+        // Assert
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_delete_to_trash() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let file = temp.path().join("to_trash.txt");
         fs::write(&file, "content").unwrap();
 
+        // Act
         let result = delete_files(vec![file.to_string_lossy().to_string()], true).await;
+
+        // Assert
         assert!(result.is_ok() || result.is_err());
     }
 }
@@ -507,15 +757,19 @@ mod rename_file {
 
     #[tokio::test]
     async fn test_rename_file() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let old = temp.path().join("old_name.txt");
         fs::write(&old, "content").unwrap();
 
+        // Act
         let result = rename_file(
             old.to_string_lossy().to_string(),
             "new_name.txt".to_string(),
         )
         .await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(!old.exists());
         assert!(temp.path().join("new_name.txt").exists());
@@ -523,13 +777,17 @@ mod rename_file {
 
     #[tokio::test]
     async fn test_rename_directory() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let old = temp.path().join("old_dir");
         fs::create_dir(&old).unwrap();
         fs::write(old.join("file.txt"), "content").unwrap();
 
+        // Act
         let result =
             rename_file(old.to_string_lossy().to_string(), "new_dir".to_string()).await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(!old.exists());
         assert!(temp.path().join("new_dir").exists());
@@ -538,32 +796,40 @@ mod rename_file {
 
     #[tokio::test]
     async fn test_rename_with_special_chars() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let old = temp.path().join("old.txt");
         fs::write(&old, "content").unwrap();
 
+        // Act
         let result = rename_file(
             old.to_string_lossy().to_string(),
             "file with spaces.txt".to_string(),
         )
         .await;
+
+        // Assert
         assert!(result.is_ok());
         assert!(temp.path().join("file with spaces.txt").exists());
     }
 
     #[tokio::test]
     async fn test_rename_to_existing_name() {
+        // Arrange
         let temp = TempDir::new().unwrap();
         let old = temp.path().join("old.txt");
         let existing = temp.path().join("existing.txt");
         fs::write(&old, "old content").unwrap();
         fs::write(&existing, "existing content").unwrap();
 
+        // Act
         let result = rename_file(
             old.to_string_lossy().to_string(),
             "existing.txt".to_string(),
         )
         .await;
+
+        // Assert
         assert!(result.is_ok() || result.is_err());
     }
 }

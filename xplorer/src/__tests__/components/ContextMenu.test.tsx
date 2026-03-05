@@ -53,39 +53,53 @@ describe('ContextMenu — 空白右クリック（targetPath=null）', () => {
     });
 
     it('「表示」「並び替え」「最新の情報に更新」等が表示される', () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
+        // Act - component renders on mount
+
+        // Assert
         expect(screen.getByText('表示(V) ▸')).toBeInTheDocument();
         expect(screen.getByText('並べ替え(O) ▸')).toBeInTheDocument();
         expect(screen.getByText(/最新の情報/)).toBeInTheDocument();
         expect(screen.getByText(/貼り付け/)).toBeInTheDocument();
         expect(screen.getByText(/新規作成/)).toBeInTheDocument();
-
         expect(screen.queryByText(/切り取り/)).not.toBeInTheDocument();
         expect(screen.queryByText(/コピー/)).not.toBeInTheDocument();
         expect(screen.queryByText(/名前の変更/)).not.toBeInTheDocument();
     });
 
     it('clipboard=null のとき「貼り付け」は半透明（opacity: 0.5）', () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
+        // Act
         const pasteItem = screen.getByText('貼り付け(P)').parentElement as HTMLElement;
+
+        // Assert
         expect(pasteItem.classList.contains('disabled')).toBe(true);
     });
 
     it('clipboardにデータがあるとき「貼り付け」は有効（opacity: 1）', () => {
+        // Arrange
         setupStore({ clipboard: { files: [`${basePath}/file1.txt`], operation: 'copy' } });
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
+        // Act
         const pasteItem = screen.getByText('貼り付け(P)').parentElement as HTMLElement;
+
+        // Assert
         expect(pasteItem.classList.contains('disabled')).toBe(false);
     });
 
     it('新規作成の下層にあるフォルダをクリックすると onCreateFolder が呼ばれる', async () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={null} />);
 
+        // Act
         fireEvent.click(screen.getByText('フォルダー(F)'));
 
+        // Assert
         await waitFor(() => {
             expect(defaultProps.onCreateFolder).toHaveBeenCalled();
         });
@@ -106,8 +120,12 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
     });
 
     it('「開く」「切り取り」「コピー」「名前変更」「削除」が全て表示される', () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
 
+        // Act - component renders on mount
+
+        // Assert
         expect(screen.getByText(/開く/)).toBeInTheDocument();
         expect(screen.getByText(/切り取り/)).toBeInTheDocument();
         expect(screen.getByText('コピー(C)')).toBeInTheDocument();
@@ -116,38 +134,61 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
     });
 
     it('切り取りクリックでクリップボードに "cut" がセットされる', () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
+
+        // Act
         fireEvent.click(screen.getByText(/切り取り/));
+
+        // Assert
         expect(useAppStore.getState().clipboard).toEqual({ files: [targetFile], operation: 'cut' });
     });
 
     it('コピークリックでクリップボードに "copy" がセットされる', () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
+
+        // Act
         fireEvent.click(screen.getByText('コピー(C)'));
+
+        // Assert
         expect(useAppStore.getState().clipboard).toEqual({ files: [targetFile], operation: 'copy' });
     });
 
     it('名前変更で onStartRename が呼ばれる（promptは使わない）', () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
+
+        // Act
         fireEvent.click(screen.getByText(/名前の変更/));
+
+        // Assert
         expect(defaultProps.onStartRename).toHaveBeenCalledWith(targetFile);
     });
 
     it('削除の confirm → delete_files が呼ばれる', async () => {
+        // Arrange
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
+
+        // Act
         fireEvent.click(screen.getByText(/削除/));
 
+        // Assert
         await waitFor(() => {
             expect(invoke).toHaveBeenCalledWith('delete_files', { paths: [targetFile], toTrash: true });
         });
     });
 
     it('削除の confirm キャンセルで delete_files は呼ばれない', async () => {
+        // Arrange
         vi.spyOn(window, 'confirm').mockReturnValue(false);
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
+
+        // Act
         fireEvent.click(screen.getByText(/削除/));
 
+        // Assert
         await waitFor(() => {
             expect(defaultProps.onClose).toHaveBeenCalled();
         });
@@ -155,9 +196,13 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
     });
 
     it('開くクリックで open_file_default が呼ばれる', async () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
+
+        // Act
         fireEvent.click(screen.getByText(/開く/));
 
+        // Assert
         await waitFor(() => {
             expect(invoke).toHaveBeenCalledWith('open_file_default', { path: targetFile });
         });
@@ -178,20 +223,27 @@ describe('ContextMenu — 複数選択時の制御', () => {
     });
 
     it('複数選択時は「開く」と「名前変更」が表示されない', () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={`${basePath}/file1.txt`} />);
 
+        // Act - component renders on mount
+
+        // Assert
         expect(screen.queryByText(/開く/)).not.toBeInTheDocument();
         expect(screen.queryByText(/名前の変更/)).not.toBeInTheDocument();
-
         expect(screen.getByText(/切り取り/)).toBeInTheDocument();
         expect(screen.getByText('コピー(C)')).toBeInTheDocument();
         expect(screen.getByText(/削除/)).toBeInTheDocument();
     });
 
     it('複数選択の切り取りで全ファイルがクリップボードに入る', () => {
+        // Arrange
         render(<ContextMenu {...defaultProps} targetPath={`${basePath}/file1.txt`} />);
+
+        // Act
         fireEvent.click(screen.getByText(/切り取り/));
 
+        // Assert
         const clip = useAppStore.getState().clipboard!;
         expect(clip.files).toContain(`${basePath}/file1.txt`);
         expect(clip.files).toContain(`${basePath}/file2.txt`);
@@ -199,10 +251,14 @@ describe('ContextMenu — 複数選択時の制御', () => {
     });
 
     it('複数選択の削除で全ファイルが delete_files に渡される', async () => {
+        // Arrange
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         render(<ContextMenu {...defaultProps} targetPath={`${basePath}/file1.txt`} />);
+
+        // Act
         fireEvent.click(screen.getByText(/削除/));
 
+        // Assert
         await waitFor(() => {
             expect(invoke).toHaveBeenCalledWith('delete_files', {
                 paths: expect.arrayContaining([`${basePath}/file1.txt`, `${basePath}/file2.txt`]),
@@ -214,18 +270,21 @@ describe('ContextMenu — 複数選択時の制御', () => {
 
 describe('ContextMenu — 外クリックで閉じる', () => {
     it('メニュー外をクリックすると onClose が呼ばれる', () => {
+        // Arrange
         setupStore();
         vi.mocked(invoke).mockResolvedValue([]);
         const onClose = vi.fn();
 
+        // Act
         render(
             <div>
                 <div data-testid="outside">外側</div>
                 <ContextMenu {...defaultProps} targetPath={null} onClose={onClose} />
             </div>
         );
-
         fireEvent.mouseDown(screen.getByTestId('outside'));
+
+        // Assert
         expect(onClose).toHaveBeenCalled();
     });
 });
