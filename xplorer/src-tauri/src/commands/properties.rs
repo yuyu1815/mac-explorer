@@ -32,20 +32,38 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
     let is_dir = metadata.is_dir();
     let size_bytes = metadata.len();
 
+    let name = path_buf.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.clone());
+    let (contains_files, contains_folders) = (0, 0);
+    
+    // タイムスタンプ取得の共通化
+    let to_ts = |t: std::io::Result<std::time::SystemTime>| {
+        t.ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_secs() as i64).unwrap_or(0)
+    };
+
+    let file_type = if is_dir {
+        "ファイル フォルダー".to_string()
+    } else {
+        path_buf.extension()
+            .map(|ext| format!("{} ファイル", ext.to_string_lossy().to_uppercase()))
+            .unwrap_or_else(|| "ファイル".to_string())
+    };
+
+    let size_on_disk = if is_dir || size_bytes == 0 { 0 } else { size_bytes.div_ceil(4096) * 4096 };
+
     Ok(DetailedProperties {
-        name: path_buf.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.clone()),
+        name,
         path,
-        file_type: if is_dir { "ファイル フォルダー".to_string() } else { path_buf.extension().map(|ext| format!("{} ファイル", ext.to_string_lossy().to_uppercase())).unwrap_or_else(|| "ファイル".to_string()) },
+        file_type,
         location: path_buf.parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default(),
         size_bytes,
         size_formatted: if is_dir { "計算中...".to_string() } else { format_size(size_bytes) },
-        size_on_disk_bytes: if is_dir || size_bytes == 0 { 0 } else { size_bytes.div_ceil(4096) * 4096 },
-        size_on_disk_formatted: if is_dir { String::new() } else { format_size(size_bytes.div_ceil(4096) * 4096) },
-        contains_files: 0,
-        contains_folders: 0,
-        created_formatted: format_timestamp(metadata.created().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_secs() as i64).unwrap_or(0)),
-        modified_formatted: format_timestamp(metadata.modified().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_secs() as i64).unwrap_or(0)),
-        accessed_formatted: format_timestamp(metadata.accessed().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_secs() as i64).unwrap_or(0)),
+        size_on_disk_bytes: size_on_disk,
+        size_on_disk_formatted: if is_dir { String::new() } else { format_size(size_on_disk) },
+        contains_files,
+        contains_folders,
+        created_formatted: format_timestamp(to_ts(metadata.created())),
+        modified_formatted: format_timestamp(to_ts(metadata.modified())),
+        accessed_formatted: format_timestamp(to_ts(metadata.accessed())),
         is_readonly: metadata.permissions().mode() & 0o222 == 0,
         is_hidden: path_buf.file_name().map(|n| n.to_string_lossy().starts_with('.')).unwrap_or(false),
     })
@@ -57,27 +75,36 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
     let mut props = get_basic_properties(path.clone()).await?;
     let path_buf = std::path::PathBuf::from(&path);
 
-    if props.file_type == "ファイル フォルダー" {
-        let mut stack = vec![path_buf];
-        while let Some(current) = stack.pop() {
-            if let Ok(entries) = std::fs::read_dir(current) {
-                for entry in entries.flatten() {
-                    if let Ok(meta) = entry.metadata() {
-                        if meta.is_dir() {
-                            props.contains_folders += 1;
-                            stack.push(entry.path());
-                        } else {
-                            props.contains_files += 1;
-                            props.size_bytes += meta.len();
-                        }
-                    }
-                }
+    if props.file_type != "ファイル フォルダー" {
+        return Ok(props);
+    }
+
+    let mut stack = vec![path_buf];
+    while let Some(current) = stack.pop() {
+        let entries = match std::fs::read_dir(current) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        for entry in entries.flatten() {
+            let meta = match entry.metadata() {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+
+            if meta.is_dir() {
+                props.contains_folders += 1;
+                stack.push(entry.path());
+            } else {
+                props.contains_files += 1;
+                props.size_bytes += meta.len();
             }
         }
-        props.size_formatted = format_size(props.size_bytes);
-        props.size_on_disk_bytes = props.size_bytes.div_ceil(4096) * 4096;
-        props.size_on_disk_formatted = format_size(props.size_on_disk_bytes);
     }
+    
+    props.size_formatted = format_size(props.size_bytes);
+    props.size_on_disk_bytes = props.size_bytes.div_ceil(4096) * 4096;
+    props.size_on_disk_formatted = format_size(props.size_on_disk_bytes);
     Ok(props)
 }
 
@@ -85,57 +112,55 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
 #[tauri::command]
 pub async fn get_detailed_properties_streaming(path: String, channel: tauri::ipc::Channel<PropertyProgress>) -> Result<DetailedProperties, String> {
     let props = get_basic_properties(path.clone()).await?;
-    if props.file_type == "ファイル フォルダー" {
-        let path_clone = std::path::PathBuf::from(&path);
-        tokio::task::spawn_blocking(move || {
-            let mut stack = vec![path_clone];
-            let mut size = 0u64;
-            let mut files = 0u32;
-            let mut folders = 0u32;
-            let mut counter = 0u32;
+    if props.file_type != "ファイル フォルダー" {
+        let sod = props.size_bytes.div_ceil(4096) * 4096;
+        let _ = channel.send(PropertyProgress { size_bytes: props.size_bytes, size_formatted: props.size_formatted.clone(), size_on_disk_bytes: sod, size_on_disk_formatted: format_size(sod), contains_files: 0, contains_folders: 0, complete: true });
+        return Ok(props);
+    }
 
-            while let Some(curr) = stack.pop() {
-                let entries = match std::fs::read_dir(curr) {
-                    Ok(e) => e,
+    let path_clone = std::path::PathBuf::from(&path);
+    tokio::task::spawn_blocking(move || {
+        let mut stack = vec![path_clone];
+        let (mut size, mut files, mut folders, mut counter) = (0u64, 0u32, 0u32, 0u32);
+
+        while let Some(curr) = stack.pop() {
+            let entries = match std::fs::read_dir(curr) {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+
+            for entry in entries.flatten() {
+                let m = match entry.metadata() {
+                    Ok(m) => m,
                     Err(_) => continue,
                 };
 
-                for entry in entries.flatten() {
-                    let m = match entry.metadata() {
-                        Ok(m) => m,
-                        Err(_) => continue,
-                    };
-
-                    if m.is_dir() {
-                        folders += 1;
-                        stack.push(entry.path());
-                    } else {
-                        files += 1;
-                        size += m.len();
-                    }
-
-                    if (counter % 50) == 0 {
-                        let sod = size.div_ceil(4096) * 4096;
-                        let _ = channel.send(PropertyProgress {
-                            size_bytes: size,
-                            size_formatted: format_size(size),
-                            size_on_disk_bytes: sod,
-                            size_on_disk_formatted: format_size(sod),
-                            contains_files: files,
-                            contains_folders: folders,
-                            complete: false,
-                        });
-                    }
-                    counter += 1;
+                if m.is_dir() {
+                    folders += 1;
+                    stack.push(entry.path());
+                } else {
+                    files += 1;
+                    size += m.len();
                 }
-            }
 
-            let sod = size.div_ceil(4096) * 4096;
-            let _ = channel.send(PropertyProgress { size_bytes: size, size_formatted: format_size(size), size_on_disk_bytes: sod, size_on_disk_formatted: format_size(sod), contains_files: files, contains_folders: folders, complete: true });
-        });
-    } else {
-        let sod = props.size_bytes.div_ceil(4096) * 4096;
-        let _ = channel.send(PropertyProgress { size_bytes: props.size_bytes, size_formatted: props.size_formatted.clone(), size_on_disk_bytes: sod, size_on_disk_formatted: format_size(sod), contains_files: 0, contains_folders: 0, complete: true });
-    }
+                if (counter % 50) == 0 {
+                    let sod = size.div_ceil(4096) * 4096;
+                    let _ = channel.send(PropertyProgress {
+                        size_bytes: size,
+                        size_formatted: format_size(size),
+                        size_on_disk_bytes: sod,
+                        size_on_disk_formatted: format_size(sod),
+                        contains_files: files,
+                        contains_folders: folders,
+                        complete: false,
+                    });
+                }
+                counter += 1;
+            }
+        }
+
+        let sod = size.div_ceil(4096) * 4096;
+        let _ = channel.send(PropertyProgress { size_bytes: size, size_formatted: format_size(size), size_on_disk_bytes: sod, size_on_disk_formatted: format_size(sod), contains_files: files, contains_folders: folders, complete: true });
+    });
     Ok(props)
 }
