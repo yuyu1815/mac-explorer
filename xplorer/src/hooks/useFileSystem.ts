@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileEntry } from '../types';
+import { useAppStore } from '../stores/appStore';
 
 interface UseFileSystemProps {
     currentPath: string;
@@ -13,9 +14,10 @@ interface UseFileSystemProps {
 }
 
 export const useFileSystem = ({ currentPath, showHidden, sortParams, searchQuery }: UseFileSystemProps) => {
-    const [files, setFiles] = useState<FileEntry[]>([]);
+    const [files, setFilesLocal] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const setFilesGlobal = useAppStore(state => state.setFiles);
 
     const sortBy = sortParams.sortBy;
     const sortDesc = sortParams.sortDesc;
@@ -32,14 +34,15 @@ export const useFileSystem = ({ currentPath, showHidden, sortParams, searchQuery
                 sortDesc,
                 searchQuery,
             });
-            setFiles(result);
+            setFilesLocal(result);
+            setFilesGlobal(result);
         } catch (err) {
             console.error('Failed to list files:', err);
             setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);
         }
-    }, [currentPath, showHidden, sortBy, sortDesc, searchQuery]);
+    }, [currentPath, showHidden, sortBy, sortDesc, searchQuery, setFilesGlobal]);
 
     useEffect(() => {
         refreshFiles();

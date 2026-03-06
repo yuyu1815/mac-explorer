@@ -619,7 +619,7 @@ export const MainPane = () => {
                                     startRename(file.path);
                                 }, 500);
                             }
-                            hookToggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, index);
+                            hookToggleSelection(file.path, e.ctrlKey || e.metaKey, e.shiftKey, index);
                         }}
                         onDoubleClick={(e) => {
                             e.stopPropagation();
@@ -674,7 +674,7 @@ export const MainPane = () => {
                                 setRenamingPath(file.path);
                             }, 500);
                         }
-                        hookToggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, index);
+                        hookToggleSelection(file.path, e.ctrlKey || e.metaKey, e.shiftKey, index);
                     }}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
@@ -718,7 +718,7 @@ export const MainPane = () => {
                                 startRename(file.path);
                             }, 500);
                         }
-                        hookToggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, index);
+                        hookToggleSelection(file.path, e.ctrlKey || e.metaKey, e.shiftKey, index);
                     }}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
@@ -762,7 +762,7 @@ export const MainPane = () => {
                                 startRename(file.path);
                             }, 500);
                         }
-                        hookToggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, index);
+                        hookToggleSelection(file.path, e.ctrlKey || e.metaKey, e.shiftKey, index);
                     }}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
@@ -851,58 +851,6 @@ export const MainPane = () => {
         </div>
     );
 
-    const handleMarqueeStart = (e: React.MouseEvent) => {
-        if (e.button !== 0) return;
-        if ((e.target as HTMLElement).closest('.file-item')) return;
-        if ((e.target as HTMLElement).closest('th')) return;
-        if ((e.target as HTMLElement).closest('.win32-context-menu')) return;
-
-        const pane = containerRef.current;
-        if (!pane) return;
-
-        const rect = pane.getBoundingClientRect();
-        const startX = e.clientX - rect.left + pane.scrollLeft;
-        const startY = e.clientY - rect.top + pane.scrollTop;
-
-        onMouseDown(e); // Hook's marquee start
-
-        const onMove = (ev: MouseEvent) => {
-            onMouseMove(ev); // Hook's marquee move
-
-            const mx = ev.clientX - rect.left + pane.scrollLeft;
-            const my = ev.clientY - rect.top + pane.scrollTop;
-
-            const selX = Math.min(startX, mx);
-            const selY = Math.min(startY, my);
-            const selW = Math.abs(mx - startX);
-            const selH = Math.abs(my - startY);
-
-            const items = pane.querySelectorAll('.file-item');
-            const newSelected = new Set<string>();
-            items.forEach((item: any) => {
-                const ir = item.getBoundingClientRect();
-                const itemX = ir.left - rect.left + pane.scrollLeft;
-                const itemY = ir.top - rect.top + pane.scrollTop;
-                if (itemX < selX + selW && itemX + ir.width > selX &&
-                    itemY < selY + selH && itemY + ir.height > selY) {
-                    const path = item.dataset.filepath;
-                    if (path) newSelected.add(path);
-                }
-            });
-        };
-
-        const onUp = () => {
-            onMouseUp(); // Hook's marquee end
-            marqueeJustEnded.current = true;
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            setTimeout(() => { marqueeJustEnded.current = false; }, 0);
-        };
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-    };
-
     const marqueeRect = marquee ? {
         left: Math.min(marquee.x1, marquee.x2),
         top: Math.min(marquee.y1, marquee.y2),
@@ -914,7 +862,13 @@ export const MainPane = () => {
         <div
             ref={containerRef}
             className={styles.paneContainer}
-            onClick={() => { if (!renamingPath && !marquee && !marqueeJustEnded.current) clearSelection(); }}
+            onClick={(e) => {
+                if (renamingPath) {
+                    commitRename();
+                } else if (!marquee && !marqueeJustEnded.current) {
+                    clearSelection();
+                }
+            }}
             onDoubleClick={(e) => {
                 if ((e.target as HTMLElement).closest('.file-item')) return;
                 if ((e.target as HTMLElement).closest('th')) return;
@@ -922,7 +876,10 @@ export const MainPane = () => {
             }}
             onContextMenu={(e) => handleContextMenu(e, null)}
             onKeyDown={handleKeyDown}
-            onMouseDown={handleMarqueeStart}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseUp}
             onWheel={(e) => {
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();

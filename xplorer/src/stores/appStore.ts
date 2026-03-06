@@ -140,6 +140,10 @@ export const useAppStore = create<AppState>((set) => ({
         tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, selectedFiles: new Set() } : tab)
     })),
 
+    setSelectedFiles: (paths: Set<string>) => set((state) => ({
+        tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, selectedFiles: paths } : tab)
+    })),
+
     selectAll: () => set((state) => ({
         tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, selectedFiles: new Set(tab.files.map(f => f.path)) } : tab)
     })),
