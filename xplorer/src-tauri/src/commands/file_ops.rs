@@ -55,9 +55,13 @@ pub async fn delete_files(paths: Vec<String>, to_trash: bool) -> Result<(), Stri
         return trash::delete_all(&paths).map_err(|e| format!("Failed to move to trash: {}", e));
     }
     for path in paths.iter().filter(|p| std::path::Path::new(p).exists()) {
-        let p = std::path::Path::new(path);
-        if p.is_dir() { fs::remove_dir_all(path).map_err(|e| format!("Failed to delete dir {}: {}", path, e))?; }
-        else { fs::remove_file(path).map_err(|e| format!("Failed to delete file {}: {}", path, e))?; }
+        let meta = fs::metadata(path).map_err(|e| e.to_string())?;
+        let res = if meta.is_dir() {
+            fs::remove_dir_all(path)
+        } else {
+            fs::remove_file(path)
+        };
+        res.map_err(|e| format!("削除失敗 ({}): {}", path, e))?;
     }
     Ok(())
 }

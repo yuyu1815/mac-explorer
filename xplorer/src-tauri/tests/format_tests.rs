@@ -66,7 +66,7 @@ mod format_size {
 
     #[test]
     fn test_max_value() {
-        assert!(format_size(u64::MAX).ends_with("GB"));
+        assert!(format_size(u64::MAX).ends_with("EB"));
     }
 }
 

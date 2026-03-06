@@ -85,8 +85,11 @@ pub async fn list_archive_internal(archive_path: &str, inner_path: &str) -> Resu
 /// 物理パスと仮想パス（アーカイブ内パス）の両方を自動的に判定して処理します。
 #[tauri::command]
 pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
+    // アーカイブ内のパスであれば内部リストアを返す
     if let Some((archive_path, inner_path)) = split_archive_path(&path) {
-        if !Path::new(&path).is_dir() { return list_archive_internal(&archive_path, &inner_path).await; }
+        if !Path::new(&path).is_dir() {
+            return list_archive_internal(&archive_path, &inner_path).await;
+        }
     }
 
     Ok(fs::read_dir(&path).map_err(|e| e.to_string())?

@@ -5,7 +5,7 @@ use std::time::SystemTime;
 /// # Arguments
 /// * `bytes` - フォーマット対象のサイズ（バイト）
 pub fn format_size(bytes: u64) -> String {
-    let units = ["B", "KB", "MB", "GB", "TB"];
+    let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"];
     let mut size = bytes as f64;
     let mut idx = 0;
 
@@ -50,8 +50,17 @@ pub async fn get_home_dir() -> Result<String, String> {
 #[tauri::command]
 pub async fn get_parent_path(path: String) -> Result<String, String> {
     let p = std::path::Path::new(&path);
+    
+    // ルートディレクトリの場合は自身を返す、あるいはパス構成がない場合はエラー
+    if path == "/" {
+        return Ok("/".to_string());
+    }
+
     p.parent()
-        .map(|parent| parent.to_string_lossy().into_owned())
+        .map(|parent| {
+            let s = parent.to_string_lossy().into_owned();
+            if s.is_empty() { ".".to_string() } else { s }
+        })
         .ok_or_else(|| "No parent directory".to_string())
 }
 
