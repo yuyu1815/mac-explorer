@@ -10,7 +10,7 @@ import {
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
 
 export const Toolbar = () => {
-    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes } = useAppStore();
+    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes, openProgressDialog, updateProgressDialog, closeProgressDialog } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -176,10 +176,14 @@ export const Toolbar = () => {
 
             const channel = new Channel<any>();
             channel.onmessage = (progress) => {
-                console.log('Compression progress:', progress);
+                updateProgressDialog(progress);
+                if (progress.complete) {
+                    setTimeout(() => closeProgressDialog(), 500);
+                }
             };
 
             const format = getArchiveFormat(archivePath);
+            openProgressDialog('compress', '圧縮しています...');
             const result = await invoke('compress_archive', {
                 sources: Array.from(selectedFiles),
                 destArchivePath: archivePath,
@@ -194,6 +198,7 @@ export const Toolbar = () => {
         } catch (err) {
             console.error('Compression failed:', err);
             alert(`圧縮に失敗しました: ${err}`);
+            closeProgressDialog();
         }
     };
 
@@ -207,9 +212,13 @@ export const Toolbar = () => {
 
             const channel = new Channel<any>();
             channel.onmessage = (progress) => {
-                console.log('Extraction progress:', progress);
+                updateProgressDialog(progress);
+                if (progress.complete) {
+                    setTimeout(() => closeProgressDialog(), 500);
+                }
             };
 
+            openProgressDialog('extract', '展開しています...');
             const result = await invoke('extract_archive', {
                 archivePath: targetPath,
                 destDir: destDir,
@@ -223,6 +232,7 @@ export const Toolbar = () => {
         } catch (err) {
             console.error('Extraction failed:', err);
             alert(`解凍に失敗しました: ${err}`);
+            closeProgressDialog();
         }
     };
 

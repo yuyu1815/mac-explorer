@@ -6,6 +6,7 @@ import { MainPane } from './components/MainPane';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
 import { DetailsPane } from './components/DetailsPane';
+import { ProgressDialog } from './components/ProgressDialog';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
 
@@ -74,6 +75,7 @@ function App() {
         {showDetailsPane && <DetailsPane />}
       </div>
       <StatusBar />
+      <ProgressDialog />
     </div>
   );
 }

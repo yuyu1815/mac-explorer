@@ -14,7 +14,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreateFolder }: ContextMenuProps) => {
-    const { tabs, activeTabId, setFiles, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog } = useAppStore();
+    const { tabs, activeTabId, setFiles, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, openProgressDialog, updateProgressDialog, closeProgressDialog } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -88,10 +88,14 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
 
             const channel = new Channel<any>();
             channel.onmessage = (progress) => {
-                console.log('Compression progress:', progress);
+                updateProgressDialog(progress);
+                if (progress.complete) {
+                    setTimeout(() => closeProgressDialog(), 500);
+                }
             };
 
             const format = getArchiveFormat(archivePath);
+            openProgressDialog('compress', '圧縮しています...');
             const result = await invoke('compress_archive', {
                 sources: pathsToActOn,
                 destArchivePath: archivePath,
@@ -106,6 +110,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
         } catch (err) {
             console.error('Compression failed:', err);
             alert(`圧縮に失敗しました: ${err}`);
+            closeProgressDialog();
         }
     };
 
@@ -117,9 +122,13 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
 
             const channel = new Channel<any>();
             channel.onmessage = (progress) => {
-                console.log('Extraction progress:', progress);
+                updateProgressDialog(progress);
+                if (progress.complete) {
+                    setTimeout(() => closeProgressDialog(), 500);
+                }
             };
 
+            openProgressDialog('extract', '展開しています...');
             const result = await invoke('extract_archive', {
                 archivePath: targetPath,
                 destDir: destDir,
@@ -133,6 +142,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
         } catch (err) {
             console.error('Extraction failed:', err);
             alert(`解凍に失敗しました: ${err}`);
+            closeProgressDialog();
         }
     };
 
