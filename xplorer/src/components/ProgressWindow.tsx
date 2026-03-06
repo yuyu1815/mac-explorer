@@ -118,11 +118,11 @@ const IntegratedSpeedGraph: React.FC<{
         ctx.fillStyle = '#60cdff'; // Windows 10/11 Progress Light Blue
         ctx.fill();
 
-        // 進行地点（現在速度）から右端への白い横線
+        // 速度レベルを示す白い横線 (0%から100%まで)
         ctx.beginPath();
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
-        ctx.moveTo(currentX, lastY);
+        ctx.moveTo(0, lastY);
         ctx.lineTo(w, lastY);
         ctx.stroke();
 
@@ -202,7 +202,7 @@ export const ProgressWindow: React.FC = () => {
                 return;
             }
 
-            const rawDelta = Math.max(0, now - prevBytesRef.current);
+            const rawDelta = Math.max(0, now - prevBytesRef.current) * 5; // 0.2s間隔なので5倍して秒換算
             prevBytesRef.current = now;
 
             const alpha = 0.3;
@@ -215,7 +215,7 @@ export const ProgressWindow: React.FC = () => {
 
             setSpeedHistory(prev => {
                 const next = [...prev, speed];
-                return next.length > 60 ? next.slice(-60) : next;
+                return next.length > 100 ? next.slice(-100) : next; // 0.2s * 100 = 20s分を表示
             });
 
             const elapsed = (Date.now() - startTimeRef.current) / 1000;
@@ -225,7 +225,7 @@ export const ProgressWindow: React.FC = () => {
                 const estSeconds = remaining / avgSpeed;
                 setTimeRemaining(formatTimeRemaining(estSeconds));
             }
-        }, 1000);
+        }, 200);
 
         return () => {
             if (speedTimerRef.current) clearInterval(speedTimerRef.current);

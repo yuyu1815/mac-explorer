@@ -234,7 +234,7 @@ pub async fn compress_archive(
 
         let mut files_processed = 0u32;
         let mut bytes_processed = 0u64;
-        let emit_interval = 50;
+        let emit_interval = 10;
 
         for (file_path, _file_size) in file_list {
             control.check()?;
@@ -402,7 +402,7 @@ pub async fn extract_archive(
         let mut files_processed = 0u32;
         let mut bytes_processed = 0u64;
         let mut errors: Vec<String> = Vec::new();
-        let emit_interval = 50;
+        let emit_interval = 10;
 
         // アーカイブ内のファイルの解凍後合計サイズをプログレスの分母とする
         let total_bytes = total_uncompressed_bytes;
@@ -496,8 +496,8 @@ pub async fn extract_archive(
                                 }
                                 bytes_processed += n as u64;
 
-                                // 約50MBごとに進捗を送信（巨大ファイルの途中でプログレスバーを動かすため）
-                                if bytes_processed - last_emit_bytes >= 50 * 1024 * 1024 {
+                                // 約1MBごとに進捗を送信（リアルタイム性向上のため50MBから1MBへ）
+                                if bytes_processed - last_emit_bytes >= 1024 * 1024 {
                                     let _ = channel.send(ExtractionProgress {
                                         current_file: entry_path.to_string(),
                                         files_processed,
