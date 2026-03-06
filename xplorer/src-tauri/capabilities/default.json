@@ -11,6 +11,9 @@
     "clipboard-manager:default",
     "opener:default",
     "core:window:allow-start-dragging",
-    "core:window:default"
+    "core:window:default",
+    "core:window:allow-create",
+    "core:window:allow-close",
+    "core:webview:allow-create-webview-window"
   ]
 }
