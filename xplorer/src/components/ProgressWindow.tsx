@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { invoke, Channel } from '@tauri-apps/api/core';
+import { emit } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { InsufficientSpaceDialog } from './InsufficientSpaceDialog';
 
 export interface ProgressData {
     current_file: string;
@@ -13,11 +15,11 @@ export interface ProgressData {
 
 // 速度の人間可読フォーマット
 const formatSpeed = (bytesPerSec: number): string => {
-    if (bytesPerSec <= 0) return '0 bytes/秒';
-    if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} bytes/秒`;
-    if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/秒`;
-    if (bytesPerSec < 1024 * 1024 * 1024) return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/秒`;
-    return `${(bytesPerSec / (1024 * 1024 * 1024)).toFixed(2)} GB/秒`;
+    if (bytesPerSec <= 0) return '0 bytes/s';
+    if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} bytes/s`;
+    if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+    if (bytesPerSec < 1024 * 1024 * 1024) return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+    return `${(bytesPerSec / (1024 * 1024 * 1024)).toFixed(2)} GB/s`;
 };
 
 // バイト数の人間可読フォーマット
@@ -43,8 +45,12 @@ const formatTimeRemaining = (seconds: number): string => {
     return `約 ${h} 時間 ${m} 分`;
 };
 
-// Windows 10風 速度グラフコンポーネント
-const SpeedGraph: React.FC<{ speedHistory: number[] }> = ({ speedHistory }) => {
+// Windows 10風 グラフ一体型プログレスバー
+const IntegratedSpeedGraph: React.FC<{
+    speedHistory: number[];
+    percentage: number; // 0 to 100
+    currentSpeedText: string;
+}> = ({ speedHistory, percentage, currentSpeedText }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -58,13 +64,15 @@ const SpeedGraph: React.FC<{ speedHistory: number[] }> = ({ speedHistory }) => {
 
         ctx.clearRect(0, 0, w, h);
 
-        // 背景
-        ctx.fillStyle = '#f5f5f5';
+        // 背景 (ダークグレー)
+        ctx.fillStyle = '#1e1e1e';
         ctx.fillRect(0, 0, w, h);
 
-        // グリッド横線
-        ctx.strokeStyle = '#e0e0e0';
+        // グリッド線 (マス目)
+        ctx.strokeStyle = '#333333';
         ctx.lineWidth = 1;
+
+        // 横線
         for (let i = 1; i < 4; i++) {
             const y = Math.round((h / 4) * i) + 0.5;
             ctx.beginPath();
@@ -72,88 +80,123 @@ const SpeedGraph: React.FC<{ speedHistory: number[] }> = ({ speedHistory }) => {
             ctx.lineTo(w, y);
             ctx.stroke();
         }
+        // 縦線
+        for (let i = 1; i < 10; i++) {
+            const x = Math.round((w / 10) * i) + 0.5;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, h);
+            ctx.stroke();
+        }
 
-        if (speedHistory.length < 2) return;
+        const currentX = (percentage / 100) * w;
+        if (currentX <= 0) return;
 
-        const maxSpeed = Math.max(...speedHistory, 1);
-        const step = w / (60 - 1); // 60秒分のグラフ
-
-        // 塗りつぶし領域（薄緑）
+        // --- 塗りつぶし領域（プログレスバー部分: 水色） ---
+        // 速度グラフを描画するが、グラフの横幅は0からcurrentXまで
         ctx.beginPath();
         ctx.moveTo(0, h);
+
+        const maxSpeed = Math.max(...speedHistory, 1);
+        const step = currentX / Math.max(speedHistory.length - 1, 1);
+
+        let lastY = h;
+
         speedHistory.forEach((speed, i) => {
             const x = i * step;
-            const y = h - (speed / maxSpeed) * (h - 4);
+            // 高さの計算 (下部20%〜100%の範囲に収める)
+            const y = h - (speed / maxSpeed) * (h * 0.8) - (h * 0.1);
             if (i === 0) ctx.lineTo(x, y);
             else ctx.lineTo(x, y);
+            lastY = y;
         });
-        ctx.lineTo((speedHistory.length - 1) * step, h);
+
+        // 右下の角へ
+        ctx.lineTo(currentX, h);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(6, 176, 37, 0.15)';
+
+        ctx.fillStyle = '#60cdff'; // Windows 10/11 Progress Light Blue
         ctx.fill();
 
-        // 速度線（濃い緑）
+        // 進行地点（現在速度）から右端への白い横線
         ctx.beginPath();
-        ctx.strokeStyle = '#06b025';
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
-        speedHistory.forEach((speed, i) => {
-            const x = i * step;
-            const y = h - (speed / maxSpeed) * (h - 4);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        });
+        ctx.moveTo(currentX, lastY);
+        ctx.lineTo(w, lastY);
         ctx.stroke();
 
+        // 速度テキストの描画 (白い線の少し上、右寄せ)
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px "Segoe UI", sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`速度: ${currentSpeedText}`, w - 8, lastY - 4);
+
         // 枠線
-        ctx.strokeStyle = '#bcbcbc';
+        ctx.strokeStyle = '#444444';
         ctx.lineWidth = 1;
         ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-    }, [speedHistory]);
+    }, [speedHistory, percentage, currentSpeedText]);
 
     return (
         <canvas
             ref={canvasRef}
-            width={360}
-            height={80}
-            style={{ width: '100%', height: '80px', display: 'block' }}
+            width={480}
+            height={70}
+            style={{ width: '100%', height: '70px', display: 'block', border: '1px solid #444' }}
         />
     );
 };
 
-import { InsufficientSpaceDialog } from './InsufficientSpaceDialog';
-
 export const ProgressWindow: React.FC = () => {
     const [progress, setProgress] = useState<ProgressData | null>(null);
-    const [title, setTitle] = useState('準備中...');
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [insufficientSpace, setInsufficientSpace] = useState<{
         required: number; available: number; path: string;
     } | null>(null);
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
     const [speedHistory, setSpeedHistory] = useState<number[]>([]);
     const [currentSpeed, setCurrentSpeed] = useState(0);
     const [timeRemaining, setTimeRemaining] = useState<string>('計算中...');
+    const [isPaused, setIsPaused] = useState(false);
+
+    // ExtractPromptのpayload用
+    const [actionInfo, setActionInfo] = useState<{ action: string, dest: string }>({ action: 'コピー', dest: '' });
 
     const prevBytesRef = useRef(-1); // -1 = 未初期化
     const startTimeRef = useRef(Date.now());
     const speedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const progressRef = useRef<ProgressData | null>(null);
     const smoothedSpeedRef = useRef(0); // EMA用
+    const isPausedRef = useRef(false);
 
-    // progressが更新されるたびにrefも更新
+    const togglePause = () => {
+        setIsPaused(prev => {
+            const next = !prev;
+            isPausedRef.current = next;
+            // Rust側に通知
+            if (next) {
+                invoke('pause_operation').catch(console.error);
+            } else {
+                invoke('resume_operation').catch(console.error);
+            }
+            return next;
+        });
+    };
+
     useEffect(() => {
         progressRef.current = progress;
     }, [progress]);
 
-    // 毎秒の速度計算（一度だけ生成）
     useEffect(() => {
         speedTimerRef.current = setInterval(() => {
+            if (isPausedRef.current) return; // 一時停止中はスキップ
             const p = progressRef.current;
             if (!p || p.complete) return;
 
             const now = p.bytes_processed;
 
-            // 初回は基準値を設定するだけ（巨大なスパイクを防止）
             if (prevBytesRef.current < 0) {
                 prevBytesRef.current = now;
                 return;
@@ -162,8 +205,6 @@ export const ProgressWindow: React.FC = () => {
             const rawDelta = Math.max(0, now - prevBytesRef.current);
             prevBytesRef.current = now;
 
-            // EMA（指数移動平均）で速度を平滑化
-            // α=0.3: 新しい値30% + 過去の平均70%
             const alpha = 0.3;
             smoothedSpeedRef.current = smoothedSpeedRef.current === 0
                 ? rawDelta
@@ -177,7 +218,6 @@ export const ProgressWindow: React.FC = () => {
                 return next.length > 60 ? next.slice(-60) : next;
             });
 
-            // 残り時間の推定（経過時間ベースの平均速度）
             const elapsed = (Date.now() - startTimeRef.current) / 1000;
             if (elapsed > 0 && p.total_bytes > 0 && p.bytes_processed > 0) {
                 const avgSpeed = p.bytes_processed / elapsed;
@@ -190,7 +230,7 @@ export const ProgressWindow: React.FC = () => {
         return () => {
             if (speedTimerRef.current) clearInterval(speedTimerRef.current);
         };
-    }, []); // 空の依存配列 = 一度だけ生成
+    }, []);
 
     useEffect(() => {
         const runProcess = async () => {
@@ -203,7 +243,8 @@ export const ProgressWindow: React.FC = () => {
                 }
 
                 const payload = JSON.parse(rawPayload);
-                setTitle(action === 'compress' ? '圧縮しています...' : '展開しています...');
+                const actionText = action === 'compress' ? '圧縮' : '展開';
+                setActionInfo({ action: actionText, dest: payload.destDir || '...' });
                 startTimeRef.current = Date.now();
 
                 const channel = new Channel<ProgressData>();
@@ -211,6 +252,10 @@ export const ProgressWindow: React.FC = () => {
                     setProgress(data);
                     if (data.complete) {
                         setTimeout(() => {
+                            // 完了後に開くオプション
+                            if (payload.showFiles && payload.destDir) {
+                                emit('navigate_to_dir', { path: payload.destDir }).catch(console.error);
+                            }
                             getCurrentWebviewWindow().close().catch(console.error);
                         }, 1000);
                     }
@@ -239,13 +284,16 @@ export const ProgressWindow: React.FC = () => {
 
                 if (!invokeError) {
                     setTimeout(() => {
+                        // 完了後に開くオプション
+                        if (payload.showFiles && payload.destDir) {
+                            emit('navigate_to_dir', { path: payload.destDir }).catch(console.error);
+                        }
                         getCurrentWebviewWindow().close().catch(console.error);
                     }, 1500);
                 }
             } catch (err) {
                 console.error('Process error:', err);
                 const errStr = err instanceof Error ? err.message : String(err);
-                // INSUFFICIENT_SPACE:required:available:path形式をパース
                 if (errStr.includes('INSUFFICIENT_SPACE:')) {
                     const parts = errStr.split('INSUFFICIENT_SPACE:')[1].split(':');
                     if (parts.length >= 3) {
@@ -260,19 +308,22 @@ export const ProgressWindow: React.FC = () => {
                 setErrorMsg(errStr);
             }
         };
-
         runProcess();
     }, []);
 
-    // ウィンドウ高さの動的変更
     const updateWindowSize = useCallback(async (expanded: boolean) => {
         try {
             const win = getCurrentWebviewWindow();
-            const newHeight = expanded ? 280 : 200;
-            await win.setSize(new (await import('@tauri-apps/api/dpi')).LogicalSize(420, newHeight));
+            const newHeight = expanded ? 300 : 160;
+            await win.setSize(new (await import('@tauri-apps/api/dpi')).LogicalSize(500, newHeight));
         } catch (e) {
             console.error('Failed to resize window:', e);
         }
+    }, []);
+
+    // 初回マウント時にサイズ設定
+    useEffect(() => {
+        updateWindowSize(isExpanded);
     }, []);
 
     const toggleExpanded = () => {
@@ -281,16 +332,6 @@ export const ProgressWindow: React.FC = () => {
         updateWindowSize(next);
     };
 
-    // 進捗率の計算
-    let percentage = 0;
-    if (progress && progress.total_bytes > 0) {
-        percentage = Math.floor((progress.bytes_processed / progress.total_bytes) * 100);
-    } else if (progress && progress.total_files > 0) {
-        percentage = Math.floor((progress.files_processed / progress.total_files) * 100);
-    }
-    if (percentage > 100) percentage = 100;
-
-    // 容量不足ダイアログ
     if (insufficientSpace) {
         return (
             <InsufficientSpaceDialog
@@ -303,224 +344,142 @@ export const ProgressWindow: React.FC = () => {
                 }}
                 onSkip={() => {
                     setInsufficientSpace(null);
-                    getCurrentWebviewWindow().close().catch(console.error);
+                    setErrorMsg('空き容量不足のため処理をスキップしました');
                 }}
-                onCancel={() => {
-                    getCurrentWebviewWindow().close().catch(console.error);
-                }}
+                onCancel={() => getCurrentWebviewWindow().close().catch(console.error)}
             />
         );
     }
 
-    // エラー画面
     if (errorMsg) {
         return (
-            <div style={{
-                width: '100%', height: '100vh',
-                backgroundColor: '#f0f0f0',
-                fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
-                display: 'flex', flexDirection: 'column',
-                boxSizing: 'border-box',
-                border: '1px solid #999',
-            }}>
-                <div data-tauri-drag-region style={{
-                    height: '30px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0 4px 0 8px',
-                    userSelect: 'none',
-                    backgroundColor: '#f0f0f0',
-                }}>
-                    <span data-tauri-drag-region style={{ fontSize: '12px', color: '#000' }}>エラー</span>
-                    <button
-                        onClick={() => getCurrentWebviewWindow().close().catch(console.error)}
-                        style={{
-                            width: '46px', height: '28px',
-                            border: 'none', backgroundColor: 'transparent',
-                            fontSize: '13px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#000',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e81123'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >✕</button>
-                </div>
-                <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                        <div style={{
-                            width: '32px', height: '32px', flexShrink: 0,
-                            borderRadius: '50%', backgroundColor: '#e81123',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontSize: '18px', fontWeight: 'bold',
-                        }}>✕</div>
-                        <div>
-                            <div style={{ fontSize: '13px', color: '#000', marginBottom: '4px', fontWeight: 600 }}>エラーが発生しました</div>
-                            <div style={{ fontSize: '12px', color: '#333' }}>{errorMsg}</div>
-                        </div>
-                    </div>
-                    <div style={{ marginTop: 'auto', textAlign: 'right' }}>
-                        <button
-                            onClick={() => getCurrentWebviewWindow().close().catch(console.error)}
-                            style={{
-                                padding: '5px 20px', fontSize: '12px',
-                                backgroundColor: '#e1e1e1', border: '1px solid #adadad',
-                                cursor: 'pointer', minWidth: '75px',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#e5f1fb'; e.currentTarget.style.borderColor = '#0078d7'; }}
-                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#e1e1e1'; e.currentTarget.style.borderColor = '#adadad'; }}
-                        >閉じる</button>
-                    </div>
-                </div>
+            <div style={{ padding: '20px', fontFamily: '"Segoe UI", sans-serif', backgroundColor: '#212121', color: '#fff', height: '100vh' }}>
+                <h3 style={{ color: '#ff99a4' }}>エラーが発生しました</h3>
+                <p>{errorMsg}</p>
+                <button onClick={() => getCurrentWebviewWindow().close()} style={{ marginTop: '20px', padding: '6px 16px', backgroundColor: '#333', color: '#fff', border: '1px solid #555' }}>
+                    閉じる
+                </button>
             </div>
         );
     }
 
-    // Windows 10風 プログレスUI
+    const percentage = progress && progress.total_bytes > 0
+        ? Math.floor((progress.bytes_processed / progress.total_bytes) * 100)
+        : 0;
+
     return (
-        <div style={{
+        <div data-tauri-drag-region style={{
             width: '100%', height: '100vh',
-            backgroundColor: '#f0f0f0',
+            backgroundColor: '#202020', // ダークテーマ背景
             display: 'flex', flexDirection: 'column',
             boxSizing: 'border-box',
-            border: '1px solid #999',
+            border: '1px solid #333',
             overflow: 'hidden',
+            fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+            color: '#ffffff',
         }}>
             {/* タイトルバー */}
             <div data-tauri-drag-region style={{
-                height: '30px',
+                height: '32px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '0 4px 0 8px',
+                padding: '0 8px 0 12px',
                 userSelect: 'none',
-                backgroundColor: '#f0f0f0',
-                borderBottom: '1px solid #dfdfdf',
+                backgroundColor: '#202020',
             }}>
-                <span data-tauri-drag-region style={{ fontSize: '12px', color: '#000', flex: 1 }}>{title}</span>
-                <button
-                    onClick={() => getCurrentWebviewWindow().close().catch(console.error)}
-                    style={{
-                        width: '46px', height: '28px',
-                        border: 'none', backgroundColor: 'transparent',
-                        fontSize: '13px', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#000',
-                    }}
-                    onMouseEnter={e => {
-                        e.currentTarget.style.backgroundColor = '#e81123';
-                        e.currentTarget.style.color = '#fff';
-                    }}
-                    onMouseLeave={e => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#000';
-                    }}
-                >✕</button>
+                <div data-tauri-drag-region style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                    <span style={{ fontSize: '14px' }}>🕒</span>
+                    <span style={{ fontSize: '12px' }}>{isPaused ? '一時停止' : (progress?.complete ? '完了' : `${percentage}% 完了`)}</span>
+                </div>
+                <div style={{ display: 'flex' }}>
+                    <button style={{ width: '46px', height: '32px', border: 'none', backgroundColor: 'transparent', color: '#fff', fontSize: '10px' }}>_</button>
+                    <button style={{ width: '46px', height: '32px', border: 'none', backgroundColor: 'transparent', color: '#555', fontSize: '12px' }}>☐</button>
+                    <button
+                        onClick={async () => {
+                            await invoke('cancel_operation').catch(console.error);
+                            getCurrentWebviewWindow().close().catch(console.error);
+                        }}
+                        style={{ width: '46px', height: '32px', border: 'none', backgroundColor: 'transparent', color: '#fff', fontSize: '14px', cursor: 'pointer' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e81123'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >✕</button>
+                </div>
             </div>
 
             {/* メインコンテンツ */}
-            <div style={{
-                flex: 1,
-                padding: '12px 16px',
-                fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
-                display: 'flex', flexDirection: 'column',
-                overflow: 'hidden',
-            }}>
-                {/* 進捗テキスト（上部） */}
-                <div style={{ marginBottom: '6px', fontSize: '12px', color: '#333' }}>
-                    {progress?.complete
-                        ? '完了しました'
-                        : `${percentage}% 完了`}
+            <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+                {/* サブタイトル */}
+                <div style={{ fontSize: '12px', color: '#e0e0e0', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {progress?.total_files || 0} 個の項目を{actionInfo.action}中: {progress?.current_file ? '...' : ''} から {actionInfo.dest}
                 </div>
 
-                {/* プログレスバー or 速度グラフ（切替表示） */}
+                {/* 大ヘッダー */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '24px', fontWeight: '400', color: '#ffffff' }}>
+                        {progress?.complete ? '100% 完了' : `${percentage}% 完了`}
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                            onClick={togglePause}
+                            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '16px', width: '32px', height: '32px' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#444'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >{isPaused ? '▶' : '⏸'}</button>
+                        <button
+                            onClick={async () => {
+                                await invoke('cancel_operation').catch(console.error);
+                                getCurrentWebviewWindow().close().catch(console.error);
+                            }}
+                            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '16px', width: '32px', height: '32px' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e81123'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >✕</button>
+                    </div>
+                </div>
+
+                {/* グラフ ＆ 詳細 (展開時のみ) */}
                 {isExpanded ? (
-                    <div style={{ marginBottom: '8px' }}>
-                        <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>転送速度</div>
-                        <SpeedGraph speedHistory={speedHistory} />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#888', marginTop: '2px' }}>
-                            <span>60秒前</span>
-                            <span>現在: {formatSpeed(currentSpeed)}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <IntegratedSpeedGraph
+                            speedHistory={speedHistory}
+                            percentage={percentage}
+                            currentSpeedText={formatSpeed(currentSpeed)}
+                        />
+
+                        <div style={{ fontSize: '12px', color: '#e0e0e0', lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                名前: {progress?.current_file || '...'}
+                            </div>
+                            <div>
+                                残り時間: {progress?.complete ? '完了' : timeRemaining}
+                            </div>
+                            <div>
+                                残りの項目: {progress ? (progress.total_files - progress.files_processed).toLocaleString() : 0} ({progress ? formatBytes(progress.total_bytes - progress.bytes_processed) : '0 bytes'})
+                            </div>
                         </div>
                     </div>
                 ) : (
-                    <div style={{
-                        height: '22px',
-                        backgroundColor: '#e6e6e6',
-                        border: '1px solid #bcbcbc',
-                        position: 'relative',
-                        marginBottom: '8px',
-                        overflow: 'hidden',
-                    }}>
-                        <div style={{
-                            height: '100%',
-                            width: `${percentage}%`,
-                            backgroundColor: '#06b025',
-                            transition: 'width 0.3s ease-out',
-                            position: 'relative',
-                            overflow: 'hidden',
-                        }}>
-                            <div style={{
-                                position: 'absolute',
-                                top: 0, left: 0, right: 0, bottom: 0,
-                                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
-                                animation: 'shimmer 2s infinite linear',
-                            }} />
-                        </div>
+                    /* 非展開時は標準のプログレスバーのみ */
+                    <div style={{ height: '4px', backgroundColor: '#333', overflow: 'hidden', marginTop: '8px' }}>
+                        <div style={{ height: '100%', width: `${percentage}%`, backgroundColor: '#60cdff', transition: 'width 0.3s' }} />
                     </div>
                 )}
-
-                {/* 詳細情報 */}
-                <div style={{ fontSize: '11px', color: '#555', lineHeight: '1.6', marginBottom: '8px' }}>
-                    {progress ? (
-                        <>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>残り時間: {progress.complete ? '完了' : timeRemaining}</span>
-                                <span>速度: {formatSpeed(currentSpeed)}</span>
-                            </div>
-                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                アイテム: {progress.current_file || '...'}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>{formatBytes(progress.bytes_processed)} / {formatBytes(progress.total_bytes)}</span>
-                                <span>項目: {progress.files_processed.toLocaleString()} / {progress.total_files.toLocaleString()}</span>
-                            </div>
-                        </>
-                    ) : (
-                        <div>対象を計算しています...</div>
-                    )}
-                </div>
-
-                {/* 詳細の表示/キャンセルボタン */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <button
-                        onClick={toggleExpanded}
-                        style={{
-                            padding: '3px 12px', fontSize: '11px',
-                            backgroundColor: '#e1e1e1', border: '1px solid #adadad',
-                            cursor: 'pointer', minWidth: '70px',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#e5f1fb'; e.currentTarget.style.borderColor = '#0078d7'; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#e1e1e1'; e.currentTarget.style.borderColor = '#adadad'; }}
-                    >
-                        {isExpanded ? '▲ 詳細を非表示' : '▼ 詳細の表示'}
-                    </button>
-                    <button
-                        onClick={() => getCurrentWebviewWindow().close().catch(console.error)}
-                        style={{
-                            padding: '3px 16px', fontSize: '11px',
-                            backgroundColor: '#e1e1e1', border: '1px solid #adadad',
-                            cursor: 'pointer', minWidth: '75px',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#e5f1fb'; e.currentTarget.style.borderColor = '#0078d7'; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#e1e1e1'; e.currentTarget.style.borderColor = '#adadad'; }}
-                    >キャンセル</button>
-                </div>
             </div>
 
-            {/* CSS for shimmer animation */}
-            <style>{`
-                @keyframes shimmer {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(200%); }
-                }
-            `}</style>
+            {/* アコーディオン フッター */}
+            <div
+                onClick={toggleExpanded}
+                style={{
+                    backgroundColor: '#202020',
+                    padding: '12px 20px',
+                    fontSize: '12px', color: '#e0e0e0',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                }}
+            >
+                <span>{isExpanded ? '⌃' : '⌄'}</span>
+                <span>詳細情報の{isExpanded ? '非表示' : '表示'}</span>
+            </div>
         </div>
     );
 };

@@ -147,11 +147,15 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
         if (!targetPath) return;
         try {
             const baseDir = getFileNameWithoutExtension(targetPath);
-            const destDir = currentPath.endsWith('/') ? `${currentPath}${baseDir}` : `${currentPath}/${baseDir}`;
+            const defaultDestDir = currentPath.endsWith('/') ? `${currentPath}${baseDir}` : `${currentPath}/${baseDir}`;
+
+            const promptResult = await useAppStore.getState().promptExtract(targetPath, defaultDestDir);
+            if (!promptResult) return; // Canceled
 
             const payload = {
                 archivePath: targetPath,
-                destDir: destDir
+                destDir: promptResult.destPath,
+                showFiles: promptResult.showFiles
             };
 
             const label = `progress-${Date.now()}`;
@@ -167,8 +171,8 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             const size = await mainWindow.innerSize();
             const factor = await mainWindow.scaleFactor();
 
-            const winWidth = 420;
-            const winHeight = 200;
+            const winWidth = 500;
+            const winHeight = 300;
             const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
             const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 

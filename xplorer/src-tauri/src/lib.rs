@@ -15,6 +15,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_log::Builder::new().build())
         .setup(|app| {
+            // アーカイブ操作の一時停止/キャンセル制御用のステートを登録
+            app.manage(std::sync::Arc::new(commands::archive::OperationControl::new()));
+
             // アイコンキャッシュの初期化
             if let Ok(cache_dir) = app.path().app_cache_dir() {
                 let icon_cache_dir = cache_dir.join("icons");
@@ -93,6 +96,9 @@ pub fn run() {
             commands::archive::compress_archive,
             commands::archive::extract_archive,
             commands::archive::list_archive_entries,
+            commands::archive::pause_operation,
+            commands::archive::resume_operation,
+            commands::archive::cancel_operation,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -201,8 +201,8 @@ export const Toolbar = () => {
             const size = await mainWindow.innerSize();
             const factor = await mainWindow.scaleFactor();
 
-            const winWidth = 400;
-            const winHeight = 250;
+            const winWidth = 500;
+            const winHeight = 300;
             const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
             const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 
@@ -237,11 +237,15 @@ export const Toolbar = () => {
         if (!isArchive(targetPath)) return;
         try {
             const baseDir = getFileNameWithoutExtension(targetPath);
-            const destDir = currentPath.endsWith('/') ? `${currentPath}${baseDir}` : `${currentPath}/${baseDir}`;
+            const defaultDestDir = currentPath.endsWith('/') ? `${currentPath}${baseDir}` : `${currentPath}/${baseDir}`;
+
+            const promptResult = await useAppStore.getState().promptExtract(targetPath, defaultDestDir);
+            if (!promptResult) return;
 
             const payload = {
                 archivePath: targetPath,
-                destDir: destDir
+                destDir: promptResult.destPath,
+                showFiles: promptResult.showFiles
             };
 
             const label = `progress-${Date.now()}`;
@@ -257,8 +261,8 @@ export const Toolbar = () => {
             const size = await mainWindow.innerSize();
             const factor = await mainWindow.scaleFactor();
 
-            const winWidth = 400;
-            const winHeight = 250;
+            const winWidth = 500;
+            const winHeight = 300;
             const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
             const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 

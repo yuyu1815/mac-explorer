@@ -2,6 +2,7 @@
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use libarchive2::{ArchiveFormat, CompressionFormat, FileType, ReadArchive, WriteArchive};
@@ -11,6 +12,63 @@ use super::types::{
     CompressionError, CompressionProgress, CompressionResultWithErrors,
     ExtractionProgress, ExtractionResult,
 };
+
+/// 操作の一時停止/キャンセル制御用の共有ステート
+pub struct OperationControl {
+    pub paused: AtomicBool,
+    pub cancelled: AtomicBool,
+}
+
+impl OperationControl {
+    pub fn new() -> Self {
+        Self {
+            paused: AtomicBool::new(false),
+            cancelled: AtomicBool::new(false),
+        }
+    }
+
+    /// ポーズ中はブロック、キャンセル時はErrを返す
+    pub fn check(&self) -> Result<(), String> {
+        if self.cancelled.load(Ordering::Relaxed) {
+            return Err("操作がキャンセルされました".to_string());
+        }
+        while self.paused.load(Ordering::Relaxed) {
+            if self.cancelled.load(Ordering::Relaxed) {
+                return Err("操作がキャンセルされました".to_string());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        Ok(())
+    }
+
+    pub fn reset(&self) {
+        self.paused.store(false, Ordering::Relaxed);
+        self.cancelled.store(false, Ordering::Relaxed);
+    }
+}
+
+impl Default for OperationControl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[tauri::command]
+pub fn pause_operation(state: tauri::State<std::sync::Arc<OperationControl>>) {
+    state.paused.store(true, Ordering::Relaxed);
+}
+
+#[tauri::command]
+pub fn resume_operation(state: tauri::State<std::sync::Arc<OperationControl>>) {
+    state.paused.store(false, Ordering::Relaxed);
+}
+
+#[tauri::command]
+pub fn cancel_operation(state: tauri::State<std::sync::Arc<OperationControl>>) {
+    state.cancelled.store(true, Ordering::Relaxed);
+    // ポーズ中の場合に備えて解除
+    state.paused.store(false, Ordering::Relaxed);
+}
 
 /// フォーマット文字列からArchiveFormatとCompressionFormatを取得
 fn parse_format(format: &str) -> (ArchiveFormat, CompressionFormat) {
@@ -84,7 +142,10 @@ pub async fn compress_archive(
     dest_archive_path: String,
     format: String,
     channel: tauri::ipc::Channel<CompressionProgress>,
+    state: tauri::State<'_, std::sync::Arc<OperationControl>>,
 ) -> Result<CompressionResultWithErrors, String> {
+    state.reset();
+    let control = state.inner().clone();
     let sources = sources.clone();
     let dest = dest_archive_path.clone();
     let fmt = format.clone();
@@ -176,6 +237,7 @@ pub async fn compress_archive(
         let emit_interval = 50;
 
         for (file_path, _file_size) in file_list {
+            control.check()?;
             let path = Path::new(&file_path);
             if !path.exists() || !path.is_file() {
                 continue;
@@ -277,7 +339,10 @@ pub async fn extract_archive(
     archive_path: String,
     dest_dir: String,
     channel: tauri::ipc::Channel<ExtractionProgress>,
+    state: tauri::State<'_, std::sync::Arc<OperationControl>>,
 ) -> Result<ExtractionResult, String> {
+    state.reset();
+    let control = state.inner().clone();
     let src = archive_path.clone();
     let dest = dest_dir.clone();
 
@@ -349,6 +414,7 @@ pub async fn extract_archive(
             .next_entry()
             .map_err(|e| format!("エントリの取得に失敗: {}", e))?
         {
+            control.check()?;
             let entry_path = entry.pathname().unwrap_or_default();
 
             // パストラバーサル攻撃の検出
@@ -419,6 +485,7 @@ pub async fn extract_archive(
                         match archive.read_data(&mut buf) {
                             Ok(0) => break,
                             Ok(n) => {
+                                control.check()?;
                                 if let Err(e) = output.write_all(&buf[..n]) {
                                     errors.push(format!(
                                         "ファイル書き込みエラー {}: {}",

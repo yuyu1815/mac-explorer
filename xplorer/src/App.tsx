@@ -8,6 +8,7 @@ import { Toolbar } from './components/Toolbar';
 import { DetailsPane } from './components/DetailsPane';
 import { ProgressWindow } from './components/ProgressWindow';
 import { OverwriteConfirmDialog } from './components/OverwriteConfirmDialog';
+import { ExtractPromptDialog } from './components/ExtractPromptDialog';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
 
@@ -37,6 +38,18 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goBack, goForward, goUp]);
+
+  useEffect(() => {
+    let unlistenFn: (() => void) | undefined;
+    const setupListener = async () => {
+      const { listen } = await import('@tauri-apps/api/event');
+      unlistenFn = await listen<{ path: string }>('navigate_to_dir', (event) => {
+        useAppStore.getState().setCurrentPath(event.payload.path);
+      });
+    };
+    setupListener();
+    return () => { if (unlistenFn) unlistenFn(); };
+  }, []);
 
   const handleSideResize = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -83,6 +96,7 @@ function App() {
       </div>
       <StatusBar />
       <OverwriteConfirmDialog />
+      <ExtractPromptDialog />
     </div>
   );
 }

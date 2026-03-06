@@ -40,6 +40,12 @@ export interface OverwriteConfirmState {
     resolve: (overwrite: boolean) => void;
 }
 
+export interface ExtractPromptState {
+    sourcePath: string;
+    defaultDestPath: string;
+    resolve: (result: { destPath: string; showFiles: boolean } | null) => void;
+}
+
 interface AppState {
     tabs: Tab[];
     activeTabId: string;
@@ -52,6 +58,7 @@ interface AppState {
     showFileExtensions: boolean;
     showItemCheckBoxes: boolean;
     overwriteConfirm: OverwriteConfirmState | null;
+    extractPrompt: ExtractPromptState | null;
 
     // Actions
     addTab: (path?: string) => void;
@@ -80,6 +87,8 @@ interface AppState {
     setShowItemCheckBoxes: (show: boolean) => void;
     confirmOverwrite: (targetFile: string) => Promise<boolean>;
     resolveOverwrite: (overwrite: boolean) => void;
+    promptExtract: (sourcePath: string, defaultDestPath: string) => Promise<{ destPath: string; showFiles: boolean } | null>;
+    resolveExtract: (result: { destPath: string; showFiles: boolean } | null) => void;
 }
 
 const createNewTab = (id: string, path: string = ''): Tab => ({
@@ -108,6 +117,7 @@ export const useAppStore = create<AppState>((set) => ({
     showFileExtensions: true,
     showItemCheckBoxes: false,
     overwriteConfirm: null,
+    extractPrompt: null,
 
     addTab: (path) => set((state) => {
         const id = `tab-${Date.now()}`;
@@ -268,4 +278,18 @@ export const useAppStore = create<AppState>((set) => ({
         }
         return { overwriteConfirm: null };
     }),
+
+    promptExtract: (sourcePath, defaultDestPath) => {
+        return new Promise((resolve) => {
+            set({ extractPrompt: { sourcePath, defaultDestPath, resolve } });
+        });
+    },
+
+    resolveExtract: (result) => set((state) => {
+        if (state.extractPrompt?.resolve) {
+            state.extractPrompt.resolve(result);
+        }
+        return { extractPrompt: null };
+    }),
 }));
+
