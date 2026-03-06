@@ -464,26 +464,42 @@ export const MainPane = () => {
             return;
         }
 
-        if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
+        if ((e.key === 'Delete' || (e.key === 'Backspace' && (e.metaKey || e.ctrlKey))) && e.shiftKey && selectedFiles.size > 0) {
             e.preventDefault();
-            goBack();
-            return;
-        }
-
-        if (e.key === 'Delete' && e.shiftKey && selectedFiles.size > 0) {
             if (confirm(`選択した${selectedFiles.size}項目を完全に削除しますか？（元に戻せません）`)) {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: false });
+                clearSelection();
                 await refreshFiles();
             }
             return;
         }
 
-        if (e.key === 'Delete' && selectedFiles.size > 0) {
+        if ((e.key === 'Delete' || (e.key === 'Backspace' && (e.metaKey || e.ctrlKey))) && selectedFiles.size > 0) {
+            e.preventDefault();
             if (confirm(`選択した${selectedFiles.size}項目をゴミ箱に移動しますか？`)) {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: true });
+                clearSelection();
                 await refreshFiles();
             }
             return;
+        }
+
+        if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
+            // macOS Delete key (without Cmd) is 'Backspace'.
+            // In Windows, Backspace is Go Back. We'll allow 'Backspace' to delete if files are selected, to make it easier for Mac users who don't have a 'Delete' key.
+            if (selectedFiles.size > 0) {
+                e.preventDefault();
+                if (confirm(`選択した${selectedFiles.size}項目をゴミ箱に移動しますか？`)) {
+                    await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: true });
+                    clearSelection();
+                    await refreshFiles();
+                }
+                return;
+            } else {
+                e.preventDefault();
+                goBack();
+                return;
+            }
         }
 
         if (e.key === 'F2' && selectedFiles.size === 1) {
@@ -956,6 +972,7 @@ export const MainPane = () => {
         if (e.button !== 0) return;
         if ((e.target as HTMLElement).closest('.file-item')) return;
         if ((e.target as HTMLElement).closest('th')) return;
+        if ((e.target as HTMLElement).closest('.win32-context-menu')) return;
 
         const pane = paneRef.current;
         if (!pane) return;

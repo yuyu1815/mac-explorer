@@ -191,14 +191,23 @@ export const useAppStore = create<AppState>((set) => ({
 
             if (range && tab.selectedFiles.size > 0) {
                 const paths = orderedPaths ?? tab.files.map(f => f.path);
-                const start = paths.indexOf(Array.from(tab.selectedFiles).pop()!);
+                const hasFocused = tab.focusedIndex >= 0 && tab.focusedIndex < paths.length;
+                const anchorPath = hasFocused ? paths[tab.focusedIndex] : Array.from(tab.selectedFiles)[0];
+                const start = paths.indexOf(anchorPath);
                 const end = paths.indexOf(path);
-                const [min, max] = [Math.min(start, end), Math.max(start, end)];
-                for (let i = min; i <= max; i++) newSelected.add(paths[i]);
+
+                if (start !== -1 && end !== -1) {
+                    const [min, max] = [Math.min(start, end), Math.max(start, end)];
+                    for (let i = min; i <= max; i++) newSelected.add(paths[i]);
+                } else {
+                    newSelected.add(path);
+                }
             } else {
                 newSelected.has(path) ? newSelected.delete(path) : newSelected.add(path);
             }
-            return { ...tab, selectedFiles: newSelected };
+
+            const newFocusedIndex = orderedPaths ? orderedPaths.indexOf(path) : -1;
+            return { ...tab, selectedFiles: newSelected, focusedIndex: newFocusedIndex !== -1 ? newFocusedIndex : tab.focusedIndex };
         })
     })),
 
