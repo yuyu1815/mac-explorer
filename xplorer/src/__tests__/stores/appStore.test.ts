@@ -172,13 +172,13 @@ describe('AppStore - Selection and Clipboard', () => {
         const store = useAppStore.getState();
 
         // Act
-        store.toggleSelection('/f1.txt');
+        store.toggleSelection('/f1.txt', true, false, ['/f1.txt', '/f2.txt', '/f3.txt']);
 
         // Assert
         expect(useAppStore.getState().tabs[0].selectedFiles.has('/f1.txt')).toBe(true);
 
         // Act
-        store.toggleSelection('/f1.txt');
+        store.toggleSelection('/f1.txt', false, false, ['/f1.txt', '/f2.txt', '/f3.txt']);
 
         // Assert
         expect(useAppStore.getState().tabs[0].selectedFiles.has('/f1.txt')).toBe(false);

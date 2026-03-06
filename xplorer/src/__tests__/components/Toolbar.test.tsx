@@ -1,7 +1,7 @@
 /// <reference types="@testing-library/jest-dom" />
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Toolbar } from '../../components/Toolbar';
+import { Toolbar } from '../../components/layout/Toolbar';
 import { useAppStore } from '../../stores/appStore';
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -48,7 +48,7 @@ describe('Toolbar Component', () => {
 
     it('enables cut, copy, delete when files are selected', () => {
         // Arrange
-        useAppStore.getState().toggleSelection('/f1.txt', true, false);
+        useAppStore.getState().toggleSelection('/f1.txt', true, false, ['/f1.txt']);
         render(<Toolbar />);
 
         // Act

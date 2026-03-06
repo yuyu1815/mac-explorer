@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAppStore } from '../stores/appStore';
+import { useAppStore } from '../../stores/appStore';
 import { open } from '@tauri-apps/plugin-dialog';
 
 export const ExtractPromptDialog: React.FC = () => {
@@ -10,7 +10,7 @@ export const ExtractPromptDialog: React.FC = () => {
 
     useEffect(() => {
         if (extractPrompt) {
-            setDestPath(extractPrompt.defaultDestPath);
+            setDestPath(extractPrompt.destPath);
             setShowFiles(true);
         }
     }, [extractPrompt]);

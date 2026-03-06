@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useAppStore } from '../stores/appStore';
-import { ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard, LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive } from 'lucide-react';
-import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
+import { useAppStore } from '../../../stores/appStore';
+import {
+    ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard,
+    LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive
+} from 'lucide-react';
+import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../../../utils/archive';
+import { ipc } from '../../../services/ipc';
 
 interface ContextMenuProps {
     x: number;
@@ -62,8 +65,8 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             const sortBy = activeTab?.sortBy || 'name';
             const sortDesc = activeTab?.sortDesc || false;
             const searchQuery = activeTab?.searchQuery || '';
-            const result = await invoke('list_files_sorted', { path: currentPath, showHidden: false, sortBy, sortDesc, searchQuery });
-            setFiles(result as any);
+            const result = await ipc.listFilesSorted(currentPath, false, sortBy, sortDesc, searchQuery);
+            setFiles(result);
         } catch (err) {
             console.error('Context menu action failed:', err);
         }
@@ -72,7 +75,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
     const handleNewFile = async () => {
         try {
             let newPath = currentPath.endsWith('/') ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}/新しいテキスト ドキュメント.txt`;
-            await invoke('create_file', { path: newPath });
+            await ipc.createFile(newPath);
             refreshFiles();
         } catch (err) {
             console.error('Context menu action failed:', err);
@@ -88,7 +91,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
 
             const archivePath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
 
-            const exists = await invoke<boolean>('check_exists', { path: archivePath });
+            const exists = await ipc.checkExists(archivePath);
             if (exists) {
                 const shouldOverwrite = await confirmOverwrite(archivePath);
                 if (!shouldOverwrite) return;
@@ -225,10 +228,10 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     <ContextMenuSeparator />
                     {/* Sort Menu */}
                     <ContextSubMenuItem icon={<ArrowDownAZ size={16} />} label="並べ替え(O)">
-                        <ContextMenuItem label="名前" onClick={() => handleAction(() => setSortParams('name'))} />
-                        <ContextMenuItem label="更新日時" onClick={() => handleAction(() => setSortParams('modified'))} />
-                        <ContextMenuItem label="種類" onClick={() => handleAction(() => setSortParams('file_type'))} />
-                        <ContextMenuItem label="サイズ" onClick={() => handleAction(() => setSortParams('size'))} />
+                        <ContextMenuItem label="名前" onClick={() => handleAction(() => setSortParams('name', activeTab?.sortBy === 'name' ? !activeTab.sortDesc : false))} />
+                        <ContextMenuItem label="更新日時" onClick={() => handleAction(() => setSortParams('modified', activeTab?.sortBy === 'modified' ? !activeTab.sortDesc : false))} />
+                        <ContextMenuItem label="種類" onClick={() => handleAction(() => setSortParams('file_type', activeTab?.sortBy === 'file_type' ? !activeTab.sortDesc : false))} />
+                        <ContextMenuItem label="サイズ" onClick={() => handleAction(() => setSortParams('size', activeTab?.sortBy === 'size' ? !activeTab.sortDesc : false))} />
                         <ContextMenuSeparator />
                         <ContextMenuItem label="昇順(A)" onClick={() => handleAction(() => setSortParams(activeTab?.sortBy || 'name', false))} />
                         <ContextMenuItem label="降順(D)" onClick={() => handleAction(() => setSortParams(activeTab?.sortBy || 'name', true))} />
@@ -249,9 +252,9 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                             if (clipboard) {
                                 handleAction(async () => {
                                     if (clipboard.operation === 'copy') {
-                                        await invoke('copy_files', { sources: clipboard.files, dest: currentPath });
+                                        await ipc.copyFiles(clipboard.files, currentPath);
                                     } else {
-                                        await invoke('move_files', { sources: clipboard.files, dest: currentPath });
+                                        await ipc.moveFiles(clipboard.files, currentPath);
                                         setClipboard(null);
                                     }
                                     await refreshFiles();
@@ -278,7 +281,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                                 if (isArchive(targetPath)) {
                                     setCurrentPath(targetPath);
                                 } else {
-                                    await invoke('open_file_default', { path: targetPath });
+                                    await ipc.openFileDefault(targetPath);
                                 }
                             }
                         })} />
@@ -302,7 +305,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     )}
                     <ContextMenuItem icon={<Trash2 size={16} />} label="削除(D)" onClick={() => handleAction(async () => {
                         if (confirm(`選択した${pathsToActOn.length} 項目をゴミ箱に移動しますか？`)) {
-                            await invoke('delete_files', { paths: pathsToActOn, toTrash: true });
+                            await ipc.deleteFiles(pathsToActOn);
                             await refreshFiles();
                         }
                     })} />

@@ -1,4 +1,4 @@
-import { useAppStore } from '../stores/appStore';
+import { useAppStore } from '../../stores/appStore';
 
 export const TitleBar = () => {
   const { tabs, activeTabId } = useAppStore();

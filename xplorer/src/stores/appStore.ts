@@ -1,95 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-
-export interface FileEntry {
-    name: string;
-    path: string;
-    is_dir: boolean;
-    size: number;
-    size_formatted: string;
-    modified: number;
-    modified_formatted: string;
-    created: number;
-    created_formatted: string;
-    file_type: string;
-    is_hidden: boolean;
-    is_symlink: boolean;
-    permissions: string;
-    icon_id: string;
-}
-
-export type ViewMode = 'extra_large_icon' | 'large_icon' | 'medium_icon' | 'small_icon' | 'list' | 'detail' | 'tiles' | 'content';
-export type SortColumn = 'name' | 'modified' | 'file_type' | 'size';
-
-export interface Tab {
-    id: string;
-    currentPath: string;
-    history: string[];
-    historyIndex: number;
-    files: FileEntry[];
-    selectedFiles: Set<string>;
-    focusedIndex: number;
-    viewMode: ViewMode;
-    sortBy: SortColumn;
-    sortDesc: boolean;
-    searchQuery: string;
-}
-
-export interface OverwriteConfirmState {
-    targetFile: string;
-    resolve: (overwrite: boolean) => void;
-}
-
-export interface ExtractPromptState {
-    sourcePath: string;
-    defaultDestPath: string;
-    resolve: (result: { destPath: string; showFiles: boolean } | null) => void;
-}
-
-interface AppState {
-    tabs: Tab[];
-    activeTabId: string;
-    clipboard: { files: string[], operation: 'copy' | 'cut' } | null;
-    renameTriggerId: number;
-    showDetailsPane: boolean;
-    loading: boolean;
-    propertiesDialogTarget: string | null;
-    showHiddenFiles: boolean;
-    showFileExtensions: boolean;
-    showItemCheckBoxes: boolean;
-    overwriteConfirm: OverwriteConfirmState | null;
-    extractPrompt: ExtractPromptState | null;
-
-    // Actions
-    addTab: (path?: string) => void;
-    closeTab: (id: string) => void;
-    setActiveTab: (id: string) => void;
-    setCurrentPath: (path: string) => void;
-    goBack: () => void;
-    goForward: () => void;
-    goUp: () => void;
-    setFiles: (files: FileEntry[]) => void;
-    toggleSelection: (path: string, exclusive?: boolean, range?: boolean, orderedPaths?: string[]) => void;
-    clearSelection: () => void;
-    selectAll: () => void;
-    invertSelection: () => void;
-    setFocusedIndex: (index: number) => void;
-    setClipboard: (clipboard: { files: string[], operation: 'copy' | 'cut' } | null) => void;
-    triggerRename: () => void;
-    setViewMode: (mode: ViewMode) => void;
-    setSortParams: (column: SortColumn, desc?: boolean) => void;
-    toggleDetailsPane: () => void;
-    setSearchQuery: (query: string) => void;
-    setLoading: (loading: boolean) => void;
-    openPropertiesDialog: (path: string | null) => void;
-    setShowHiddenFiles: (show: boolean) => void;
-    setShowFileExtensions: (show: boolean) => void;
-    setShowItemCheckBoxes: (show: boolean) => void;
-    confirmOverwrite: (targetFile: string) => Promise<boolean>;
-    resolveOverwrite: (overwrite: boolean) => void;
-    promptExtract: (sourcePath: string, defaultDestPath: string) => Promise<{ destPath: string; showFiles: boolean } | null>;
-    resolveExtract: (result: { destPath: string; showFiles: boolean } | null) => void;
-}
+import { Tab, AppState } from '../types';
 
 const createNewTab = (id: string, path: string = ''): Tab => ({
     id,
@@ -213,7 +124,11 @@ export const useAppStore = create<AppState>((set) => ({
                     newSelected.add(path);
                 }
             } else {
-                newSelected.has(path) ? newSelected.delete(path) : newSelected.add(path);
+                if (newSelected.has(path)) {
+                    newSelected.delete(path);
+                } else {
+                    newSelected.add(path);
+                }
             }
 
             const newFocusedIndex = orderedPaths ? orderedPaths.indexOf(path) : -1;
@@ -267,7 +182,7 @@ export const useAppStore = create<AppState>((set) => ({
     setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),
 
     confirmOverwrite: (targetFile) => {
-        return new Promise((resolve) => {
+        return new Promise<boolean>((resolve) => {
             set({ overwriteConfirm: { targetFile, resolve } });
         });
     },
@@ -280,8 +195,8 @@ export const useAppStore = create<AppState>((set) => ({
     }),
 
     promptExtract: (sourcePath, defaultDestPath) => {
-        return new Promise((resolve) => {
-            set({ extractPrompt: { sourcePath, defaultDestPath, resolve } });
+        return new Promise<any>((resolve) => {
+            set({ extractPrompt: { sourcePath, destPath: defaultDestPath, showFiles: true, resolve } });
         });
     },
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ContextMenu } from '../../components/ContextMenu';
+import { ContextMenu } from '../../components/features/file-manager/ContextMenu';
 import { useAppStore } from '../../stores/appStore';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -116,7 +116,8 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
         defaultProps.onClose = vi.fn();
         defaultProps.onStartRename = vi.fn();
         defaultProps.onCreateFolder = vi.fn();
-        useAppStore.getState().toggleSelection(targetFile, true, false);
+        const store = useAppStore.getState();
+        store.toggleSelection(targetFile, true, false);
     });
 
     it('「開く」「切り取り」「コピー」「名前変更」「削除」が全て表示される', () => {
@@ -126,11 +127,11 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
         // Act - component renders on mount
 
         // Assert
-        expect(screen.getByText(/開く/)).toBeInTheDocument();
-        expect(screen.getByText(/切り取り/)).toBeInTheDocument();
-        expect(screen.getByText('コピー(C)')).toBeInTheDocument();
-        expect(screen.getByText(/名前の変更/)).toBeInTheDocument();
-        expect(screen.getByText(/削除/)).toBeInTheDocument();
+        expect(screen.getByText(/^開く\(O\)$/)).toBeInTheDocument();
+        expect(screen.getByText(/^切り取り\(T\)$/)).toBeInTheDocument();
+        expect(screen.getByText(/^コピー\(C\)$/)).toBeInTheDocument();
+        expect(screen.getByText(/^名前の変更\(M\)$/)).toBeInTheDocument();
+        expect(screen.getByText(/^削除\(D\)/)).toBeInTheDocument();
     });
 
     it('切り取りクリックでクリップボードに "cut" がセットされる', () => {
@@ -160,7 +161,7 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
 
         // Act
-        fireEvent.click(screen.getByText(/名前の変更/));
+        fireEvent.click(screen.getByText(/^名前の変更\(M\)$/));
 
         // Assert
         expect(defaultProps.onStartRename).toHaveBeenCalledWith(targetFile);
@@ -199,8 +200,11 @@ describe('ContextMenu — ファイル右クリック（targetPath指定）', ()
         // Arrange
         render(<ContextMenu {...defaultProps} targetPath={targetFile} />);
 
-        // Act
-        fireEvent.click(screen.getByText(/開く/));
+        const openItem = await screen.findByText(/開く/);
+        fireEvent.click(openItem);
+
+        // Wait for potential async effects
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Assert
         await waitFor(() => {
@@ -229,11 +233,11 @@ describe('ContextMenu — 複数選択時の制御', () => {
         // Act - component renders on mount
 
         // Assert
-        expect(screen.queryByText(/開く/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/名前の変更/)).not.toBeInTheDocument();
-        expect(screen.getByText(/切り取り/)).toBeInTheDocument();
-        expect(screen.getByText('コピー(C)')).toBeInTheDocument();
-        expect(screen.getByText(/削除/)).toBeInTheDocument();
+        expect(screen.queryByText(/^開く\(O\)$/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/^名前の変更\(M\)$/)).not.toBeInTheDocument();
+        expect(screen.getByText(/^切り取り\(T\)$/)).toBeInTheDocument();
+        expect(screen.getByText(/^コピー\(C\)$/)).toBeInTheDocument();
+        expect(screen.getByText(/^削除\(D\)/)).toBeInTheDocument();
     });
 
     it('複数選択の切り取りで全ファイルがクリップボードに入る', () => {

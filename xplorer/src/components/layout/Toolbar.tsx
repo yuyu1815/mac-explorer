@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useAppStore } from '../stores/appStore';
+import { useAppStore } from '../../stores/appStore';
 import { invoke } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -9,7 +9,8 @@ import {
     FolderOpen, Settings, ChevronUp, ChevronDown, Monitor, PanelRight, ArrowDownAZ, EyeOff,
     Archive, FileArchive
 } from 'lucide-react';
-import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
+import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../../utils/archive';
+import { FileEntry } from '../../types';
 
 export const Toolbar = () => {
     const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes, confirmOverwrite } = useAppStore();
@@ -55,8 +56,8 @@ export const Toolbar = () => {
 
     const refreshFiles = async () => {
         try {
-            const result = await invoke('list_directory', { path: currentPath, showHidden: false });
-            setFiles(result as any);
+            const result = await invoke<FileEntry[]>('list_directory', { path: currentPath, showHidden: false });
+            setFiles(result);
         } catch (err) {
             console.error('Refresh failed', err);
         }

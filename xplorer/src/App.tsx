@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { TitleBar } from './components/TitleBar';
-import { NavigationBar } from './components/NavigationBar';
-import { SidePanel } from './components/SidePanel';
-import { MainPane } from './components/MainPane';
-import { StatusBar } from './components/StatusBar';
-import { Toolbar } from './components/Toolbar';
-import { DetailsPane } from './components/DetailsPane';
-import { ProgressWindow } from './components/ProgressWindow';
-import { OverwriteConfirmDialog } from './components/OverwriteConfirmDialog';
-import { ExtractPromptDialog } from './components/ExtractPromptDialog';
+import { TitleBar } from './components/layout/TitleBar';
+import { NavigationBar } from './components/layout/NavigationBar';
+import { SidePanel } from './components/layout/SidePanel';
+import { MainPane } from './components/features/file-manager/MainPane';
+import { StatusBar } from './components/layout/StatusBar';
+import { Toolbar } from './components/layout/Toolbar';
+import { DetailsPane } from './components/layout/DetailsPane';
+import { ProgressWindow } from './components/dialogs/ProgressWindow';
+import { OverwriteConfirmDialog } from './components/dialogs/OverwriteConfirmDialog';
+import { ExtractPromptDialog } from './components/dialogs/ExtractPromptDialog';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../stores/appStore';
+import { useAppStore } from '../../stores/appStore';
 import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 

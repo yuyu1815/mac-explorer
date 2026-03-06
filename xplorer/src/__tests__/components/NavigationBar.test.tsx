@@ -1,7 +1,7 @@
 /// <reference types="@testing-library/jest-dom" />
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { NavigationBar } from '../../components/NavigationBar';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { NavigationBar } from '../../components/layout/NavigationBar';
 import { useAppStore } from '../../stores/appStore';
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -57,7 +57,7 @@ describe('NavigationBar Component', () => {
         expect(input).toBeInTheDocument();
     });
 
-    it('handles goBack and goForward buttons correctly', () => {
+    it('handles goBack and goForward buttons correctly', async () => {
         // Arrange
         useAppStore.setState({
             tabs: [{
@@ -95,6 +95,8 @@ describe('NavigationBar Component', () => {
         fireEvent.click(forwardBtn);
 
         // Assert
-        expect(useAppStore.getState().tabs[0].historyIndex).toBe(1);
+        await waitFor(() => {
+            expect(useAppStore.getState().tabs[0].historyIndex).toBe(1);
+        });
     });
 });

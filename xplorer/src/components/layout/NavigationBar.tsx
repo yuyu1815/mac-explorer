@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { useAppStore } from '../stores/appStore';
+import { useAppStore } from '../../stores/appStore';
 import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, ChevronDown, Folder } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 export const NavigationBar = () => {
-    const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery } = useAppStore();
-    const activeTab = tabs.find(t => t.id === activeTabId);
+    const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery, toggleSelection } = useAppStore();
+    const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const canGoBack = activeTab ? activeTab.historyIndex > 0 : false;
     const canGoForward = activeTab ? activeTab.historyIndex < activeTab.history.length - 1 : false;
@@ -154,7 +154,7 @@ export const NavigationBar = () => {
         }
         try {
             const res = await invoke<any[]>('list_directory', { path, showHidden: false });
-            const dirs = res.filter(f => f.is_dir).sort((a, b) => a.name.localeCompare(b.name));
+            const dirs = res.filter((f: any) => f.is_dir).sort((a: any, b: any) => a.name.localeCompare(b.name));
             setDropdownItems(dirs);
             setDropdownPath(path);
         } catch (err) {
@@ -237,8 +237,8 @@ export const NavigationBar = () => {
                             </div>
                             {dropdownPath === thisPath && (
                                 <div className="breadcrumb-dropdown">
-                                    {dropdownItems.map(item => (
-                                        <div key={item.path} className="breadcrumb-dropdown-item" onMouseDown={(e) => {
+                                    {dropdownItems.map((item: any) => (
+                                        <div key={item.path} className="breadcrumb-dropdown-item" onMouseDown={(e: React.MouseEvent) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setCurrentPath(item.path);
@@ -283,6 +283,7 @@ export const NavigationBar = () => {
                 <button className="win10-nav-btn" onClick={async () => {
                     const result = await invoke('list_directory', { path: currentPath, showHidden: false });
                     setFiles(result as any);
+                    toggleSelection(currentPath, true, false, []);
                 }}>
                     <RotateCw size={14} strokeWidth={1.5} />
                 </button>
@@ -315,12 +316,12 @@ export const NavigationBar = () => {
                         />
                         {pathSuggestions.length > 0 && (
                             <div className="breadcrumb-dropdown" style={{ width: '100%' }}>
-                                {pathSuggestions.map((item, idx) => (
+                                {pathSuggestions.map((item: any, idx: number) => (
                                     <div
                                         key={item.path}
                                         className="breadcrumb-dropdown-item"
                                         style={idx === suggestionIndex ? { backgroundColor: 'var(--hover-bg)' } : {}}
-                                        onMouseDown={(e) => {
+                                        onMouseDown={(e: React.MouseEvent) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             let p = item.path;

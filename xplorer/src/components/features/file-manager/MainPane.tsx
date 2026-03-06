@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore } from '../stores/appStore';
+import { useAppStore } from '../../../stores/appStore';
 import { ContextMenu } from './ContextMenu';
 import { Folder } from 'lucide-react';
-import { PropertiesDialog } from './PropertiesDialog';
-import { isArchive } from '../utils/archive';
+import { PropertiesDialog } from '../../dialogs/PropertiesDialog';
+import { isArchive } from '../../../utils/archive';
+import { FileEntry } from '../../../types';
+import { ipc } from '../../../services/ipc';
 
 const FolderIcon = ({ size }: { size: number }) => (
     <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
@@ -54,7 +56,7 @@ export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean, iconId:
 
 export const MainPane = () => {
     const { tabs, activeTabId, setFiles, setCurrentPath, toggleSelection, clearSelection, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, setLoading, setViewMode, propertiesDialogTarget, openPropertiesDialog, showHiddenFiles, showFileExtensions } = useAppStore();
-    const activeTab = tabs.find(t => t.id === activeTabId);
+    const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
     const files = activeTab?.files || [];
@@ -220,12 +222,12 @@ export const MainPane = () => {
         }
     };
 
-    const handleDoubleClick = async (file: any) => {
+    const handleDoubleClick = async (file: FileEntry) => {
         if (file.is_dir || isArchive(file.path)) {
             setCurrentPath(file.path);
         } else {
             try {
-                await invoke('open_file_default', { path: file.path });
+                ipc.openFileDefault(file.path);
             } catch (err) {
                 console.error('Failed to open file', err);
             }
@@ -336,7 +338,7 @@ export const MainPane = () => {
     const handleContextMenu = (e: ReactMouseEvent, path: string | null) => {
         e.preventDefault();
         if (path && !selectedFiles.has(path)) {
-            toggleSelection(path, true);
+            toggleSelection(path, true, false, []);
         }
         setContextMenu({ x: e.clientX, y: e.clientY, target: path });
     };
@@ -440,7 +442,7 @@ export const MainPane = () => {
 
             setFocusedIndex(nextIndex);
             if (e.shiftKey) {
-                toggleSelection(sortedFiles[nextIndex].path, false, true, sortedFiles.map(f => f.path));
+                toggleSelection(sortedFiles[nextIndex].path, false, true, sortedFiles.map((f: FileEntry) => f.path));
             } else if (!e.ctrlKey) {
                 toggleSelection(sortedFiles[nextIndex].path, true);
             }
@@ -541,7 +543,7 @@ export const MainPane = () => {
 
     const INVALID_CHARS = /[\/:]/g;
 
-    const renderFileName = (file: any) => {
+    const renderFileName = (file: FileEntry) => {
         if (renamingPath === file.path) {
             return (
                 <div style={{ position: 'relative', width: '100%' }}>
@@ -661,18 +663,18 @@ export const MainPane = () => {
             </colgroup>
             <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-main)', zIndex: 10 }}>
                 <tr style={{ height: rowHeight, borderBottom: '1px solid var(--border-color)', fontSize: '12px', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('name')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('name', sortBy === 'name' ? !sortDesc : false)}>
                         名前 <SortIndicator column="name" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('modified')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('modified', sortBy === 'modified' ? !sortDesc : false)}>
                         更新日時 <SortIndicator column="modified" />
                         <ResizeHandle column="modified" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('file_type')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('file_type', sortBy === 'file_type' ? !sortDesc : false)}>
                         種類 <SortIndicator column="file_type" />
                         <ResizeHandle column="file_type" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', textAlign: 'right', cursor: 'pointer', position: 'relative' }} onClick={() => setSortParams('size')}>
+                    <th style={{ padding: '0 6px', fontWeight: 'normal', textAlign: 'right', cursor: 'pointer', position: 'relative' }} onClick={() => setSortParams('size', sortBy === 'size' ? !sortDesc : false)}>
                         サイズ <SortIndicator column="size" />
                         <ResizeHandle column="size" />
                     </th>
@@ -700,7 +702,7 @@ export const MainPane = () => {
                                     startRename(file.path);
                                 }, 500);
                             }
-                            toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, sortedFiles.map(f => f.path));
+                            toggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, sortedFiles.map((f: FileEntry) => f.path));
                         }}
                         onDoubleClick={(e) => {
                             e.stopPropagation();
@@ -897,9 +899,9 @@ export const MainPane = () => {
                 >
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={48} />
                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-                        <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{renderFileName(file)}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.file_type}</span>
-                        {!file.is_dir && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{file.size_formatted}</span>}
+                        <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); toggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, sortedFiles.map(f => f.path)); }}>{renderFileName(file)}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); toggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, []); }}>{file.file_type}</span>
+                        {!file.is_dir && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }} onClick={(e) => { e.stopPropagation(); toggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, sortedFiles.map(f => f.path)); }}>{file.size_formatted}</span>}
                     </div>
                 </div>
             ))}
@@ -1009,7 +1011,7 @@ export const MainPane = () => {
             });
             const { clearSelection: clr, toggleSelection: tog } = useAppStore.getState();
             clr();
-            newSelected.forEach(p => tog(p, false));
+            newSelected.forEach(p => tog(p, false, false, sortedFiles.map((f: FileEntry) => f.path)));
         };
 
         const onUp = () => {

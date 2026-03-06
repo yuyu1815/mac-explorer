@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { invoke, Channel } from '@tauri-apps/api/core';
-import { FileIcon } from './MainPane';
-import { useAppStore } from '../stores/appStore';
-import '../styles/components/PropertiesDialog.css';
+import { useAppStore } from '../../stores/appStore';
+import { FileIcon } from '../features/file-manager/MainPane';
+import '../../styles/components/PropertiesDialog.css';
 
 interface PropertyProgress {
     size_bytes: number;
