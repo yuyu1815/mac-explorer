@@ -36,10 +36,9 @@ export const archiveFilters = [
     { name: 'TAR.ZST Archive', extensions: ['tar.zst'] },
 ];
 
-/// パスからファイル名（拡張子なし）を取得（クロスプラットフォーム対応）
+/// パスからファイル名（拡張子なし）を取得
 export const getFileNameWithoutExtension = (path: string): string => {
-    const normalizedPath = path.replace(/\\/g, '/');
-    const parts = normalizedPath.split('/');
+    const parts = path.split('/');
     const fileName = parts[parts.length - 1] || 'archive';
     return fileName.replace(/\.[^.]+$/, '');
 };

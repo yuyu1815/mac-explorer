@@ -176,7 +176,7 @@ export const MainPane = () => {
     }, [viewMode, currentPath]);
 
     const startRename = (path: string) => {
-        const fileName = path.split('/').pop() || path.split('\\').pop() || '';
+        const fileName = path.split('/').pop() || '';
         setRenamingPath(path);
         setRenameValue(fileName);
     };
@@ -207,9 +207,8 @@ export const MainPane = () => {
     };
 
     const handleCreateFolder = async () => {
-        const sep = currentPath.includes('\\') ? '\\' : '/';
         const defaultName = '新しいフォルダー';
-        const newPath = currentPath.endsWith(sep) ? `${currentPath}${defaultName}` : `${currentPath}${sep}${defaultName}`;
+        const newPath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
 
         try {
             await invoke('create_directory', { path: newPath });
@@ -318,8 +317,7 @@ export const MainPane = () => {
                 const { sourcePaths } = JSON.parse(data);
                 const isCopy = e.ctrlKey || e.metaKey || e.altKey;
 
-                const sep = file.path.includes('\\') ? '\\' : '/';
-                const invalidDrop = sourcePaths.some((p: string) => file.path === p || file.path.startsWith(p + sep));
+                const invalidDrop = sourcePaths.some((p: string) => file.path === p || file.path.startsWith(p + '/'));
                 if (invalidDrop) return;
 
                 if (isCopy) {
@@ -524,7 +522,7 @@ export const MainPane = () => {
         return <span style={{ marginLeft: '4px', fontSize: '9px', color: '#666' }}>{sortDesc ? '▼' : '▲'}</span>;
     };
 
-    const INVALID_CHARS = /[/:\\*?"<>|]/g;
+    const INVALID_CHARS = /[\/:]/g;
 
     const renderFileName = (file: any) => {
         if (renamingPath === file.path) {
@@ -537,7 +535,7 @@ export const MainPane = () => {
                         onChange={(e) => {
                             const raw = e.target.value;
                             if (INVALID_CHARS.test(raw)) {
-                                setRenameWarning('ファイル名には / \\ : * ? " < > | は使えません');
+                                setRenameWarning('ファイル名には / : は使えません');
                                 setRenameValue(raw.replace(INVALID_CHARS, ''));
                                 setTimeout(() => setRenameWarning(null), 2000);
                             } else {

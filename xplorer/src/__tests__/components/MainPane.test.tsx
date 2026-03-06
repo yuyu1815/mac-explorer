@@ -336,7 +336,7 @@ describe('MainPane — インラインリネーム', () => {
 
         // Assert
         expect((input as HTMLInputElement).value).toBe('testfilename.txt');
-        expect(screen.getByTestId('rename-warning')).toHaveTextContent('ファイル名には / \\ : * ? " < > | は使えません');
+        expect(screen.getByTestId('rename-warning')).toHaveTextContent('ファイル名には / : は使えません');
     });
 });
 
@@ -436,6 +436,8 @@ describe('MainPane — コンテキストメニュー操作', () => {
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
         await act(async () => {
             fireEvent.contextMenu(container);
+        });
+        await act(async () => {
             fireEvent.click(screen.getByText(/貼り付け/));
         });
 
@@ -470,6 +472,8 @@ describe('MainPane — コンテキストメニュー操作', () => {
         const container = screen.getByText('file1.txt').closest('table')!.parentElement!;
         await act(async () => {
             fireEvent.contextMenu(container);
+        });
+        await act(async () => {
             fireEvent.click(screen.getByText(/貼り付け/));
         });
 

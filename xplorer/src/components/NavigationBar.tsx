@@ -10,8 +10,8 @@ export const NavigationBar = () => {
     const canGoBack = activeTab ? activeTab.historyIndex > 0 : false;
     const canGoForward = activeTab ? activeTab.historyIndex < activeTab.history.length - 1 : false;
     const searchQuery = activeTab?.searchQuery || '';
-    const currentPath = activeTab?.currentPath || 'C:\\'; // default to something so it doesn't crash
-    const folderName = currentPath.split(/[/\\]/).pop() || 'エクスプローラー';
+    const currentPath = activeTab?.currentPath || '/'; // default to something so it doesn't crash
+    const folderName = currentPath.split('/').pop() || 'エクスプローラー';
 
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(currentPath);
@@ -56,15 +56,12 @@ export const NavigationBar = () => {
 
         const fetchSuggestions = async () => {
             try {
-                const sep = editValue.includes('\\') ? '\\' : '/';
-                const lastSepIndex = editValue.lastIndexOf(sep);
+                const lastSepIndex = editValue.lastIndexOf('/');
                 let dirPath = '';
                 let searchPrefix = '';
 
                 if (lastSepIndex === -1) {
-                    if (editValue.endsWith(':')) {
-                        dirPath = editValue + '\\';
-                    } else if (editValue === '') {
+                    if (editValue === '') {
                         dirPath = '/';
                     } else {
                         setPathSuggestions([]);
@@ -108,7 +105,7 @@ export const NavigationBar = () => {
         }
 
         if (finalPath && finalPath !== currentPath) {
-            if (finalPath.length > 1 && (finalPath.endsWith('/') || finalPath.endsWith('\\'))) {
+            if (finalPath.length > 1 && finalPath.endsWith('/')) {
                 finalPath = finalPath.slice(0, -1);
             }
             setCurrentPath(finalPath);
@@ -127,7 +124,7 @@ export const NavigationBar = () => {
             e.preventDefault();
             if (suggestionIndex >= 0 && suggestionIndex < pathSuggestions.length) {
                 let p = pathSuggestions[suggestionIndex].path;
-                if (!p.endsWith('/') && !p.endsWith('\\')) p += p.includes('\\') ? '\\' : '/';
+                if (!p.endsWith('/')) p += '/';
                 setEditValue(p);
                 setPathSuggestions([]);
                 setSuggestionIndex(-1);
@@ -144,15 +141,8 @@ export const NavigationBar = () => {
 
     const handleBreadcrumbClick = (e: React.MouseEvent, index: number, parts: string[]) => {
         e.stopPropagation();
-        const sep = currentPath.includes('\\') ? '\\' : '/';
-        let newPath = '';
-        if (sep === '/') {
-            newPath = '/' + parts.slice(0, index + 1).join('/');
-            if (newPath === '//') newPath = '/';
-        } else {
-            newPath = parts.slice(0, index + 1).join('\\');
-            if (newPath.endsWith(':')) newPath += '\\';
-        }
+        let newPath = '/' + parts.slice(0, index + 1).join('/');
+        if (newPath === '//') newPath = '/';
         setCurrentPath(newPath);
     };
 
@@ -188,9 +178,8 @@ export const NavigationBar = () => {
 
     const renderBreadcrumbs = () => {
         if (!currentPath) return null;
-        const sep = currentPath.includes('\\') ? '\\' : '/';
-        let parts = currentPath.split(sep);
-        if (sep === '/' && currentPath.startsWith('/')) {
+        let parts = currentPath.split('/');
+        if (currentPath.startsWith('/')) {
             parts.shift();
         }
 
@@ -205,7 +194,7 @@ export const NavigationBar = () => {
                 </div>
                 <ChevronRight size={14} color="var(--text-muted)" style={{ margin: '0 2px' }} />
 
-                {sep === '/' && currentPath.startsWith('/') && (
+                {currentPath.startsWith('/') && (
                     <div className="breadcrumb-wrapper" style={{ position: 'relative' }}>
                         <div onClick={(e) => { e.stopPropagation(); setCurrentPath('/'); }} className="breadcrumb-item">
                             /
@@ -235,14 +224,8 @@ export const NavigationBar = () => {
                 {parts.map((part, i) => {
                     if (!part) return null;
 
-                    let thisPath = '';
-                    if (sep === '/') {
-                        thisPath = '/' + parts.slice(0, i + 1).join('/');
-                        if (thisPath === '//') thisPath = '/';
-                    } else {
-                        thisPath = parts.slice(0, i + 1).join('\\');
-                        if (thisPath.endsWith(':')) thisPath += '\\';
-                    }
+                    let thisPath = '/' + parts.slice(0, i + 1).join('/');
+                    if (thisPath === '//') thisPath = '/';
 
                     return (
                         <div key={i} className="breadcrumb-wrapper" style={{ position: 'relative' }}>
@@ -341,7 +324,7 @@ export const NavigationBar = () => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             let p = item.path;
-                                            if (!p.endsWith('/') && !p.endsWith('\\')) p += p.includes('\\') ? '\\' : '/';
+                                            if (!p.endsWith('/')) p += '/';
                                             setEditValue(p);
                                             setPathSuggestions([]);
                                             setSuggestionIndex(-1);

@@ -5,7 +5,7 @@ export const TitleBar = () => {
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const displayPath = activeTab?.currentPath || 'エクスプローラー';
-  const title = displayPath.split(/[/\\]/).pop() || 'エクスプローラー';
+  const title = displayPath.split('/').pop() || 'エクスプローラー';
 
 
   return (
