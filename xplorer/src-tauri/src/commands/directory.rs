@@ -21,7 +21,8 @@ fn get_entry_icon_id(is_dir: bool, path_str: &str, extension: Option<String>) ->
 
 /// パスを「アーカイブファイル」と「その内部の相対パス」に分割する
 pub fn split_archive_path(path: &str) -> Option<(String, String)> {
-    let path_buf = PathBuf::from(path);
+    let normalized = path.replace('\\', "/");
+    let path_buf = PathBuf::from(&normalized);
     let mut current = path_buf.as_path();
 
     while let Some(parent) = current.parent() {
@@ -29,7 +30,7 @@ pub fn split_archive_path(path: &str) -> Option<(String, String)> {
             let path_str = current.to_string_lossy().to_string();
             // 拡張子がアーカイブ形式かチェック
             if is_archive_file(&path_str) {
-                let relative = path.strip_prefix(&path_str).unwrap_or("");
+                let relative = normalized.strip_prefix(&path_str).unwrap_or("");
                 let relative = relative.trim_start_matches('/');
                 return Some((path_str, relative.to_string()));
             }
@@ -126,7 +127,8 @@ pub async fn list_archive_internal(archive_path: &str, inner_path: &str) -> Resu
 /// list_directory の内部実装
 pub async fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
     // 仮想パス（アーカイブ内）のチェック
-    if let Some((archive_path, inner_path)) = split_archive_path(path) {
+    let normalized_path = path.replace('\\', "/");
+    if let Some((archive_path, inner_path)) = split_archive_path(&normalized_path) {
         // パスがアーカイブファイル自体、またはその内部を指している場合
         // (通常のディレクトリが同名で存在する特異なケースを除き、アーカイブとして扱う)
         if !Path::new(path).is_dir() {

@@ -105,10 +105,10 @@ fn system_time_to_timestamp(time: Option<SystemTime>) -> i64 {
 
 /// パストラバーサル攻撃を検出（macOSのみ）
 fn is_path_traversal_attempt(path: &str) -> bool {
-    // "../" を含むパスは拒否
-    path.contains("../")
-        // 絶対パスも拒否（macOS）
-        || path.starts_with('/')
+    // "../" または "..\\" を含むパスは拒否
+    path.contains("../") || path.contains("..\\")
+        // 絶対パスも拒否（macOSは /、念の為 Windows のディスク記法 :\\ も考慮）
+        || path.starts_with('/') || path.contains(":\\")
 }
 
 /// 複数のパスから共通の親ディレクトリを取得

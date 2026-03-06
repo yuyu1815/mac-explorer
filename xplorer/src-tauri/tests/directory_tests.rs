@@ -26,6 +26,14 @@ async fn test_archive_browsing() {
     let (arc, inner) = result.unwrap();
     assert_eq!(arc, zip_path_str);
     assert_eq!(inner, "folder1/file2.txt");
+    
+    // Windows 形式（バックスラッシュ）
+    let win_path = format!("{}\\folder1\\file2.txt", zip_path_str);
+    let result = split_archive_path(&win_path);
+    assert!(result.is_some());
+    let (arc, inner) = result.unwrap();
+    assert_eq!(arc, zip_path_str);
+    assert_eq!(inner, "folder1/file2.txt");
 
     // 3. list_directory_internal のルーティングテスト
     // アーカイブ内のパスを指定した場合

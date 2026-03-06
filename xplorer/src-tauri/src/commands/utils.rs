@@ -39,7 +39,8 @@ pub async fn get_parent_path(path: String) -> Result<String, String> {
         return Err("Path cannot be empty".to_string());
     }
 
-    let segments: Vec<&str> = path.split('/').collect();
+    let normalized = path.replace('\\', "/");
+    let segments: Vec<&str> = normalized.split('/').collect();
     let non_empty: Vec<&str> = segments.into_iter().filter(|s| !s.is_empty()).collect();
 
     if non_empty.len() <= 1 {
