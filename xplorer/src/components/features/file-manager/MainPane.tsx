@@ -15,30 +15,74 @@ import { useFileOperations } from '../../../hooks/useFileOperations';
 import { useFileSelection } from '../../../hooks/useFileSelection';
 import styles from '../../../styles/components/features/file-manager/MainPane.module.css';
 
-const FolderIcon = ({ size = 16, color = '#FFB900' }) => (
-    <Folder size={size} fill={color} color={color} strokeWidth={1} />
-);
+const FolderIcon = ({ size = 16, color = '#FFB900', iconId }: { size?: number, color?: string, iconId?: string }) => {
+    const [failed, setFailed] = useState(false);
 
-const AppIcon = ({ size = 16 }: { size?: number, iconId?: string }) => {
-    // If we have a way to fetch the app icon from Rust, we'd use an <img> here
-    // For now, fallback to a generic app icon
-    return <AppWindow size={size} color="#888" />;
+    if (failed || !iconId || iconId === 'dir') {
+        return <Folder size={size} fill={color} color={color} strokeWidth={1} />;
+    }
+
+    return (
+        <img
+            src={`icon://localhost/${iconId}`}
+            alt=""
+            onError={() => setFailed(true)}
+            style={{ width: size, height: size, objectFit: 'contain' }}
+        />
+    );
+};
+
+const AppOverlayIcon = ({ size = 16, iconId }: { size?: number, iconId?: string }) => {
+    return (
+        <div className={styles.iconContainer} style={{ width: size, height: size }}>
+            <FolderIcon size={size} />
+            <div className={styles.appBadge} style={{ width: size * 0.7, height: size * 0.7 }}>
+                <img
+                    src={`icon://localhost/${iconId}`}
+                    alt=""
+                    className={styles.appBadgeImg}
+                    onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                    }}
+                />
+            </div>
+        </div>
+    );
 };
 
 export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean; iconId?: string; size?: number }) => {
-    if (isDir) return <FolderIcon size={size} />;
+    const [failed, setFailed] = useState(false);
 
-    // Map common extensions/types to icons
-    const id = (iconId || '').toLowerCase();
-    if (['exe', 'app', 'lnk'].includes(id)) return <AppIcon size={size} iconId={iconId} />;
-    if (['jpg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(id)) return <FileImage size={size} color="#2196F3" />;
-    if (['mp4', 'mov', 'avi', 'mkv'].includes(id)) return <FileVideo size={size} color="#E91E63" />;
-    if (['mp3', 'wav', 'flac', 'm4a'].includes(id)) return <FileAudio size={size} color="#9C27B0" />;
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(id)) return <FileArchive size={size} color="#F44336" />;
-    if (['js', 'ts', 'tsx', 'jsx', 'html', 'css', 'json', 'py', 'rs', 'go', 'c', 'cpp'].includes(id)) return <FileCode size={size} color="#4CAF50" />;
-    if (['txt', 'md', 'doc', 'docx', 'pdf'].includes(id)) return <FileText size={size} color="#607D8B" />;
+    // .app package specialization: Folder with App Icon overlay
+    if (isDir && iconId?.toLowerCase().endsWith('.app')) {
+        return <AppOverlayIcon size={size} iconId={iconId} />;
+    }
 
-    return <File size={size} color="#888" />;
+    if (isDir && !iconId?.startsWith('app:')) {
+        return <FolderIcon size={size} iconId={iconId} />;
+    }
+
+    if (failed || !iconId) {
+        const id = (iconId || '').toLowerCase();
+        // app:id support
+        if (['exe', 'app', 'lnk'].includes(id) || id.startsWith('app:')) return <AppWindow size={size} color="#888" />;
+        if (['jpg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(id)) return <FileImage size={size} color="#2196F3" />;
+        if (['mp4', 'mov', 'avi', 'mkv'].includes(id)) return <FileVideo size={size} color="#E91E63" />;
+        if (['mp3', 'wav', 'flac', 'm4a'].includes(id)) return <FileAudio size={size} color="#9C27B0" />;
+        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(id)) return <FileArchive size={size} color="#F44336" />;
+        if (['js', 'ts', 'tsx', 'jsx', 'html', 'css', 'json', 'py', 'rs', 'go', 'c', 'cpp'].includes(id)) return <FileCode size={size} color="#4CAF50" />;
+        if (['txt', 'md', 'doc', 'docx', 'pdf', 'csv', 'xls', 'xlsx'].includes(id)) return <FileText size={size} color="#607D8B" />;
+        return <File size={size} color="#888" />;
+    }
+
+    return (
+        <img
+            src={`icon://localhost/${iconId}`}
+            alt=""
+            onError={() => setFailed(true)}
+            style={{ width: size, height: size, objectFit: 'contain' }}
+        />
+    );
 };
 
 export const MainPane = () => {
