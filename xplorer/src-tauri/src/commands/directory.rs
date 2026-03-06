@@ -278,6 +278,8 @@ pub async fn list_files_sorted(
     let app_ids: Vec<String> = entries
         .iter()
         .filter(|e| e.icon_id.starts_with("app:"))
+        // アーカイブ内（仮想パス）のアイコンは物理パスとしての実体がないため、スキップ
+        .filter(|e| !e.path.contains(".zip/") && !e.path.contains(".7z/") && !e.path.contains(".tar"))
         .map(|e| e.icon_id.clone())
         .collect();
 

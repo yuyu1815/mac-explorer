@@ -17,6 +17,9 @@ export const useFileSystem = ({ currentPath, showHidden, sortParams, searchQuery
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const sortBy = sortParams.sortBy;
+    const sortDesc = sortParams.sortDesc;
+
     const refreshFiles = useCallback(async () => {
         if (!currentPath) return;
         setLoading(true);
@@ -25,8 +28,8 @@ export const useFileSystem = ({ currentPath, showHidden, sortParams, searchQuery
             const result = await invoke<FileEntry[]>('list_files_sorted', {
                 path: currentPath,
                 showHidden,
-                sortBy: sortParams.sortBy,
-                sortDesc: sortParams.sortDesc,
+                sortBy,
+                sortDesc,
                 searchQuery,
             });
             setFiles(result);
@@ -36,7 +39,7 @@ export const useFileSystem = ({ currentPath, showHidden, sortParams, searchQuery
         } finally {
             setLoading(false);
         }
-    }, [currentPath, showHidden, sortParams, searchQuery]);
+    }, [currentPath, showHidden, sortBy, sortDesc, searchQuery]);
 
     useEffect(() => {
         refreshFiles();

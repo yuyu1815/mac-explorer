@@ -6,7 +6,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use libarchive2::{ArchiveFormat, CompressionFormat, FileType, ReadArchive, WriteArchive};
+use dashmap::DashMap;
+use once_cell::sync::Lazy;
 use walkdir::WalkDir;
+
+static ARCHIVE_CACHE: Lazy<DashMap<String, (SystemTime, Vec<ArchiveEntry>)>> = Lazy::new(DashMap::new);
 
 use super::types::{
     CompressionError, CompressionProgress, CompressionResultWithErrors, ExtractionProgress,
@@ -656,12 +660,28 @@ pub async fn extract_archive(
 pub async fn list_archive_entries(archive_path: String) -> Result<Vec<ArchiveEntry>, String> {
     let src = archive_path.clone();
 
+    // 1. キャッシュチェック
+    if let Some(cached) = ARCHIVE_CACHE.get(&src) {
+        let (cached_time, entries) = cached.value();
+        if let Ok(metadata) = std::fs::metadata(&src) {
+            if let Ok(mtime) = metadata.modified() {
+                if mtime == *cached_time {
+                    return Ok(entries.clone());
+                }
+            }
+        }
+    }
+
     tokio::task::spawn_blocking(move || {
         let src_path = Path::new(&src);
 
         if !src_path.exists() {
             return Err(format!("アーカイブが存在しません: {}", src_path.display()));
         }
+
+        let mtime = std::fs::metadata(&src)
+            .and_then(|m| m.modified())
+            .unwrap_or(SystemTime::now());
 
         let mut archive =
             ReadArchive::open(&src).map_err(|e| format!("アーカイブを開けません: {}", e))?;
@@ -685,6 +705,9 @@ pub async fn list_archive_entries(archive_path: String) -> Result<Vec<ArchiveEnt
             });
         }
 
+        // キャッシュに保存
+        ARCHIVE_CACHE.insert(src, (mtime, entries.clone()));
+
         Ok(entries)
     })
     .await
@@ -692,7 +715,7 @@ pub async fn list_archive_entries(archive_path: String) -> Result<Vec<ArchiveEnt
 }
 
 /// アーカイブエントリ情報
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub struct ArchiveEntry {
     pub path: String,
     pub size: u64,
