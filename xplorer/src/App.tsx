@@ -7,6 +7,7 @@ import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
 import { DetailsPane } from './components/DetailsPane';
 import { ProgressWindow } from './components/ProgressWindow';
+import { OverwriteConfirmDialog } from './components/OverwriteConfirmDialog';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
 
@@ -81,6 +82,7 @@ function App() {
         {showDetailsPane && <DetailsPane />}
       </div>
       <StatusBar />
+      <OverwriteConfirmDialog />
     </div>
   );
 }

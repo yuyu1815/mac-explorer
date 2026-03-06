@@ -84,6 +84,7 @@ pub fn run() {
             commands::file_ops::delete_files,
             commands::file_ops::rename_file,
             commands::file_ops::create_file,
+            commands::file_ops::check_exists,
             commands::utils::get_home_dir,
             commands::volumes::list_volumes,
             commands::utils::get_parent_path,

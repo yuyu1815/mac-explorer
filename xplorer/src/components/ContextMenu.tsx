@@ -15,7 +15,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreateFolder }: ContextMenuProps) => {
-    const { tabs, activeTabId, setFiles, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog } = useAppStore();
+    const { tabs, activeTabId, setFiles, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, confirmOverwrite } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -86,6 +86,12 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                 : 'archive.zip';
 
             const archivePath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
+
+            const exists = await invoke<boolean>('check_exists', { path: archivePath });
+            if (exists) {
+                const shouldOverwrite = await confirmOverwrite(archivePath);
+                if (!shouldOverwrite) return;
+            }
 
             const payload = {
                 sources: pathsToActOn,

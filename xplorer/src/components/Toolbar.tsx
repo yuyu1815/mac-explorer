@@ -11,7 +11,7 @@ import {
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
 
 export const Toolbar = () => {
-    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes } = useAppStore();
+    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes, confirmOverwrite } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -174,6 +174,12 @@ export const Toolbar = () => {
                 : 'archive.zip';
 
             const archivePath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
+
+            const exists = await invoke<boolean>('check_exists', { path: archivePath });
+            if (exists) {
+                const shouldOverwrite = await confirmOverwrite(archivePath);
+                if (!shouldOverwrite) return;
+            }
 
             const payload = {
                 sources: Array.from(selectedFiles),

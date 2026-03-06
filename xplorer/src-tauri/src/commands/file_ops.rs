@@ -73,3 +73,8 @@ pub async fn rename_file(path: String, new_name: String) -> Result<(), String> {
     let new_path = parent.join(new_name);
     fs::rename(&path, &new_path).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn check_exists(path: String) -> Result<bool, String> {
+    Ok(std::path::Path::new(&path).exists())
+}

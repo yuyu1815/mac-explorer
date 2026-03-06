@@ -35,6 +35,11 @@ export interface Tab {
     searchQuery: string;
 }
 
+export interface OverwriteConfirmState {
+    targetFile: string;
+    resolve: (overwrite: boolean) => void;
+}
+
 interface AppState {
     tabs: Tab[];
     activeTabId: string;
@@ -46,6 +51,7 @@ interface AppState {
     showHiddenFiles: boolean;
     showFileExtensions: boolean;
     showItemCheckBoxes: boolean;
+    overwriteConfirm: OverwriteConfirmState | null;
 
     // Actions
     addTab: (path?: string) => void;
@@ -72,6 +78,8 @@ interface AppState {
     setShowHiddenFiles: (show: boolean) => void;
     setShowFileExtensions: (show: boolean) => void;
     setShowItemCheckBoxes: (show: boolean) => void;
+    confirmOverwrite: (targetFile: string) => Promise<boolean>;
+    resolveOverwrite: (overwrite: boolean) => void;
 }
 
 const createNewTab = (id: string, path: string = ''): Tab => ({
@@ -99,6 +107,7 @@ export const useAppStore = create<AppState>((set) => ({
     showHiddenFiles: false,
     showFileExtensions: true,
     showItemCheckBoxes: false,
+    overwriteConfirm: null,
 
     addTab: (path) => set((state) => {
         const id = `tab-${Date.now()}`;
@@ -237,4 +246,17 @@ export const useAppStore = create<AppState>((set) => ({
     setShowHiddenFiles: (show) => set({ showHiddenFiles: show }),
     setShowFileExtensions: (show) => set({ showFileExtensions: show }),
     setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),
+
+    confirmOverwrite: (targetFile) => {
+        return new Promise((resolve) => {
+            set({ overwriteConfirm: { targetFile, resolve } });
+        });
+    },
+
+    resolveOverwrite: (overwrite) => set((state) => {
+        if (state.overwriteConfirm?.resolve) {
+            state.overwriteConfirm.resolve(overwrite);
+        }
+        return { overwriteConfirm: null };
+    }),
 }));
