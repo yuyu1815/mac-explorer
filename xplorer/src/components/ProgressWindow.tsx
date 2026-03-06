@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { invoke, Channel } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 export interface ProgressData {
     current_file: string;
     files_processed: number;
@@ -36,7 +36,7 @@ export const ProgressWindow: React.FC = () => {
                     // 進捗が完了フラグを受け取ったら早めに閉じる（invokeの終了を待たずにUI上は完了とする）
                     if (data.complete) {
                         setTimeout(() => {
-                            getCurrentWindow().close();
+                            getCurrentWebviewWindow().close().catch(console.error);
                         }, 1000); // 1秒見せてから閉じる
                     }
                 };
@@ -66,7 +66,7 @@ export const ProgressWindow: React.FC = () => {
                 if (!invokeError) {
                     // 万が一Channelで閉じられなかった場合のバックアップ
                     setTimeout(() => {
-                        getCurrentWindow().close();
+                        getCurrentWebviewWindow().close().catch(console.error);
                     }, 1500);
                 }
             } catch (err) {
@@ -86,13 +86,15 @@ export const ProgressWindow: React.FC = () => {
         percentage = Math.floor((progress.files_processed / progress.total_files) * 100);
     }
 
+    if (percentage > 100) percentage = 100;
+
     if (errorMsg) {
         return (
             <div style={{ padding: '20px', fontFamily: '"Segoe UI", sans-serif', color: 'red' }}>
                 <h3>エラーが発生しました</h3>
                 <p>{errorMsg}</p>
                 <div style={{ marginTop: '20px', textAlign: 'right' }}>
-                    <button onClick={() => getCurrentWindow().close()} style={{ padding: '4px 16px' }}>閉じる</button>
+                    <button onClick={() => getCurrentWebviewWindow().close().catch(console.error)} style={{ padding: '4px 16px' }}>閉じる</button>
                 </div>
             </div>
         );
@@ -122,7 +124,7 @@ export const ProgressWindow: React.FC = () => {
             }}>
                 <span data-tauri-drag-region style={{ fontSize: '13px', color: '#000', flex: 1 }}>{title}</span>
                 <button
-                    onClick={() => getCurrentWindow().close()}
+                    onClick={() => getCurrentWebviewWindow().close().catch(console.error)}
                     style={{
                         width: '32px', height: '32px',
                         border: 'none', backgroundColor: 'transparent',

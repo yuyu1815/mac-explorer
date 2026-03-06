@@ -294,18 +294,20 @@ pub async fn extract_archive(
                 .map_err(|e| format!("展開先ディレクトリを作成できません: {}", e))?;
         }
 
-        // エントリ数を事前に取得
+        // エントリ数と解凍後の合計サイズを事前に取得
         let mut total_files = 0u32;
+        let mut total_uncompressed_bytes = 0u64;
 
         {
             let mut temp_archive =
                 ReadArchive::open(&src).map_err(|e| format!("アーカイブを開けません: {}", e))?;
 
-            while let Some(_entry) = temp_archive
+            while let Some(entry) = temp_archive
                 .next_entry()
                 .map_err(|e| format!("エントリの取得に失敗: {}", e))?
             {
                 total_files += 1;
+                total_uncompressed_bytes += entry.size().max(0) as u64;
             }
         }
 
@@ -318,10 +320,8 @@ pub async fn extract_archive(
         let mut errors: Vec<String> = Vec::new();
         let emit_interval = 50;
 
-        // アーカイブの合計サイズを取得
-        let total_bytes = std::fs::metadata(src_path)
-            .map(|m| m.len())
-            .unwrap_or(0);
+        // アーカイブ内のファイルの解凍後合計サイズをプログレスの分母とする
+        let total_bytes = total_uncompressed_bytes;
 
         let mut archive =
             ReadArchive::open(&src).map_err(|e| format!("アーカイブを開けません: {}", e))?;
