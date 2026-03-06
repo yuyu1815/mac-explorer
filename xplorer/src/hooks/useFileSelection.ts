@@ -1,39 +1,42 @@
 import { useState, useCallback, useRef } from 'react';
 import { FileEntry } from '../types';
+import { useAppStore } from '../stores/appStore';
 
 export const useFileSelection = (files: FileEntry[]) => {
-    const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
-    const [lastSelectedIndex, setLastSelectedIndex] = useState<number>(-1);
+    // グローバル状態を使用
+    const { tabs, activeTabId, setSelectedFiles, setFocusedIndex } = useAppStore();
+    const activeTab = tabs.find(t => t.id === activeTabId);
+    const selectedPaths = activeTab?.selectedFiles || new Set<string>();
+    const lastSelectedIndex = activeTab?.focusedIndex ?? -1;
 
     // Marquee state
     const [marquee, setMarquee] = useState<{ x1: number, y1: number, x2: number, y2: number } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const toggleSelection = useCallback((path: string, multi: boolean, range: boolean, index: number) => {
-        setSelectedPaths(prev => {
-            const next = new Set(prev);
-            if (range && lastSelectedIndex !== -1) {
-                const start = Math.min(lastSelectedIndex, index);
-                const end = Math.max(lastSelectedIndex, index);
-                for (let i = start; i <= end; i++) {
-                    next.add(files[i].path);
-                }
-            } else if (multi) {
-                if (next.has(path)) next.delete(path);
-                else next.add(path);
-            } else {
-                next.clear();
-                next.add(path);
+        const next = new Set(multi ? selectedPaths : []);
+
+        if (range && lastSelectedIndex !== -1) {
+            const start = Math.min(lastSelectedIndex, index);
+            const end = Math.max(lastSelectedIndex, index);
+            for (let i = start; i <= end; i++) {
+                next.add(files[i].path);
             }
-            return next;
-        });
-        setLastSelectedIndex(index);
-    }, [files, lastSelectedIndex]);
+        } else if (multi) {
+            if (next.has(path)) next.delete(path);
+            else next.add(path);
+        } else {
+            next.add(path);
+        }
+
+        setSelectedFiles(next);
+        setFocusedIndex(index);
+    }, [files, lastSelectedIndex, selectedPaths, setSelectedFiles, setFocusedIndex]);
 
     const clearSelection = useCallback(() => {
-        setSelectedPaths(new Set());
-        setLastSelectedIndex(-1);
-    }, []);
+        setSelectedFiles(new Set());
+        setFocusedIndex(-1);
+    }, [setSelectedFiles, setFocusedIndex]);
 
     const onMouseDown = useCallback((e: React.MouseEvent) => {
         if (e.button !== 0) return;
@@ -51,7 +54,7 @@ export const useFileSelection = (files: FileEntry[]) => {
         }
     }, [clearSelection]);
 
-    const onMouseMove = useCallback((e: MouseEvent) => {
+    const onMouseMove = useCallback((e: MouseEvent | React.MouseEvent) => {
         if (!marquee || !containerRef.current) return;
 
         const rect = containerRef.current.getBoundingClientRect();
@@ -66,7 +69,7 @@ export const useFileSelection = (files: FileEntry[]) => {
         const yMin = Math.min(marquee.y1, y);
         const yMax = Math.max(marquee.y1, y);
 
-        const newSelection = new Set(selectedPaths);
+        const newSelection = new Set(e.shiftKey || e.metaKey || e.ctrlKey ? selectedPaths : []);
         const fileElements = containerRef.current.querySelectorAll('.file-item');
 
         fileElements.forEach((el, index) => {
@@ -84,14 +87,13 @@ export const useFileSelection = (files: FileEntry[]) => {
                 itemRect.bottom < yMin);
 
             const path = files[index]?.path;
-            if (path) {
-                if (intersects) newSelection.add(path);
-                else if (!e.shiftKey && !e.metaKey && !e.ctrlKey) newSelection.delete(path);
+            if (path && intersects) {
+                newSelection.add(path);
             }
         });
 
-        setSelectedPaths(newSelection);
-    }, [marquee, files, selectedPaths]);
+        setSelectedFiles(newSelection);
+    }, [marquee, files, selectedPaths, setSelectedFiles]);
 
     const onMouseUp = useCallback(() => {
         setMarquee(null);
@@ -99,7 +101,7 @@ export const useFileSelection = (files: FileEntry[]) => {
 
     return {
         selectedPaths,
-        setSelectedPaths,
+        setSelectedFiles,
         toggleSelection,
         clearSelection,
         marquee,

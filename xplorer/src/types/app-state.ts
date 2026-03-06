@@ -54,6 +54,7 @@ export interface AppState {
     triggerRename: () => void;
     setViewMode: (mode: ViewMode) => void;
     setSortParams: (column: SortColumn, desc: boolean) => void;
+    setSelectedFiles: (paths: Set<string>) => void;
     toggleDetailsPane: () => void;
     setSearchQuery: (query: string) => void;
     setLoading: (loading: boolean) => void;
