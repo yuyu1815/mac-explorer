@@ -102,7 +102,13 @@ pub async fn compress_archive(
         }
 
         if dest_path.exists() {
-            return Err(format!("ファイルが既に存在します: {}", dest_path.display()));
+            if dest_path.is_file() {
+                if let Err(e) = std::fs::remove_file(dest_path) {
+                    return Err(format!("既存のファイルを上書きのために削除できません: {}", e));
+                }
+            } else {
+                return Err(format!("同名のディレクトリが既に存在します: {}", dest_path.display()));
+            }
         }
 
         // 共通の親ディレクトリを取得（相対パス計算用）
