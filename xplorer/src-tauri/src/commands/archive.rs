@@ -251,6 +251,9 @@ pub async fn compress_archive(
         let mut files_processed = 0u32;
         let mut bytes_processed = 0u64;
         let emit_interval = 10;
+        let mut last_emit_time = std::time::Instant::now();
+        let mut last_bytes_processed = 0u64;
+        let mut smoothed_speed = 0.0f64;
 
         for (file_path, _file_size) in file_list {
             control.check()?;
@@ -310,12 +313,29 @@ pub async fn compress_archive(
             files_processed += 1;
 
             if files_processed.is_multiple_of(emit_interval) || files_processed == total_files {
+                let now = std::time::Instant::now();
+                let elapsed = now.duration_since(last_emit_time).as_secs_f64();
+                if elapsed > 0.1 {
+                    let current_raw_speed = (bytes_processed - last_bytes_processed) as f64 / elapsed;
+                    smoothed_speed = if smoothed_speed == 0.0 { current_raw_speed } else { 0.3 * current_raw_speed + 0.7 * smoothed_speed };
+                    last_emit_time = now;
+                    last_bytes_processed = bytes_processed;
+                }
+
+                let eta = if smoothed_speed > 0.0 {
+                    ((total_bytes - bytes_processed) as f64 / smoothed_speed) as u64
+                } else {
+                    0
+                };
+
                 let _ = channel.send(CompressionProgress {
                     current_file: file_name.to_string(),
                     files_processed,
                     total_files,
                     bytes_processed,
                     total_bytes,
+                    speed: smoothed_speed as u64,
+                    eta,
                     complete: false,
                 });
             }
@@ -333,6 +353,8 @@ pub async fn compress_archive(
             total_files,
             bytes_processed,
             total_bytes,
+            speed: 0,
+            eta: 0,
             complete: true,
         });
 
@@ -420,6 +442,9 @@ pub async fn extract_archive(
         let mut bytes_processed = 0u64;
         let mut errors: Vec<String> = Vec::new();
         let emit_interval = 10;
+        let mut last_emit_time = std::time::Instant::now();
+        let mut last_bytes_processed = 0u64;
+        let mut smoothed_speed = 0.0f64;
 
         // アーカイブ内のファイルの解凍後合計サイズをプログレスの分母とする
         let total_bytes = total_uncompressed_bytes;
@@ -474,12 +499,29 @@ pub async fn extract_archive(
                 files_processed += 1;
 
                 if files_processed.is_multiple_of(emit_interval) || files_processed == total_files {
+                    let now = std::time::Instant::now();
+                    let elapsed = now.duration_since(last_emit_time).as_secs_f64();
+                    if elapsed > 0.1 {
+                        let current_raw_speed = (bytes_processed - last_bytes_processed) as f64 / elapsed;
+                        smoothed_speed = if smoothed_speed == 0.0 { current_raw_speed } else { 0.3 * current_raw_speed + 0.7 * smoothed_speed };
+                        last_emit_time = now;
+                        last_bytes_processed = bytes_processed;
+                    }
+
+                    let eta = if smoothed_speed > 0.0 {
+                        ((total_bytes - bytes_processed) as f64 / smoothed_speed) as u64
+                    } else {
+                        0
+                    };
+
                     let _ = channel.send(ExtractionProgress {
                         current_file: entry_path.to_string(),
                         files_processed,
                         total_files,
                         bytes_processed,
                         total_bytes,
+                        speed: smoothed_speed as u64,
+                        eta,
                         complete: false,
                     });
                 }
@@ -500,7 +542,6 @@ pub async fn extract_archive(
             match File::create(&out_path) {
                 Ok(mut output) => {
                     let mut buf = [0u8; 65536];
-                    let mut last_emit_bytes = bytes_processed;
                     loop {
                         match archive.read_data(&mut buf) {
                             Ok(0) => break,
@@ -516,17 +557,33 @@ pub async fn extract_archive(
                                 }
                                 bytes_processed += n as u64;
 
-                                // 約1MBごとに進捗を送信（リアルタイム性向上のため50MBから1MBへ）
-                                if bytes_processed - last_emit_bytes >= 1024 * 1024 {
+                                // 約1MBごとに進捗を送信
+                                if bytes_processed - last_bytes_processed >= 1024 * 1024 {
+                                    let now = std::time::Instant::now();
+                                    let elapsed = now.duration_since(last_emit_time).as_secs_f64();
+                                    if elapsed > 0.1 {
+                                        let current_raw_speed = (bytes_processed - last_bytes_processed) as f64 / elapsed;
+                                        smoothed_speed = if smoothed_speed == 0.0 { current_raw_speed } else { 0.3 * current_raw_speed + 0.7 * smoothed_speed };
+                                        last_emit_time = now;
+                                        last_bytes_processed = bytes_processed;
+                                    }
+
+                                    let eta = if smoothed_speed > 0.0 {
+                                        ((total_bytes - bytes_processed) as f64 / smoothed_speed) as u64
+                                    } else {
+                                        0
+                                    };
+
                                     let _ = channel.send(ExtractionProgress {
                                         current_file: entry_path.to_string(),
                                         files_processed,
                                         total_files,
                                         bytes_processed,
                                         total_bytes,
+                                        speed: smoothed_speed as u64,
+                                        eta,
                                         complete: false,
                                     });
-                                    last_emit_bytes = bytes_processed;
                                 }
                             }
                             Err(e) => {
@@ -545,12 +602,29 @@ pub async fn extract_archive(
             files_processed += 1;
 
             if files_processed.is_multiple_of(emit_interval) || files_processed == total_files {
+                let now = std::time::Instant::now();
+                let elapsed = now.duration_since(last_emit_time).as_secs_f64();
+                if elapsed > 0.1 {
+                    let current_raw_speed = (bytes_processed - last_bytes_processed) as f64 / elapsed;
+                    smoothed_speed = if smoothed_speed == 0.0 { current_raw_speed } else { 0.3 * current_raw_speed + 0.7 * smoothed_speed };
+                    last_emit_time = now;
+                    last_bytes_processed = bytes_processed;
+                }
+
+                let eta = if smoothed_speed > 0.0 {
+                    ((total_bytes - bytes_processed) as f64 / smoothed_speed) as u64
+                } else {
+                    0
+                };
+
                 let _ = channel.send(ExtractionProgress {
                     current_file: entry_path.to_string(),
                     files_processed,
                     total_files,
                     bytes_processed,
                     total_bytes,
+                    speed: smoothed_speed as u64,
+                    eta,
                     complete: false,
                 });
             }
@@ -562,6 +636,8 @@ pub async fn extract_archive(
             total_files,
             bytes_processed,
             total_bytes,
+            speed: 0,
+            eta: 0,
             complete: true,
         });
 

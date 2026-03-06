@@ -70,6 +70,8 @@ pub struct CompressionProgress {
     pub total_files: u32,
     pub bytes_processed: u64,
     pub total_bytes: u64,
+    pub speed: u64,
+    pub eta: u64,
     pub complete: bool,
 }
 
@@ -90,6 +92,8 @@ pub struct ExtractionProgress {
     pub total_files: u32,
     pub bytes_processed: u64,
     pub total_bytes: u64,
+    pub speed: u64,
+    pub eta: u64,
     pub complete: bool,
 }
 

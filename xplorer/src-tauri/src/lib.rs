@@ -88,6 +88,7 @@ pub fn run() {
             commands::file_ops::move_files,
             commands::file_ops::delete_files,
             commands::file_ops::rename_file,
+            commands::file_ops::batch_rename,
             commands::file_ops::create_file,
             commands::file_ops::check_exists,
             commands::utils::get_home_dir,

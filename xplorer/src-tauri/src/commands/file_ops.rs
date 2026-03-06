@@ -76,6 +76,21 @@ pub async fn rename_file(path: String, new_name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn batch_rename(paths: Vec<String>, new_names: Vec<String>) -> Result<(), String> {
+    if paths.len() != new_names.len() {
+        return Err("Path and name counts do not match".to_string());
+    }
+
+    for (path, new_name) in paths.into_iter().zip(new_names.into_iter()) {
+        let p = std::path::Path::new(&path);
+        let parent = p.parent().ok_or("No parent directory")?;
+        let new_path = parent.join(new_name);
+        fs::rename(&path, &new_path).map_err(|e| format!("Failed to rename {}: {}", path, e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn check_exists(path: String) -> Result<bool, String> {
     Ok(std::path::Path::new(&path).exists())
 }
