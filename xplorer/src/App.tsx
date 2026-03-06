@@ -6,7 +6,7 @@ import { MainPane } from './components/MainPane';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
 import { DetailsPane } from './components/DetailsPane';
-import { ProgressDialog } from './components/ProgressDialog';
+import { ProgressWindow } from './components/ProgressWindow';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
 
@@ -56,6 +56,12 @@ function App() {
     document.addEventListener('mouseup', onUp);
   };
 
+  // 別ウィンドウ呼び出し用のルーティング
+  const searchParams = new URLSearchParams(window.location.search);
+  if (searchParams.get('window') === 'progress') {
+    return <ProgressWindow />;
+  }
+
   return (
     <div className="app-container">
       <div style={{ backgroundColor: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)' }}>
@@ -75,7 +81,6 @@ function App() {
         {showDetailsPane && <DetailsPane />}
       </div>
       <StatusBar />
-      <ProgressDialog />
     </div>
   );
 }

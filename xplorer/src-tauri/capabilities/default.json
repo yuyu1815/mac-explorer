@@ -10,6 +10,7 @@
     "dialog:default",
     "clipboard-manager:default",
     "opener:default",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:window:default"
   ]
 }

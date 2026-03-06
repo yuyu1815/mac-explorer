@@ -18,22 +18,6 @@ export interface FileEntry {
     icon_id: string;
 }
 
-export interface ProgressData {
-    current_file: string;
-    files_processed: number;
-    total_files: number;
-    bytes_processed: number;
-    total_bytes: number;
-    complete: boolean;
-}
-
-export interface ProgressDialogState {
-    isOpen: boolean;
-    type: 'compress' | 'extract';
-    title: string;
-    progress: ProgressData | null;
-}
-
 export type ViewMode = 'extra_large_icon' | 'large_icon' | 'medium_icon' | 'small_icon' | 'list' | 'detail' | 'tiles' | 'content';
 export type SortColumn = 'name' | 'modified' | 'file_type' | 'size';
 
@@ -62,7 +46,6 @@ interface AppState {
     showHiddenFiles: boolean;
     showFileExtensions: boolean;
     showItemCheckBoxes: boolean;
-    progressDialog: ProgressDialogState | null;
 
     // Actions
     addTab: (path?: string) => void;
@@ -89,9 +72,6 @@ interface AppState {
     setShowHiddenFiles: (show: boolean) => void;
     setShowFileExtensions: (show: boolean) => void;
     setShowItemCheckBoxes: (show: boolean) => void;
-    openProgressDialog: (type: 'compress' | 'extract', title: string) => void;
-    updateProgressDialog: (progress: ProgressData) => void;
-    closeProgressDialog: () => void;
 }
 
 const createNewTab = (id: string, path: string = ''): Tab => ({
@@ -119,7 +99,6 @@ export const useAppStore = create<AppState>((set) => ({
     showHiddenFiles: false,
     showFileExtensions: true,
     showItemCheckBoxes: false,
-    progressDialog: null,
 
     addTab: (path) => set((state) => {
         const id = `tab-${Date.now()}`;
@@ -258,9 +237,4 @@ export const useAppStore = create<AppState>((set) => ({
     setShowHiddenFiles: (show) => set({ showHiddenFiles: show }),
     setShowFileExtensions: (show) => set({ showFileExtensions: show }),
     setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),
-    openProgressDialog: (type, title) => set({ progressDialog: { isOpen: true, type, title, progress: null } }),
-    updateProgressDialog: (progress) => set((state) => ({
-        progressDialog: state.progressDialog ? { ...state.progressDialog, progress } : null
-    })),
-    closeProgressDialog: () => set({ progressDialog: null }),
 }));

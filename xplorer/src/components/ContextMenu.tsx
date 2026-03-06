@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react';
-import { invoke, Channel } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useAppStore } from '../stores/appStore';
 import { ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard, LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive } from 'lucide-react';
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
@@ -14,7 +15,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreateFolder }: ContextMenuProps) => {
-    const { tabs, activeTabId, setFiles, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, openProgressDialog, updateProgressDialog, closeProgressDialog } = useAppStore();
+    const { tabs, activeTabId, setFiles, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -86,31 +87,40 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
 
             const archivePath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
 
-            const channel = new Channel<any>();
-            channel.onmessage = (progress) => {
-                updateProgressDialog(progress);
-                if (progress.complete) {
-                    setTimeout(() => closeProgressDialog(), 500);
-                }
-            };
-
-            const format = getArchiveFormat(archivePath);
-            openProgressDialog('compress', '圧縮しています...');
-            const result = await invoke('compress_archive', {
+            const payload = {
                 sources: pathsToActOn,
                 destArchivePath: archivePath,
-                format,
-                channel,
-            }) as { errors: Array<{ file_path: string; message: string }> };
+                format: getArchiveFormat(archivePath)
+            };
 
-            if (result.errors.length > 0) {
-                alert(`圧縮が完了しましたが、${result.errors.length}個のファイルでエラーが発生しました:\n${result.errors.map(e => `  - ${e.file_path}: ${e.message}`).join('\n')}`);
-            }
-            await refreshFiles();
+            const label = `progress-${Date.now()}`;
+            const queryParams = new URLSearchParams({
+                window: 'progress',
+                action: 'compress',
+                payload: JSON.stringify(payload)
+            });
+
+            const win = new WebviewWindow(label, {
+                url: `/?${queryParams.toString()}`,
+                title: '圧縮しています...',
+                width: 400,
+                height: 250,
+                resizable: false,
+                maximizable: false,
+                center: true,
+                decorations: false,
+                transparent: true,
+                alwaysOnTop: true,
+            });
+
+            await win.once('tauri://error', (e) => {
+                console.error('Failed to create progress window', e);
+                alert('進行状況ウィンドウの作成に失敗しました。');
+            });
+
         } catch (err) {
-            console.error('Compression failed:', err);
-            alert(`圧縮に失敗しました: ${err}`);
-            closeProgressDialog();
+            console.error('Compression start failed:', err);
+            alert(`圧縮処理の開始に失敗しました: ${err}`);
         }
     };
 
@@ -120,29 +130,39 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             const baseDir = getFileNameWithoutExtension(targetPath);
             const destDir = currentPath.endsWith('/') ? `${currentPath}${baseDir}` : `${currentPath}/${baseDir}`;
 
-            const channel = new Channel<any>();
-            channel.onmessage = (progress) => {
-                updateProgressDialog(progress);
-                if (progress.complete) {
-                    setTimeout(() => closeProgressDialog(), 500);
-                }
+            const payload = {
+                archivePath: targetPath,
+                destDir: destDir
             };
 
-            openProgressDialog('extract', '展開しています...');
-            const result = await invoke('extract_archive', {
-                archivePath: targetPath,
-                destDir: destDir,
-                channel,
-            }) as { errors: string[] };
+            const label = `progress-${Date.now()}`;
+            const queryParams = new URLSearchParams({
+                window: 'progress',
+                action: 'extract',
+                payload: JSON.stringify(payload)
+            });
 
-            if (result.errors.length > 0) {
-                alert(`解凍が完了しましたが、${result.errors.length}個のエラーが発生しました:\n${result.errors.join('\n')}`);
-            }
-            await refreshFiles();
+            const win = new WebviewWindow(label, {
+                url: `/?${queryParams.toString()}`,
+                title: '展開しています...',
+                width: 400,
+                height: 250,
+                resizable: false,
+                maximizable: false,
+                center: true,
+                decorations: false,
+                transparent: true,
+                alwaysOnTop: true,
+            });
+
+            await win.once('tauri://error', (e) => {
+                console.error('Failed to create progress window', e);
+                alert('進行状況ウィンドウの作成に失敗しました。');
+            });
+
         } catch (err) {
-            console.error('Extraction failed:', err);
-            alert(`解凍に失敗しました: ${err}`);
-            closeProgressDialog();
+            console.error('Extraction start failed:', err);
+            alert(`解凍の開始に失敗しました: ${err}`);
         }
     };
 
