@@ -352,7 +352,7 @@ pub async fn extract_archive(
                 }
             }
 
-            if entry.file_type() == FileType::Directory {
+            if entry.file_type() == FileType::Directory || entry_path.ends_with('/') || entry_path.is_empty() {
                 if let Err(e) = std::fs::create_dir_all(&out_path) {
                     errors.push(format!(
                         "ディレクトリ作成エラー {}: {}",
