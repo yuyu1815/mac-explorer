@@ -392,19 +392,42 @@ pub async fn extract_archive(
                 }
             }
 
-            let buffer = archive
-                .read_data_to_vec()
-                .map_err(|e| format!("ファイル読み込みエラー: {}", e))?;
-
             match File::create(&out_path) {
                 Ok(mut output) => {
-                    if let Err(e) = output.write_all(&buffer) {
-                        errors.push(format!(
-                            "ファイル書き込みエラー {}: {}",
-                            out_path.display(),
-                            e
-                        ));
-                        continue;
+                    let mut buf = [0u8; 65536];
+                    let mut last_emit_bytes = bytes_processed;
+                    loop {
+                        match archive.read_data(&mut buf) {
+                            Ok(0) => break,
+                            Ok(n) => {
+                                if let Err(e) = output.write_all(&buf[..n]) {
+                                    errors.push(format!(
+                                        "ファイル書き込みエラー {}: {}",
+                                        out_path.display(),
+                                        e
+                                    ));
+                                    break;
+                                }
+                                bytes_processed += n as u64;
+
+                                // 約50MBごとに進捗を送信（巨大ファイルの途中でプログレスバーを動かすため）
+                                if bytes_processed - last_emit_bytes >= 50 * 1024 * 1024 {
+                                    let _ = channel.send(ExtractionProgress {
+                                        current_file: entry_path.to_string(),
+                                        files_processed,
+                                        total_files,
+                                        bytes_processed,
+                                        total_bytes,
+                                        complete: false,
+                                    });
+                                    last_emit_bytes = bytes_processed;
+                                }
+                            }
+                            Err(e) => {
+                                errors.push(format!("ファイル読み込みエラー: {}", e));
+                                break;
+                            }
+                        }
                     }
                 }
                 Err(e) => {
@@ -417,7 +440,6 @@ pub async fn extract_archive(
                 }
             }
 
-            bytes_processed += buffer.len() as u64;
             files_processed += 1;
 
             if files_processed % emit_interval == 0 || files_processed == total_files {
