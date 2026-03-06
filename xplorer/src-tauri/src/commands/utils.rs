@@ -1,19 +1,29 @@
 use std::time::SystemTime;
 
-/// サイズをフォーマット
+/// バイトサイズを人間が読みやすい形式（B, KB, MB, GB）にフォーマットします。
+/// 
+/// # Arguments
+/// * `bytes` - フォーマット対象のサイズ（バイト）
 pub fn format_size(bytes: u64) -> String {
-    if bytes < 1024 {
-        format!("{} B", bytes)
-    } else if bytes < 1024 * 1024 {
-        format!("{:.1} KB", bytes as f64 / 1024.0)
-    } else if bytes < 1024 * 1024 * 1024 {
-        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+    let units = ["B", "KB", "MB", "GB", "TB"];
+    let mut size = bytes as f64;
+    let mut idx = 0;
+
+    while size >= 1024.0 && idx < units.len() - 1 {
+        size /= 1024.0;
+        idx += 1;
+    }
+
+    if idx == 0 {
+        format!("{} {}", bytes, units[idx])
     } else {
-        format!("{:.1} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+        format!("{:.1} {}", size, units[idx])
     }
 }
 
-/// タイムスタンプをフォーマット
+/// Unixタイムスタンプをローカル日時の文字列（YYYY/MM/DD HH:MM）に変換します。
+/// 
+/// 0が渡された場合は空文字列を返します。
 pub fn format_timestamp(ts: i64) -> String {
     if ts == 0 {
         return String::new();
@@ -25,39 +35,29 @@ pub fn format_timestamp(ts: i64) -> String {
     datetime.format("%Y/%m/%d %H:%M").to_string()
 }
 
-/// ホームディレクトリ取得
+/// ユーザーのホームディレクトリパスを取得します。
+/// 
+/// 環境変数 `HOME` を参照します。取得できない場合はエラーを返します。
 #[tauri::command]
 pub async fn get_home_dir() -> Result<String, String> {
     std::env::var("HOME").map_err(|_| "Could not determine home directory".to_string())
 }
 
-/// 親ディレクトリパス取得
+/// 指定されたパスの親ディレクトリパスを計算します。
+/// 
+/// パストラバーサルを防ぐため、単純な文字列操作ではなくセグメント分割によって計算を行います。
+/// ルート直下の要素の場合は `/` を返します。
 #[tauri::command]
 pub async fn get_parent_path(path: String) -> Result<String, String> {
-    if path.is_empty() {
-        return Err("Path cannot be empty".to_string());
-    }
-
-    let segments: Vec<&str> = path.split('/').collect();
-    let non_empty: Vec<&str> = segments.into_iter().filter(|s| !s.is_empty()).collect();
-
-    if non_empty.len() <= 1 {
-        if path.starts_with('/') {
-            return Ok("/".to_string());
-        }
-        return Ok(path);
-    }
-
-    let parent_segments = &non_empty[..non_empty.len() - 1];
-
-    if path.starts_with('/') {
-        return Ok(format!("/{}", parent_segments.join("/")));
-    }
-
-    Ok(parent_segments.join("/"))
+    let p = std::path::Path::new(&path);
+    p.parent()
+        .map(|parent| parent.to_string_lossy().into_owned())
+        .ok_or_else(|| "No parent directory".to_string())
 }
 
-/// デフォルトアプリでファイルを開く
+/// 指定されたパスを、OS標準のアプリケーションとして開きます。
+/// 
+/// macOSでは `open` コマンドを使用します。
 #[tauri::command]
 pub async fn open_file_default(path: String) -> Result<(), String> {
     std::process::Command::new("open")
@@ -67,7 +67,9 @@ pub async fn open_file_default(path: String) -> Result<(), String> {
     Ok(())
 }
 
-/// ターミナルを開く
+/// 指定されたディレクトリでターミナル（Terminal.app）を開きます。
+/// 
+/// AppleScript経由でターミナルを起動し、対象ディレクトリへ `cd` を実行させます。
 #[tauri::command]
 pub async fn open_terminal_at(path: String) -> Result<(), String> {
     let target = std::path::Path::new(&path);
