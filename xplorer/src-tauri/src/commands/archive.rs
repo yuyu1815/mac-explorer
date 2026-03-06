@@ -572,13 +572,8 @@ pub async fn extract_archive(
     .map_err(|e| format!("展開タスクエラー: {}", e))?
 }
 
-/// アーカイブ内のエントリ一覧を取得
 #[tauri::command]
 pub async fn list_archive_entries(archive_path: String) -> Result<Vec<ArchiveEntry>, String> {
-    list_archive_entries_internal(archive_path).await
-}
-
-pub async fn list_archive_entries_internal(archive_path: String) -> Result<Vec<ArchiveEntry>, String> {
     let src = archive_path.clone();
 
     tokio::task::spawn_blocking(move || {
@@ -614,6 +609,10 @@ pub async fn list_archive_entries_internal(archive_path: String) -> Result<Vec<A
     })
     .await
     .map_err(|e| format!("エントリ一覧取得エラー: {}", e))?
+}
+
+pub async fn list_archive_entries_internal(archive_path: String) -> Result<Vec<ArchiveEntry>, String> {
+    list_archive_entries(archive_path).await
 }
 
 /// アーカイブエントリ情報

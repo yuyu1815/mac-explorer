@@ -7,8 +7,7 @@ pub async fn create_directory(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn create_file(path: String) -> Result<(), String> {
-    fs::File::create(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    fs::File::create(&path).map(|_| ()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -18,9 +18,6 @@ fn get_entry_icon_id(is_dir: bool, path_str: &str, extension: Option<String>) ->
     format!("ext:{}", extension.unwrap_or_default())
 }
 
-fn is_symlink(_name: &str) -> bool {
-    false // Simplified for now
-}
 
 /// パスを「アーカイブファイル」と「その内部の相対パス」に分割する
 pub fn split_archive_path(path: &str) -> Option<(String, String)> {
@@ -189,7 +186,7 @@ pub async fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Ve
             } else {
                 ext.clone().unwrap_or_default()
             },
-            is_hidden: file_name.starts_with('.') || is_symlink(&file_name),
+            is_hidden: file_name.starts_with('.'),
             is_symlink: metadata.file_type().is_symlink(),
             permissions: format!("{:o}", metadata.permissions().mode() & 0o777),
             icon_id: get_entry_icon_id(is_dir, &path_str, ext),
