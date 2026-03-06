@@ -7,7 +7,7 @@ import {
     FolderOpen, Settings, ChevronUp, ChevronDown, Monitor, PanelRight, ArrowDownAZ, EyeOff,
     Archive, FileArchive
 } from 'lucide-react';
-import { isArchive, archiveFilters, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
+import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
 
 export const Toolbar = () => {
     const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes } = useAppStore();
@@ -168,28 +168,25 @@ export const Toolbar = () => {
     const handleCompress = async () => {
         if (selectedFiles.size === 0) return;
         try {
-            const { save } = await import('@tauri-apps/plugin-dialog');
             const firstPath = Array.from(selectedFiles)[0];
             const defaultName = selectedFiles.size === 1
                 ? getFileNameWithoutExtension(firstPath || 'archive') + '.zip'
                 : 'archive.zip';
-            const archivePath = await save({
-                defaultPath: defaultName,
-                filters: archiveFilters
-            });
-            if (archivePath) {
-                const format = getArchiveFormat(archivePath);
-                const result = await invoke('compress_archive', {
-                    sources: Array.from(selectedFiles),
-                    destArchivePath: archivePath,
-                    format,
-                }) as { errors: Array<{ file_path: string; message: string }> };
 
-                if (result.errors.length > 0) {
-                    alert(`圧縮が完了しましたが、${result.errors.length}個のファイルでエラーが発生しました:\n${result.errors.map(e => `  - ${e.file_path}: ${e.message}`).join('\n')}`);
-                }
-                refreshFiles();
+            const sep = currentPath.includes('\\') ? '\\' : '/';
+            const archivePath = currentPath.endsWith(sep) ? `${currentPath}${defaultName}` : `${currentPath}${sep}${defaultName}`;
+
+            const format = getArchiveFormat(archivePath);
+            const result = await invoke('compress_archive', {
+                sources: Array.from(selectedFiles),
+                destArchivePath: archivePath,
+                format,
+            }) as { errors: Array<{ file_path: string; message: string }> };
+
+            if (result.errors.length > 0) {
+                alert(`圧縮が完了しましたが、${result.errors.length}個のファイルでエラーが発生しました:\n${result.errors.map(e => `  - ${e.file_path}: ${e.message}`).join('\n')}`);
             }
+            refreshFiles();
         } catch (err) {
             console.error('Compression failed:', err);
             alert(`圧縮に失敗しました: ${err}`);
@@ -201,23 +198,19 @@ export const Toolbar = () => {
         const targetPath = Array.from(selectedFiles)[0];
         if (!isArchive(targetPath)) return;
         try {
-            const { open } = await import('@tauri-apps/plugin-dialog');
-            const destDir = await open({
-                directory: true,
-                multiple: false,
-                title: '解凍先フォルダを選択'
-            });
-            if (destDir && typeof destDir === 'string') {
-                const result = await invoke('extract_archive', {
-                    archivePath: targetPath,
-                    destDir: destDir,
-                }) as { errors: string[] };
+            const baseDir = getFileNameWithoutExtension(targetPath);
+            const sep = currentPath.includes('\\') ? '\\' : '/';
+            const destDir = currentPath.endsWith(sep) ? `${currentPath}${baseDir}` : `${currentPath}${sep}${baseDir}`;
 
-                if (result.errors.length > 0) {
-                    alert(`解凍が完了しましたが、${result.errors.length}個のエラーが発生しました:\n${result.errors.join('\n')}`);
-                }
-                refreshFiles();
+            const result = await invoke('extract_archive', {
+                archivePath: targetPath,
+                destDir: destDir,
+            }) as { errors: string[] };
+
+            if (result.errors.length > 0) {
+                alert(`解凍が完了しましたが、${result.errors.length}個のエラーが発生しました:\n${result.errors.join('\n')}`);
             }
+            refreshFiles();
         } catch (err) {
             console.error('Extraction failed:', err);
             alert(`解凍に失敗しました: ${err}`);
