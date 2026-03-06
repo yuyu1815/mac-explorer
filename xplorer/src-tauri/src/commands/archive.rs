@@ -315,6 +315,25 @@ pub async fn extract_archive(
             return Err("アーカイブが空です".to_string());
         }
 
+        // ディスク空き容量のチェック（macOS: statvfs）
+        {
+            use std::ffi::CString;
+            let dest_c = CString::new(dest_path.to_str().unwrap_or("/"))
+                .map_err(|_| "パスの変換に失敗しました".to_string())?;
+            unsafe {
+                let mut stat: libc::statvfs = std::mem::zeroed();
+                if libc::statvfs(dest_c.as_ptr(), &mut stat) == 0 {
+                    let available = stat.f_bavail as u64 * stat.f_frsize as u64;
+                    if total_uncompressed_bytes > available {
+                        return Err(format!(
+                            "INSUFFICIENT_SPACE:{}:{}:{}",
+                            total_uncompressed_bytes, available, dest_path.display()
+                        ));
+                    }
+                }
+            }
+        }
+
         let mut files_processed = 0u32;
         let mut bytes_processed = 0u64;
         let mut errors: Vec<String> = Vec::new();

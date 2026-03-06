@@ -113,8 +113,8 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             const size = await mainWindow.innerSize();
             const factor = await mainWindow.scaleFactor();
 
-            const winWidth = 400;
-            const winHeight = 250;
+            const winWidth = 420;
+            const winHeight = 200;
             const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
             const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 
@@ -167,8 +167,8 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             const size = await mainWindow.innerSize();
             const factor = await mainWindow.scaleFactor();
 
-            const winWidth = 400;
-            const winHeight = 250;
+            const winWidth = 420;
+            const winHeight = 200;
             const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
             const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 
