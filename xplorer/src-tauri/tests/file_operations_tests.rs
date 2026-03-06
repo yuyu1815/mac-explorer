@@ -35,7 +35,9 @@ mod path_utils {
     #[tokio::test]
     async fn test_get_parent_nested_path() {
         assert_eq!(
-            get_parent_path("/Users/yuyu/Documents".to_string()).await.unwrap(),
+            get_parent_path("/Users/yuyu/Documents".to_string())
+                .await
+                .unwrap(),
             "/Users/yuyu"
         );
     }
@@ -51,7 +53,9 @@ mod path_utils {
     #[tokio::test]
     async fn test_get_parent_relative_path() {
         assert_eq!(
-            get_parent_path("folder/subfolder".to_string()).await.unwrap(),
+            get_parent_path("folder/subfolder".to_string())
+                .await
+                .unwrap(),
             "folder"
         );
     }
@@ -75,7 +79,9 @@ mod create_directory_tests {
     async fn test_create_single_directory() {
         let temp = TempDir::new().unwrap();
         let new_dir = temp.path().join("new_folder");
-        assert!(create_directory(new_dir.to_string_lossy().to_string()).await.is_ok());
+        assert!(create_directory(new_dir.to_string_lossy().to_string())
+            .await
+            .is_ok());
         assert!(new_dir.exists());
     }
 
@@ -83,7 +89,9 @@ mod create_directory_tests {
     async fn test_create_nested_directories() {
         let temp = TempDir::new().unwrap();
         let nested = temp.path().join("a/b/c/d/e");
-        assert!(create_directory(nested.to_string_lossy().to_string()).await.is_ok());
+        assert!(create_directory(nested.to_string_lossy().to_string())
+            .await
+            .is_ok());
         assert!(nested.exists());
     }
 
@@ -92,20 +100,26 @@ mod create_directory_tests {
         let temp = TempDir::new().unwrap();
         let existing = temp.path().join("existing");
         fs::create_dir(&existing).unwrap();
-        assert!(create_directory(existing.to_string_lossy().to_string()).await.is_ok());
+        assert!(create_directory(existing.to_string_lossy().to_string())
+            .await
+            .is_ok());
     }
 
     #[tokio::test]
     async fn test_create_directory_with_special_chars() {
         let temp = TempDir::new().unwrap();
         let special = temp.path().join("folder with spaces");
-        assert!(create_directory(special.to_string_lossy().to_string()).await.is_ok());
+        assert!(create_directory(special.to_string_lossy().to_string())
+            .await
+            .is_ok());
         assert!(special.exists());
     }
 
     #[tokio::test]
     async fn test_create_directory_invalid_path() {
-        assert!(create_directory("/root/unauthorized_dir_test".to_string()).await.is_err());
+        assert!(create_directory("/root/unauthorized_dir_test".to_string())
+            .await
+            .is_err());
     }
 }
 
@@ -120,7 +134,9 @@ mod create_file_tests {
     async fn test_create_simple_file() {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("test.txt");
-        assert!(create_file(file_path.to_string_lossy().to_string()).await.is_ok());
+        assert!(create_file(file_path.to_string_lossy().to_string())
+            .await
+            .is_ok());
         assert!(file_path.exists());
     }
 
@@ -131,7 +147,9 @@ mod create_file_tests {
         let mut file = fs::File::create(&file_path).unwrap();
         file.write_all(b"original content").unwrap();
 
-        assert!(create_file(file_path.to_string_lossy().to_string()).await.is_ok());
+        assert!(create_file(file_path.to_string_lossy().to_string())
+            .await
+            .is_ok());
         assert_eq!(fs::metadata(&file_path).unwrap().len(), 0);
     }
 
@@ -139,7 +157,9 @@ mod create_file_tests {
     async fn test_create_file_nonexistent_parent() {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("nonexistent/test.txt");
-        assert!(create_file(file_path.to_string_lossy().to_string()).await.is_err());
+        assert!(create_file(file_path.to_string_lossy().to_string())
+            .await
+            .is_err());
     }
 }
 
@@ -184,7 +204,9 @@ mod copy_files_tests {
             })
             .collect();
 
-        assert!(copy_files(files, dest_dir.to_string_lossy().to_string()).await.is_ok());
+        assert!(copy_files(files, dest_dir.to_string_lossy().to_string())
+            .await
+            .is_ok());
         for i in 0..5 {
             assert!(dest_dir.join(format!("file{}.txt", i)).exists());
         }
@@ -210,7 +232,9 @@ mod copy_files_tests {
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
-        assert!(copy_files(vec![], dest_dir.to_string_lossy().to_string()).await.is_ok());
+        assert!(copy_files(vec![], dest_dir.to_string_lossy().to_string())
+            .await
+            .is_ok());
     }
 }
 
@@ -254,7 +278,11 @@ mod move_files_tests {
             })
             .collect();
 
-        assert!(move_files(files.clone(), dest_dir.to_string_lossy().to_string()).await.is_ok());
+        assert!(
+            move_files(files.clone(), dest_dir.to_string_lossy().to_string())
+                .await
+                .is_ok()
+        );
 
         for f in &files {
             assert!(!Path::new(f).exists());
@@ -292,7 +320,11 @@ mod delete_files_tests {
         let file = temp.path().join("to_delete.txt");
         fs::write(&file, "content").unwrap();
 
-        assert!(delete_files(vec![file.to_string_lossy().to_string()], false).await.is_ok());
+        assert!(
+            delete_files(vec![file.to_string_lossy().to_string()], false)
+                .await
+                .is_ok()
+        );
         assert!(!file.exists());
     }
 
@@ -305,7 +337,9 @@ mod delete_files_tests {
         fs::create_dir(dir.join("subdir")).unwrap();
         fs::write(dir.join("subdir/file2.txt"), "content").unwrap();
 
-        assert!(delete_files(vec![dir.to_string_lossy().to_string()], false).await.is_ok());
+        assert!(delete_files(vec![dir.to_string_lossy().to_string()], false)
+            .await
+            .is_ok());
         assert!(!dir.exists());
     }
 
@@ -315,7 +349,9 @@ mod delete_files_tests {
         let dir = temp.path().join("empty_dir");
         fs::create_dir(&dir).unwrap();
 
-        assert!(delete_files(vec![dir.to_string_lossy().to_string()], false).await.is_ok());
+        assert!(delete_files(vec![dir.to_string_lossy().to_string()], false)
+            .await
+            .is_ok());
         assert!(!dir.exists());
     }
 
@@ -339,7 +375,11 @@ mod delete_files_tests {
 
     #[tokio::test]
     async fn test_delete_nonexistent_file_skipped() {
-        assert!(delete_files(vec!["/nonexistent/file.txt".to_string()], false).await.is_ok());
+        assert!(
+            delete_files(vec!["/nonexistent/file.txt".to_string()], false)
+                .await
+                .is_ok()
+        );
     }
 }
 
@@ -356,7 +396,12 @@ mod rename_file_tests {
         let old = temp.path().join("old_name.txt");
         fs::write(&old, "content").unwrap();
 
-        assert!(rename_file(old.to_string_lossy().to_string(), "new_name.txt".to_string()).await.is_ok());
+        assert!(rename_file(
+            old.to_string_lossy().to_string(),
+            "new_name.txt".to_string()
+        )
+        .await
+        .is_ok());
         assert!(!old.exists());
         assert!(temp.path().join("new_name.txt").exists());
     }
@@ -368,7 +413,11 @@ mod rename_file_tests {
         fs::create_dir(&old).unwrap();
         fs::write(old.join("file.txt"), "content").unwrap();
 
-        assert!(rename_file(old.to_string_lossy().to_string(), "new_dir".to_string()).await.is_ok());
+        assert!(
+            rename_file(old.to_string_lossy().to_string(), "new_dir".to_string())
+                .await
+                .is_ok()
+        );
         assert!(!old.exists());
         assert!(temp.path().join("new_dir").exists());
         assert!(temp.path().join("new_dir/file.txt").exists());
@@ -380,7 +429,12 @@ mod rename_file_tests {
         let old = temp.path().join("old.txt");
         fs::write(&old, "content").unwrap();
 
-        assert!(rename_file(old.to_string_lossy().to_string(), "file with spaces.txt".to_string()).await.is_ok());
+        assert!(rename_file(
+            old.to_string_lossy().to_string(),
+            "file with spaces.txt".to_string()
+        )
+        .await
+        .is_ok());
         assert!(temp.path().join("file with spaces.txt").exists());
     }
 }
@@ -392,7 +446,9 @@ mod rename_file_tests {
 mod archive_utils {
     #[test]
     fn test_format_parsing() {
-        let supported_formats = ["zip", "tar", "tar.gz", "tgz", "tar.bz2", "tar.xz", "tar.zst", "7z"];
+        let supported_formats = [
+            "zip", "tar", "tar.gz", "tgz", "tar.bz2", "tar.xz", "tar.zst", "7z",
+        ];
         let unsupported_formats = ["rar", "iso"];
 
         for format in &supported_formats {

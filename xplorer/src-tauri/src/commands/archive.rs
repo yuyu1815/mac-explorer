@@ -9,20 +9,21 @@ use libarchive2::{ArchiveFormat, CompressionFormat, FileType, ReadArchive, Write
 use walkdir::WalkDir;
 
 use super::types::{
-    CompressionError, CompressionProgress, CompressionResultWithErrors,
-    ExtractionProgress, ExtractionResult,
+    CompressionError, CompressionProgress, CompressionResultWithErrors, ExtractionProgress,
+    ExtractionResult,
 };
 
 /// サポートされているアーカイブ拡張子の一覧
 pub const SUPPORTED_ARCHIVE_EXTENSIONS: &[&str] = &[
-    ".zip", ".7z", ".tar", ".tar.gz", ".tgz", 
-    ".tar.bz2", ".tar.xz", ".tar.zst"
+    ".zip", ".7z", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".tar.zst",
 ];
 
 /// 指定されたパスがサポート対象のアーカイブかどうかを判定
 pub fn is_archive_file(path: &str) -> bool {
     let lower = path.to_lowercase();
-    SUPPORTED_ARCHIVE_EXTENSIONS.iter().any(|ext| lower.ends_with(ext))
+    SUPPORTED_ARCHIVE_EXTENSIONS
+        .iter()
+        .any(|ext| lower.ends_with(ext))
 }
 
 /// 操作の一時停止/キャンセル制御用の共有ステート
@@ -105,10 +106,10 @@ fn system_time_to_timestamp(time: Option<SystemTime>) -> i64 {
 
 /// パストラバーサル攻撃を検出（macOSのみ）
 fn is_path_traversal_attempt(path: &str) -> bool {
-    // "../" または "..\\" を含むパスは拒否
-    path.contains("../") || path.contains("..\\")
-        // 絶対パスも拒否（macOSは /、念の為 Windows のディスク記法 :\\ も考慮）
-        || path.starts_with('/') || path.contains(":\\")
+    // "../" を含むパスは拒否
+    path.contains("../")
+        // 絶対パスも拒否（macOS）
+        || path.starts_with('/')
 }
 
 /// 複数のパスから共通の親ディレクトリを取得
@@ -177,10 +178,16 @@ pub async fn compress_archive(
         if dest_path.exists() {
             if dest_path.is_file() {
                 if let Err(e) = std::fs::remove_file(dest_path) {
-                    return Err(format!("既存のファイルを上書きのために削除できません: {}", e));
+                    return Err(format!(
+                        "既存のファイルを上書きのために削除できません: {}",
+                        e
+                    ));
                 }
             } else {
-                return Err(format!("同名のディレクトリが既に存在します: {}", dest_path.display()));
+                return Err(format!(
+                    "同名のディレクトリが既に存在します: {}",
+                    dest_path.display()
+                ));
             }
         }
 
@@ -210,10 +217,7 @@ pub async fn compress_archive(
                     file_list.push((src.clone(), metadata.len()));
                 }
             } else if src_path.is_dir() {
-                for entry in WalkDir::new(src_path)
-                    .into_iter()
-                    .filter_map(|e| e.ok())
-                {
+                for entry in WalkDir::new(src_path).into_iter().filter_map(|e| e.ok()) {
                     if entry.file_type().is_file() {
                         if let Ok(metadata) = entry.metadata() {
                             total_files += 1;
@@ -305,7 +309,7 @@ pub async fn compress_archive(
 
             files_processed += 1;
 
-            if files_processed % emit_interval == 0 || files_processed == total_files {
+            if files_processed.is_multiple_of(emit_interval) || files_processed == total_files {
                 let _ = channel.send(CompressionProgress {
                     current_file: file_name.to_string(),
                     files_processed,
@@ -321,8 +325,7 @@ pub async fn compress_archive(
             .finish()
             .map_err(|e| format!("アーカイブの完了に失敗: {}", e))?;
 
-        let compressed_size =
-            std::fs::metadata(dest_path).map(|m| m.len()).unwrap_or(0);
+        let compressed_size = std::fs::metadata(dest_path).map(|m| m.len()).unwrap_or(0);
 
         let _ = channel.send(CompressionProgress {
             current_file: String::new(),
@@ -404,7 +407,9 @@ pub async fn extract_archive(
                     if total_uncompressed_bytes > available {
                         return Err(format!(
                             "INSUFFICIENT_SPACE:{}:{}:{}",
-                            total_uncompressed_bytes, available, dest_path.display()
+                            total_uncompressed_bytes,
+                            available,
+                            dest_path.display()
                         ));
                     }
                 }
@@ -455,7 +460,10 @@ pub async fn extract_archive(
                 }
             }
 
-            if entry.file_type() == FileType::Directory || entry_path.ends_with('/') || entry_path.is_empty() {
+            if entry.file_type() == FileType::Directory
+                || entry_path.ends_with('/')
+                || entry_path.is_empty()
+            {
                 if let Err(e) = std::fs::create_dir_all(&out_path) {
                     errors.push(format!(
                         "ディレクトリ作成エラー {}: {}",
@@ -465,7 +473,7 @@ pub async fn extract_archive(
                 }
                 files_processed += 1;
 
-                if files_processed % emit_interval == 0 || files_processed == total_files {
+                if files_processed.is_multiple_of(emit_interval) || files_processed == total_files {
                     let _ = channel.send(ExtractionProgress {
                         current_file: entry_path.to_string(),
                         files_processed,
@@ -529,18 +537,14 @@ pub async fn extract_archive(
                     }
                 }
                 Err(e) => {
-                    errors.push(format!(
-                        "ファイル作成エラー {}: {}",
-                        out_path.display(),
-                        e
-                    ));
+                    errors.push(format!("ファイル作成エラー {}: {}", out_path.display(), e));
                     continue;
                 }
             }
 
             files_processed += 1;
 
-            if files_processed % emit_interval == 0 || files_processed == total_files {
+            if files_processed.is_multiple_of(emit_interval) || files_processed == total_files {
                 let _ = channel.send(ExtractionProgress {
                     current_file: entry_path.to_string(),
                     files_processed,
@@ -609,10 +613,6 @@ pub async fn list_archive_entries(archive_path: String) -> Result<Vec<ArchiveEnt
     })
     .await
     .map_err(|e| format!("エントリ一覧取得エラー: {}", e))?
-}
-
-pub async fn list_archive_entries_internal(archive_path: String) -> Result<Vec<ArchiveEntry>, String> {
-    list_archive_entries(archive_path).await
 }
 
 /// アーカイブエントリ情報

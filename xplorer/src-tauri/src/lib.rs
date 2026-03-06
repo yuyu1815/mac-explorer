@@ -16,7 +16,9 @@ pub fn run() {
         .plugin(tauri_plugin_log::Builder::new().build())
         .setup(|app| {
             // アーカイブ操作の一時停止/キャンセル制御用のステートを登録
-            app.manage(std::sync::Arc::new(commands::archive::OperationControl::new()));
+            app.manage(std::sync::Arc::new(
+                commands::archive::OperationControl::new(),
+            ));
 
             // アイコンキャッシュの初期化
             if let Ok(cache_dir) = app.path().app_cache_dir() {

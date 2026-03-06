@@ -1,9 +1,9 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::time::UNIX_EPOCH;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
-use super::archive::{list_archive_entries_internal, is_archive_file};
+use super::archive::{is_archive_file, list_archive_entries};
 use super::icons::get_icon_binary;
 use super::types::FileEntry;
 use super::utils::{format_size, format_timestamp};
@@ -18,11 +18,9 @@ fn get_entry_icon_id(is_dir: bool, path_str: &str, extension: Option<String>) ->
     format!("ext:{}", extension.unwrap_or_default())
 }
 
-
 /// パスを「アーカイブファイル」と「その内部の相対パス」に分割する
 pub fn split_archive_path(path: &str) -> Option<(String, String)> {
-    let normalized = path.replace('\\', "/");
-    let path_buf = PathBuf::from(&normalized);
+    let path_buf = PathBuf::from(path);
     let mut current = path_buf.as_path();
 
     while let Some(parent) = current.parent() {
@@ -30,7 +28,7 @@ pub fn split_archive_path(path: &str) -> Option<(String, String)> {
             let path_str = current.to_string_lossy().to_string();
             // 拡張子がアーカイブ形式かチェック
             if is_archive_file(&path_str) {
-                let relative = normalized.strip_prefix(&path_str).unwrap_or("");
+                let relative = path.strip_prefix(&path_str).unwrap_or("");
                 let relative = relative.trim_start_matches('/');
                 return Some((path_str, relative.to_string()));
             }
@@ -41,18 +39,27 @@ pub fn split_archive_path(path: &str) -> Option<(String, String)> {
 }
 
 /// アーカイブ内のエントリから指定階層の FileEntry を生成する
-pub async fn list_archive_internal(archive_path: &str, inner_path: &str) -> Result<Vec<FileEntry>, String> {
-    let entries = list_archive_entries_internal(archive_path.to_string()).await?;
+pub async fn list_archive_internal(
+    archive_path: &str,
+    inner_path: &str,
+) -> Result<Vec<FileEntry>, String> {
+    let entries = list_archive_entries(archive_path.to_string()).await?;
     let mut result = Vec::new();
-    let inner_path = if inner_path.is_empty() { "" } else { inner_path };
+    let inner_path = if inner_path.is_empty() {
+        ""
+    } else {
+        inner_path
+    };
     let mut seen_dirs = std::collections::HashSet::new();
 
-    println!("[DEBUG] list_archive_internal: archive={}, inner={}", archive_path, inner_path);
+    println!(
+        "[DEBUG] list_archive_internal: archive={}, inner={}",
+        archive_path, inner_path
+    );
 
     for entry in entries {
-        // アーカイブ内のパスは Windows で作成された場合 \ のことがあるため正規化する
-        let entry_path = entry.path.replace('\\', "/");
-        let entry_path = entry_path.trim_start_matches('/');
+        // アーカイブ内のパス処理
+        let entry_path = entry.path.trim_start_matches('/');
 
         // フィルタリング: inner_path 直下の要素のみを対象にする
         let relative = if inner_path.is_empty() {
@@ -62,7 +69,10 @@ pub async fn list_archive_internal(archive_path: &str, inner_path: &str) -> Resu
             if !entry_path.starts_with(&prefix) {
                 continue;
             }
-            entry_path.strip_prefix(&prefix).unwrap_or(entry_path).to_string()
+            entry_path
+                .strip_prefix(&prefix)
+                .unwrap_or(entry_path)
+                .to_string()
         };
 
         if relative.is_empty() {
@@ -70,19 +80,36 @@ pub async fn list_archive_internal(archive_path: &str, inner_path: &str) -> Resu
         }
 
         let parts: Vec<&str> = relative.split('/').collect();
-        if parts.is_empty() { continue; }
+        if parts.is_empty() {
+            continue;
+        }
 
         let name = parts[0];
-        if name.is_empty() { continue; }
-        
+        if name.is_empty() {
+            continue;
+        }
+
         let is_dir = parts.len() > 1 || entry.is_directory;
-        let full_virtual_path = format!("{}/{}", archive_path, if inner_path.is_empty() { name.to_string() } else { format!("{}/{}", inner_path, name) });
+        let full_virtual_path = format!(
+            "{}/{}",
+            archive_path,
+            if inner_path.is_empty() {
+                name.to_string()
+            } else {
+                format!("{}/{}", inner_path, name)
+            }
+        );
 
         if is_dir {
-            if seen_dirs.contains(name) { continue; }
+            if seen_dirs.contains(name) {
+                continue;
+            }
             seen_dirs.insert(name.to_string());
 
-            println!("[DEBUG] Adding dir: name={}, path={}", name, full_virtual_path);
+            println!(
+                "[DEBUG] Adding dir: name={}, path={}",
+                name, full_virtual_path
+            );
             result.push(FileEntry {
                 name: name.to_string(),
                 path: full_virtual_path,
@@ -100,8 +127,13 @@ pub async fn list_archive_internal(archive_path: &str, inner_path: &str) -> Resu
                 icon_id: "dir".to_string(),
             });
         } else {
-            let ext = Path::new(name).extension().map(|e| e.to_string_lossy().to_lowercase());
-            println!("[DEBUG] Adding file: name={}, path={}", name, full_virtual_path);
+            let ext = Path::new(name)
+                .extension()
+                .map(|e| e.to_string_lossy().to_lowercase());
+            println!(
+                "[DEBUG] Adding file: name={}, path={}",
+                name, full_virtual_path
+            );
             result.push(FileEntry {
                 name: name.to_string(),
                 path: full_virtual_path,
@@ -124,20 +156,19 @@ pub async fn list_archive_internal(archive_path: &str, inner_path: &str) -> Resu
     Ok(result)
 }
 
-/// list_directory の内部実装
-pub async fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
+#[tauri::command]
+pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
     // 仮想パス（アーカイブ内）のチェック
-    let normalized_path = path.replace('\\', "/");
-    if let Some((archive_path, inner_path)) = split_archive_path(&normalized_path) {
+    if let Some((archive_path, inner_path)) = split_archive_path(&path) {
         // パスがアーカイブファイル自体、またはその内部を指している場合
         // (通常のディレクトリが同名で存在する特異なケースを除き、アーカイブとして扱う)
-        if !Path::new(path).is_dir() {
+        if !Path::new(&path).is_dir() {
             return list_archive_internal(&archive_path, &inner_path).await;
         }
     }
 
     let mut entries = Vec::new();
-    let dir = fs::read_dir(path).map_err(|e| e.to_string())?;
+    let dir = fs::read_dir(&path).map_err(|e| e.to_string())?;
 
     for entry in dir.flatten() {
         let file_name = entry.file_name().to_string_lossy().into_owned();
@@ -198,11 +229,6 @@ pub async fn list_directory_internal(path: &str, show_hidden: bool) -> Result<Ve
     Ok(entries)
 }
 
-#[tauri::command]
-pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
-    list_directory_internal(&path, show_hidden).await
-}
-
 /// フィルタ・ソート済みのファイル一覧を返す
 #[tauri::command]
 pub async fn list_files_sorted(
@@ -212,7 +238,7 @@ pub async fn list_files_sorted(
     sort_desc: bool,
     search_query: String,
 ) -> Result<Vec<FileEntry>, String> {
-    let mut entries = list_directory_internal(&path, show_hidden).await?;
+    let mut entries = list_directory(path.clone(), show_hidden).await?;
 
     // フィルタリング
     if !search_query.is_empty() {
@@ -272,7 +298,7 @@ pub async fn complete_path(
     prefix: String,
     show_hidden: bool,
 ) -> Result<Vec<FileEntry>, String> {
-    let entries = list_directory_internal(&dir_path, show_hidden).await?;
+    let entries = list_directory(dir_path.clone(), show_hidden).await?;
 
     let prefix_lower = prefix.to_lowercase();
     let mut filtered: Vec<FileEntry> = entries

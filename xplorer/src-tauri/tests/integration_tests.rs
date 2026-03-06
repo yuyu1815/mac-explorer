@@ -136,7 +136,10 @@ mod file_size_thresholds {
         let result_256 = fs::File::create(&file_too_long);
 
         // Assert
-        assert!(result_255.is_ok(), "255文字のファイル名は作成可能であるべき");
+        assert!(
+            result_255.is_ok(),
+            "255文字のファイル名は作成可能であるべき"
+        );
         assert!(result_256.is_err(), "256文字のファイル名は失敗するべき");
     }
 }

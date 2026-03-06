@@ -28,8 +28,7 @@ pub fn format_timestamp(ts: i64) -> String {
 /// ホームディレクトリ取得
 #[tauri::command]
 pub async fn get_home_dir() -> Result<String, String> {
-    std::env::var("HOME")
-        .map_err(|_| "Could not determine home directory".to_string())
+    std::env::var("HOME").map_err(|_| "Could not determine home directory".to_string())
 }
 
 /// 親ディレクトリパス取得
@@ -39,8 +38,7 @@ pub async fn get_parent_path(path: String) -> Result<String, String> {
         return Err("Path cannot be empty".to_string());
     }
 
-    let normalized = path.replace('\\', "/");
-    let segments: Vec<&str> = normalized.split('/').collect();
+    let segments: Vec<&str> = path.split('/').collect();
     let non_empty: Vec<&str> = segments.into_iter().filter(|s| !s.is_empty()).collect();
 
     if non_empty.len() <= 1 {

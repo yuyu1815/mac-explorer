@@ -68,9 +68,7 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
 
     let size_bytes = metadata.len();
     let cluster_size = 4096;
-    let size_on_disk_bytes = if is_dir {
-        0
-    } else if size_bytes == 0 {
+    let size_on_disk_bytes = if is_dir || size_bytes == 0 {
         0
     } else {
         size_bytes.div_ceil(cluster_size) * cluster_size
@@ -285,7 +283,11 @@ pub async fn get_detailed_properties_streaming(
 
                             counter += 1;
                             if counter.is_multiple_of(emit_interval) {
-                                let size_on_disk = if size_bytes == 0 { 0 } else { size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE };
+                                let size_on_disk = if size_bytes == 0 {
+                                    0
+                                } else {
+                                    size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE
+                                };
                                 let _ = channel.send(PropertyProgress {
                                     size_bytes,
                                     size_formatted: format_size(size_bytes),
@@ -301,7 +303,11 @@ pub async fn get_detailed_properties_streaming(
                 }
             }
 
-            let size_on_disk = if size_bytes == 0 { 0 } else { size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE };
+            let size_on_disk = if size_bytes == 0 {
+                0
+            } else {
+                size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE
+            };
             let _ = channel.send(PropertyProgress {
                 size_bytes,
                 size_formatted: format_size(size_bytes),
@@ -313,7 +319,11 @@ pub async fn get_detailed_properties_streaming(
             });
         });
     } else {
-        let size_on_disk = if size_bytes == 0 { 0 } else { size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE };
+        let size_on_disk = if size_bytes == 0 {
+            0
+        } else {
+            size_bytes.div_ceil(CLUSTER_SIZE) * CLUSTER_SIZE
+        };
         let _ = channel.send(PropertyProgress {
             size_bytes,
             size_formatted: format_size(size_bytes),

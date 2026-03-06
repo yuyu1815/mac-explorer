@@ -3,13 +3,16 @@
 //! ZIP、TAR、7zなど、libarchive2がサポートする全フォーマットの
 //! 圧縮・展開機能を包括的にテストします。
 
+use libarchive2::{ArchiveFormat, CompressionFormat, ReadArchive, WriteArchive};
 use std::fs;
 use std::path::Path;
 use tempfile::TempDir;
-use libarchive2::{ReadArchive, WriteArchive, ArchiveFormat, CompressionFormat};
 
 /// テスト用ヘルパー：ZIPアーカイブを作成
-fn create_test_zip(path: &Path, files: Vec<(&str, &[u8])>) -> Result<(), Box<dyn std::error::Error>> {
+fn create_test_zip(
+    path: &Path,
+    files: Vec<(&str, &[u8])>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut archive = WriteArchive::new()
         .format(ArchiveFormat::Zip)
         .compression(CompressionFormat::None)
@@ -33,10 +36,7 @@ fn test_create_simple_zip_archive() {
     let zip_path = temp.path().join("test.zip");
     let content1: &[u8] = b"content1";
     let content2: &[u8] = b"content2";
-    let files = vec![
-        ("file1.txt", content1),
-        ("file2.txt", content2),
-    ];
+    let files = vec![("file1.txt", content1), ("file2.txt", content2)];
 
     // Act
     let result = create_test_zip(&zip_path, files);
@@ -53,16 +53,16 @@ fn test_create_zip_with_unicode_filename() {
     let zip_path = temp.path().join("unicode.zip");
     let content1: &[u8] = b"content";
     let content2: &[u8] = b"emoji content";
-    let files = vec![
-        ("日本語ファイル.txt", content1),
-        ("📄emoji.txt", content2),
-    ];
+    let files = vec![("日本語ファイル.txt", content1), ("📄emoji.txt", content2)];
 
     // Act
     let result = create_test_zip(&zip_path, files);
 
     // Assert
-    assert!(result.is_ok(), "Unicodeファイル名を含むZIP作成が成功するべき");
+    assert!(
+        result.is_ok(),
+        "Unicodeファイル名を含むZIP作成が成功するべき"
+    );
     assert!(zip_path.exists(), "ZIPファイルが存在するべき");
 }
 
@@ -96,16 +96,16 @@ fn test_extract_zip_archive() {
     let extracted_file = extract_dir.join("test.txt");
     assert!(extracted_file.exists(), "展開されたファイルが存在するべき");
     let content = fs::read(&extracted_file).unwrap();
-    assert_eq!(content, test_content, "展開された内容が元の内容と一致するべき");
+    assert_eq!(
+        content, test_content,
+        "展開された内容が元の内容と一致するべき"
+    );
 }
 
 #[test]
 fn test_path_traversal_detection() {
     // Arrange - パストラバーサル攻撃パターン（macOSのみ）
-    let malicious_paths = vec![
-        "../../../etc/passwd",
-        "/absolute/path/file.txt",
-    ];
+    let malicious_paths = vec!["../../../etc/passwd", "/absolute/path/file.txt"];
 
     // Act & Assert
     for path in malicious_paths {
@@ -153,7 +153,10 @@ fn test_common_parent_directory() {
     let all_start_with_common = paths.iter().all(|p| p.starts_with(common));
 
     // Assert
-    assert!(all_start_with_common, "すべてのパスが共通親ディレクトリで始まるべき");
+    assert!(
+        all_start_with_common,
+        "すべてのパスが共通親ディレクトリで始まるべき"
+    );
 }
 
 #[test]
@@ -194,8 +197,14 @@ fn test_large_file_compression() {
     archive.finish().unwrap();
 
     // Assert
-    assert!(zip_path.exists(), "大きなファイルのアーカイブが存在するべき");
-    assert!(zip_path.metadata().unwrap().len() > 0, "アーカイブサイズが0より大きいべき");
+    assert!(
+        zip_path.exists(),
+        "大きなファイルのアーカイブが存在するべき"
+    );
+    assert!(
+        zip_path.metadata().unwrap().len() > 0,
+        "アーカイブサイズが0より大きいべき"
+    );
 }
 
 #[test]
@@ -209,7 +218,10 @@ fn test_nested_directory_structure() {
 
     // Act & Assert
     assert!(deep_dir.exists(), "深いネストディレクトリが存在するべき");
-    assert!(deep_dir.join("deep.txt").exists(), "深いネストのファイルが存在するべき");
+    assert!(
+        deep_dir.join("deep.txt").exists(),
+        "深いネストのファイルが存在するべき"
+    );
 }
 
 #[test]
@@ -275,7 +287,10 @@ fn test_error_collection_on_missing_files() {
     }
 
     // Assert
-    assert_eq!(error_count, 1, "存在しないファイル数が正しくカウントされるべき");
+    assert_eq!(
+        error_count, 1,
+        "存在しないファイル数が正しくカウントされるべき"
+    );
 }
 
 #[test]
@@ -307,7 +322,10 @@ fn test_extract_preserves_file_permissions() {
     let extracted = extract_dir.join("test.txt");
     assert!(extracted.exists(), "展開されたファイルが存在するべき");
     let metadata = fs::metadata(&extracted).unwrap();
-    assert!(metadata.permissions().readonly() == false, "ファイルが読み取り可能であるべき");
+    assert!(
+        metadata.permissions().readonly() == false,
+        "ファイルが読み取り可能であるべき"
+    );
 }
 
 // =============================================================================
@@ -334,7 +352,10 @@ fn create_archive_with_format(
 }
 
 /// 汎用アーカイブ展開ヘルパー
-fn extract_archive(archive_path: &Path, dest_dir: &Path) -> Result<usize, Box<dyn std::error::Error>> {
+fn extract_archive(
+    archive_path: &Path,
+    dest_dir: &Path,
+) -> Result<usize, Box<dyn std::error::Error>> {
     let mut archive = ReadArchive::open(archive_path)?;
     let mut file_count = 0;
 
@@ -385,8 +406,14 @@ fn test_tar_format_compression_and_extraction() {
 
     // Assert
     assert_eq!(extracted_count, 2, "2つのファイルが展開されるべき");
-    assert!(extract_dir.join("file1.txt").exists(), "file1.txtが存在するべき");
-    assert!(extract_dir.join("file2.txt").exists(), "file2.txtが存在するべき");
+    assert!(
+        extract_dir.join("file1.txt").exists(),
+        "file1.txtが存在するべき"
+    );
+    assert!(
+        extract_dir.join("file2.txt").exists(),
+        "file2.txtが存在するべき"
+    );
     assert_eq!(
         fs::read_to_string(extract_dir.join("file1.txt")).unwrap(),
         "tar content 1",
@@ -432,7 +459,9 @@ fn test_targz_compression_reduces_size() {
     let temp = TempDir::new().unwrap();
     let tar_path = temp.path().join("compressed.tar.gz");
     let tar_uncompressed = temp.path().join("uncompressed.tar");
-    let repeat_content = std::iter::repeat(b'a' as u8).take(100_000).collect::<Vec<_>>();
+    let repeat_content = std::iter::repeat(b'a' as u8)
+        .take(100_000)
+        .collect::<Vec<_>>();
     let content: &[u8] = &repeat_content;
     let files = vec![("large.txt", content)];
 
@@ -592,9 +621,18 @@ fn test_7z_format_compression_and_extraction() {
 
     // Assert
     assert_eq!(extracted_count, 3, "3つのファイルが展開されるべき");
-    assert!(extract_dir.join("file1.txt").exists(), "file1.txtが存在するべき");
-    assert!(extract_dir.join("file2.txt").exists(), "file2.txtが存在するべき");
-    assert!(extract_dir.join("file3.txt").exists(), "file3.txtが存在するべき");
+    assert!(
+        extract_dir.join("file1.txt").exists(),
+        "file1.txtが存在するべき"
+    );
+    assert!(
+        extract_dir.join("file2.txt").exists(),
+        "file2.txtが存在するべき"
+    );
+    assert!(
+        extract_dir.join("file3.txt").exists(),
+        "file3.txtが存在するべき"
+    );
 }
 
 #[test]
@@ -615,10 +653,22 @@ fn test_all_formats_support_ascii_filenames() {
     let test_formats = vec![
         ("test.zip", ArchiveFormat::Zip, CompressionFormat::None),
         ("test.tar", ArchiveFormat::TarPax, CompressionFormat::None),
-        ("test.tar.gz", ArchiveFormat::TarPax, CompressionFormat::Gzip),
-        ("test.tar.bz2", ArchiveFormat::TarPax, CompressionFormat::Bzip2),
+        (
+            "test.tar.gz",
+            ArchiveFormat::TarPax,
+            CompressionFormat::Gzip,
+        ),
+        (
+            "test.tar.bz2",
+            ArchiveFormat::TarPax,
+            CompressionFormat::Bzip2,
+        ),
         ("test.tar.xz", ArchiveFormat::TarPax, CompressionFormat::Xz),
-        ("test.tar.zst", ArchiveFormat::TarPax, CompressionFormat::Zstd),
+        (
+            "test.tar.zst",
+            ArchiveFormat::TarPax,
+            CompressionFormat::Zstd,
+        ),
         ("test.7z", ArchiveFormat::SevenZip, CompressionFormat::None),
     ];
 
@@ -629,12 +679,8 @@ fn test_all_formats_support_ascii_filenames() {
         fs::create_dir(&extract_dir).unwrap();
 
         // 圧縮
-        let result = create_archive_with_format(
-            &archive_path,
-            ascii_files.clone(),
-            *format,
-            *compression,
-        );
+        let result =
+            create_archive_with_format(&archive_path, ascii_files.clone(), *format, *compression);
         assert!(
             result.is_ok(),
             "{:?}フォーマットでのASCIIファイル名作成が成功するべき",
@@ -644,8 +690,7 @@ fn test_all_formats_support_ascii_filenames() {
         // 展開
         let extracted_count = extract_archive(&archive_path, &extract_dir).unwrap();
         assert_eq!(
-            extracted_count,
-            3,
+            extracted_count, 3,
             "{:?}フォーマットで3つのファイルが展開されるべき",
             format
         );
@@ -675,7 +720,11 @@ fn test_all_formats_support_nested_directories() {
             ArchiveFormat::TarPax,
             CompressionFormat::Gzip,
         ),
-        ("nested.7z", ArchiveFormat::SevenZip, CompressionFormat::None),
+        (
+            "nested.7z",
+            ArchiveFormat::SevenZip,
+            CompressionFormat::None,
+        ),
     ];
 
     // Act & Assert - 各フォーマットでネストされたディレクトリ構造をテスト
@@ -696,8 +745,7 @@ fn test_all_formats_support_nested_directories() {
         // 展開
         let extracted_count = extract_archive(&archive_path, &extract_dir).unwrap();
         assert_eq!(
-            extracted_count,
-            3,
+            extracted_count, 3,
             "{:?}フォーマットで3つのファイルが展開されるべき",
             format
         );
@@ -715,17 +763,35 @@ fn test_all_formats_support_nested_directories() {
 fn test_compression_ratio_comparison() {
     // Arrange - 圧縮可能なデータ（繰り返しパターン）
     let temp = TempDir::new().unwrap();
-    let repeat_content = std::iter::repeat(b'x' as u8).take(50_000).collect::<Vec<_>>();
+    let repeat_content = std::iter::repeat(b'x' as u8)
+        .take(50_000)
+        .collect::<Vec<_>>();
     let content: &[u8] = &repeat_content;
     let files = vec![("repetitive.txt", content)];
 
     // Act - 各フォーマットで圧縮
     let formats = vec![
-        ("uncompressed.tar", ArchiveFormat::TarPax, CompressionFormat::None),
-        ("gzip.tar.gz", ArchiveFormat::TarPax, CompressionFormat::Gzip),
-        ("bzip2.tar.bz2", ArchiveFormat::TarPax, CompressionFormat::Bzip2),
+        (
+            "uncompressed.tar",
+            ArchiveFormat::TarPax,
+            CompressionFormat::None,
+        ),
+        (
+            "gzip.tar.gz",
+            ArchiveFormat::TarPax,
+            CompressionFormat::Gzip,
+        ),
+        (
+            "bzip2.tar.bz2",
+            ArchiveFormat::TarPax,
+            CompressionFormat::Bzip2,
+        ),
         ("xz.tar.xz", ArchiveFormat::TarPax, CompressionFormat::Xz),
-        ("zstd.tar.zst", ArchiveFormat::TarPax, CompressionFormat::Zstd),
+        (
+            "zstd.tar.zst",
+            ArchiveFormat::TarPax,
+            CompressionFormat::Zstd,
+        ),
     ];
 
     let mut sizes = Vec::new();
