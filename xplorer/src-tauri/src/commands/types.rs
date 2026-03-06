@@ -61,3 +61,42 @@ pub struct VolumeInfo {
     pub total_bytes_formatted: String,
     pub free_bytes_formatted: String,
 }
+
+/// 圧縮進捗（ストリーミング用）
+#[derive(Serialize, Clone)]
+pub struct CompressionProgress {
+    pub current_file: String,
+    pub files_processed: u32,
+    pub total_files: u32,
+    pub bytes_processed: u64,
+    pub total_bytes: u64,
+    pub complete: bool,
+}
+
+/// 圧縮結果
+#[derive(Serialize)]
+pub struct CompressionResult {
+    pub zip_path: String,
+    pub files_count: u32,
+    pub original_size: u64,
+    pub compressed_size: u64,
+}
+
+/// 解凍進捗（ストリーミング用）
+#[derive(Serialize, Clone)]
+pub struct ExtractionProgress {
+    pub current_file: String,
+    pub files_processed: u32,
+    pub total_files: u32,
+    pub bytes_processed: u64,
+    pub total_bytes: u64,
+    pub complete: bool,
+}
+
+/// 解凍結果
+#[derive(Serialize)]
+pub struct ExtractionResult {
+    pub extracted_count: u32,
+    pub extracted_size: u64,
+    pub destination: String,
+}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
-import { ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard, LayoutGrid, ArrowDownAZ, RefreshCw, Settings } from 'lucide-react';
+import { ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard, LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive } from 'lucide-react';
 
 interface ContextMenuProps {
     x: number;
@@ -77,8 +77,70 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
         }
     };
 
+    const handleCompress = async () => {
+        if (pathsToActOn.length === 0) return;
+        try {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const defaultName = pathsToActOn.length === 1
+                ? (targetPath?.split('/').pop()?.replace(/\.[^.]+$/, '') || 'archive') + '.zip'
+                : 'archive.zip';
+            const zipPath = await save({
+                defaultPath: defaultName,
+                filters: [{ name: 'ZIP Archive', extensions: ['zip'] }]
+            });
+            if (zipPath) {
+                await invoke('compress_to_zip', {
+                    sources: pathsToActOn,
+                    destZipPath: zipPath,
+                });
+                await refreshFiles();
+            }
+        } catch (err) {
+            console.error('Compression failed:', err);
+        }
+    };
+
+    const handleExtract = async () => {
+        if (!targetPath) return;
+        try {
+            const { open } = await import('@tauri-apps/plugin-dialog');
+            const destDir = await open({
+                directory: true,
+                multiple: false,
+                title: '解凍先フォルダを選択'
+            });
+            if (destDir) {
+                await invoke('extract_zip', {
+                    zipPath: targetPath,
+                    destDir: destDir,
+                });
+                await refreshFiles();
+            }
+        } catch (err) {
+            console.error('Extraction failed:', err);
+        }
+    };
+
     const isMultiple = selectedFiles.size > 1;
     const pathsToActOn: string[] = (targetPath && selectedFiles.has(targetPath)) ? Array.from(selectedFiles) : targetPath ? [targetPath] : [];
+
+    // ZIPベースのアーカイブ形式の拡張子
+    const isZipArchive = (path: string | null) => {
+        if (!path) return false;
+        const lower = path.toLowerCase();
+        return lower.endsWith('.zip') ||
+               lower.endsWith('.jar') ||
+               lower.endsWith('.war') ||
+               lower.endsWith('.ear') ||
+               lower.endsWith('.apk') ||
+               lower.endsWith('.docx') ||
+               lower.endsWith('.xlsx') ||
+               lower.endsWith('.pptx') ||
+               lower.endsWith('.odt') ||
+               lower.endsWith('.ods') ||
+               lower.endsWith('.odp') ||
+               lower.endsWith('.epub');
+    };
 
     return (
         <div ref={menuRef} className="win32-context-menu" style={{ top: position.top, left: position.left }}>
@@ -176,6 +238,13 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                             await refreshFiles();
                         }
                     })} />
+                    <ContextMenuSeparator />
+                    {/* ZIPアーカイブの場合は解凍メニューを表示 */}
+                    {isZipArchive(targetPath) && (
+                        <ContextMenuItem icon={<FileArchive size={16} />} label="すべて展開(E)" onClick={() => handleAction(handleExtract)} />
+                    )}
+                    {/* 圧縮メニュー */}
+                    <ContextMenuItem icon={<Archive size={16} />} label="圧縮(ZIP)(Z)" onClick={() => handleAction(handleCompress)} />
                     <ContextMenuSeparator />
                     <ContextMenuItem icon={<Settings size={16} />} label="プロパティ(R)" onClick={() => handleAction(async () => {
                         if (targetPath) openPropertiesDialog(targetPath);

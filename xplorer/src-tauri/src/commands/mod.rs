@@ -1,3 +1,4 @@
+pub mod archive;
 pub mod directory;
 pub mod file_ops;
 pub mod icons;

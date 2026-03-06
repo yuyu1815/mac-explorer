@@ -4,7 +4,8 @@ import { invoke } from '@tauri-apps/api/core';
 import {
     ClipboardPaste, Scissors, Copy, Link as LinkIcon, Edit2, Trash2, FolderPlus,
     FilePlus, List, AlignJustify, LayoutGrid, CheckSquare, XSquare, ArrowRightSquare,
-    FolderOpen, Settings, ChevronUp, ChevronDown, Monitor, PanelRight, ArrowDownAZ, EyeOff
+    FolderOpen, Settings, ChevronUp, ChevronDown, Monitor, PanelRight, ArrowDownAZ, EyeOff,
+    Archive, FileArchive
 } from 'lucide-react';
 
 export const Toolbar = () => {
@@ -162,6 +163,72 @@ export const Toolbar = () => {
             console.error('Toolbar action failed:', err);
         }
     };
+
+    const handleCompress = async () => {
+        if (selectedFiles.size === 0) return;
+        try {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const firstPath = Array.from(selectedFiles)[0];
+            const defaultName = selectedFiles.size === 1
+                ? (firstPath?.split('/').pop()?.replace(/\.[^.]+$/, '') || 'archive') + '.zip'
+                : 'archive.zip';
+            const zipPath = await save({
+                defaultPath: defaultName,
+                filters: [{ name: 'ZIP Archive', extensions: ['zip'] }]
+            });
+            if (zipPath) {
+                await invoke('compress_to_zip', {
+                    sources: Array.from(selectedFiles),
+                    destZipPath: zipPath,
+                });
+                refreshFiles();
+            }
+        } catch (err) {
+            console.error('Compression failed:', err);
+        }
+    };
+
+    const handleExtract = async () => {
+        if (selectedFiles.size !== 1) return;
+        const targetPath = Array.from(selectedFiles)[0];
+        if (!isZipArchive(targetPath)) return;
+        try {
+            const { open } = await import('@tauri-apps/plugin-dialog');
+            const destDir = await open({
+                directory: true,
+                multiple: false,
+                title: '解凍先フォルダを選択'
+            });
+            if (destDir && typeof destDir === 'string') {
+                await invoke('extract_zip', {
+                    zipPath: targetPath,
+                    destDir: destDir,
+                });
+                refreshFiles();
+            }
+        } catch (err) {
+            console.error('Extraction failed:', err);
+        }
+    };
+
+    // ZIPベースのアーカイブ形式の拡張子
+    const isZipArchive = (path: string | null | undefined) => {
+        if (!path) return false;
+        const lower = path.toLowerCase();
+        return lower.endsWith('.zip') ||
+               lower.endsWith('.jar') ||
+               lower.endsWith('.war') ||
+               lower.endsWith('.ear') ||
+               lower.endsWith('.apk') ||
+               lower.endsWith('.docx') ||
+               lower.endsWith('.xlsx') ||
+               lower.endsWith('.pptx') ||
+               lower.endsWith('.odt') ||
+               lower.endsWith('.ods') ||
+               lower.endsWith('.odp') ||
+               lower.endsWith('.epub');
+    };
+
     const handleNewFolder = async () => {
         try {
             const sep = currentPath.includes('\\') ? '\\' : '/';
@@ -211,6 +278,14 @@ export const Toolbar = () => {
                     <LargeButton icon={<FolderOpen size={32} strokeWidth={1} color="#F2A000" fill="#FFB900" />} label="開く" onClick={handleOpen} disabled={selectedFiles.size !== 1} />
                 </div>
                 <div className="ribbon-group-title">開く</div>
+            </div>
+
+            <div className="ribbon-group">
+                <div className="ribbon-group-items">
+                    <LargeButton icon={<Archive size={32} strokeWidth={1} color="#0078D7" />} label="圧縮" onClick={handleCompress} disabled={selectedFiles.size === 0} />
+                    <LargeButton icon={<FileArchive size={32} strokeWidth={1} color="#107C10" />} label="展開" onClick={handleExtract} disabled={selectedFiles.size !== 1 || !isZipArchive(Array.from(selectedFiles)[0])} />
+                </div>
+                <div className="ribbon-group-title">圧縮/展開</div>
             </div>
 
             <div className="ribbon-group" style={{ borderRight: 'none' }}>
