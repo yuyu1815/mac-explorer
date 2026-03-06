@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useAppStore } from '../stores/appStore';
 import { ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard, LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive } from 'lucide-react';
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
@@ -106,20 +107,32 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                 payload: JSON.stringify(payload)
             });
 
+            // メインウィンドウの中心に表示するための座標計算
+            const mainWindow = getCurrentWindow();
+            const pos = await mainWindow.innerPosition();
+            const size = await mainWindow.innerSize();
+            const factor = await mainWindow.scaleFactor();
+
+            const winWidth = 400;
+            const winHeight = 250;
+            const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
+            const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
+
             const win = new WebviewWindow(label, {
                 url: `/?${queryParams.toString()}`,
                 title: '圧縮しています...',
-                width: 400,
-                height: 250,
+                width: winWidth,
+                height: winHeight,
+                x,
+                y,
                 resizable: false,
                 maximizable: false,
-                center: true,
                 decorations: false,
                 transparent: true,
                 alwaysOnTop: true,
             });
 
-            await win.once('tauri://error', (e) => {
+            await win.once('tauri://error', (e: any) => {
                 console.error('Failed to create progress window', e);
                 alert('進行状況ウィンドウの作成に失敗しました。');
             });
@@ -148,20 +161,32 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                 payload: JSON.stringify(payload)
             });
 
+            // メインウィンドウの中心に表示するための座標計算
+            const mainWindow = getCurrentWindow();
+            const pos = await mainWindow.innerPosition();
+            const size = await mainWindow.innerSize();
+            const factor = await mainWindow.scaleFactor();
+
+            const winWidth = 400;
+            const winHeight = 250;
+            const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
+            const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
+
             const win = new WebviewWindow(label, {
                 url: `/?${queryParams.toString()}`,
                 title: '展開しています...',
-                width: 400,
-                height: 250,
+                width: winWidth,
+                height: winHeight,
+                x,
+                y,
                 resizable: false,
                 maximizable: false,
-                center: true,
                 decorations: false,
                 transparent: true,
                 alwaysOnTop: true,
             });
 
-            await win.once('tauri://error', (e) => {
+            await win.once('tauri://error', (e: any) => {
                 console.error('Failed to create progress window', e);
                 alert('進行状況ウィンドウの作成に失敗しました。');
             });

@@ -33,20 +33,23 @@ export const ProgressWindow: React.FC = () => {
                 const channel = new Channel<ProgressData>();
                 channel.onmessage = (data) => {
                     setProgress(data);
+                    // 進捗が完了フラグを受け取ったら早めに閉じる（invokeの終了を待たずにUI上は完了とする）
                     if (data.complete) {
                         setTimeout(() => {
                             getCurrentWindow().close();
-                        }, 500);
+                        }, 1000); // 1秒見せてから閉じる
                     }
                 };
 
                 // バックエンドへのコマンド呼び出し
+                let invokeError = false;
                 if (action === 'compress') {
                     const result = await invoke<{ errors: Array<{ file_path: string; message: string }> }>('compress_archive', {
                         ...payload,
                         channel,
                     });
                     if (result.errors.length > 0) {
+                        invokeError = true;
                         setErrorMsg('いくつかのファイルで圧縮エラーが発生しました');
                     }
                 } else if (action === 'extract') {
@@ -55,8 +58,16 @@ export const ProgressWindow: React.FC = () => {
                         channel,
                     });
                     if (result.errors.length > 0) {
+                        invokeError = true;
                         setErrorMsg('解凍中にエラーが発生しました');
                     }
+                }
+
+                if (!invokeError) {
+                    // 万が一Channelで閉じられなかった場合のバックアップ
+                    setTimeout(() => {
+                        getCurrentWindow().close();
+                    }, 1500);
                 }
             } catch (err) {
                 console.error('Process error:', err);
@@ -91,47 +102,84 @@ export const ProgressWindow: React.FC = () => {
     return (
         <div style={{
             width: '100%', height: '100vh',
-            backgroundColor: '#f0f0f0',
-            fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+            backgroundColor: '#ffffff',
             display: 'flex', flexDirection: 'column',
-            padding: '20px 24px',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            border: '1px solid #ccc',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            overflow: 'hidden'
         }}>
-            <div style={{ marginBottom: '16px', fontSize: '14px', color: '#003399' }}>
-                {progress?.complete ? '完了しました' : `${percentage}% 完了`}
-            </div>
-
-            {/* Progress Bar Container */}
-            <div style={{
-                height: '18px',
-                backgroundColor: '#e6e6e6',
-                border: '1px solid #bcbcbc',
-                position: 'relative',
-                marginBottom: '16px',
-                overflow: 'hidden'
+            {/* Draggable Title Bar */}
+            <div data-tauri-drag-region style={{
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 8px 0 12px',
+                userSelect: 'none',
+                backgroundColor: '#ffffff',
+                fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
             }}>
-                {/* Progress Bar Value */}
-                <div style={{
-                    height: '100%',
-                    width: `${percentage}%`,
-                    backgroundColor: '#06b025',
-                    transition: 'width 0.2s ease-out'
-                }} />
+                <span data-tauri-drag-region style={{ fontSize: '13px', color: '#000', flex: 1 }}>{title}</span>
+                <button
+                    onClick={() => getCurrentWindow().close()}
+                    style={{
+                        width: '32px', height: '32px',
+                        border: 'none', backgroundColor: 'transparent',
+                        fontSize: '16px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e81123'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                    ✕
+                </button>
             </div>
 
-            <div style={{ fontSize: '12px', color: '#333', minHeight: '40px', lineHeight: '1.4' }}>
-                {progress ? (
-                    <>
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            アイテム: {progress.current_file || '...'}
-                        </div>
-                        <div>
-                            完了したアイテム: {progress.files_processed.toLocaleString()} / {progress.total_files.toLocaleString()}
-                        </div>
-                    </>
-                ) : (
-                    <div>{title}</div>
-                )}
+            <div style={{
+                flex: 1,
+                padding: '16px 24px 24px 24px',
+                backgroundColor: '#f0f0f0',
+                fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+                display: 'flex', flexDirection: 'column',
+                borderTop: '1px solid #dfdfdf'
+            }}>
+                <div style={{ marginBottom: '16px', fontSize: '14px', color: '#003399' }}>
+                    {progress?.complete ? '完了しました' : `${percentage}% 完了`}
+                </div>
+
+                {/* Progress Bar Container */}
+                <div style={{
+                    height: '18px',
+                    backgroundColor: '#e6e6e6',
+                    border: '1px solid #bcbcbc',
+                    position: 'relative',
+                    marginBottom: '16px',
+                    overflow: 'hidden'
+                }}>
+                    {/* Progress Bar Value */}
+                    <div style={{
+                        height: '100%',
+                        width: `${percentage}%`,
+                        backgroundColor: '#06b025',
+                        transition: 'width 0.2s ease-out'
+                    }} />
+                </div>
+
+                <div style={{ fontSize: '12px', color: '#333', minHeight: '40px', lineHeight: '1.4' }}>
+                    {progress ? (
+                        <>
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                アイテム: {progress.current_file || '...'}
+                            </div>
+                            <div>
+                                完了したアイテム: {progress.files_processed.toLocaleString()} / {progress.total_files.toLocaleString()}
+                            </div>
+                        </>
+                    ) : (
+                        <div>対象を計算しています...</div>
+                    )}
+                </div>
             </div>
         </div>
     );
