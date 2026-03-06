@@ -4,6 +4,7 @@
 //! 閾値ギリギリのエッジケースや予期せぬ動作を検証します。
 
 use std::fs;
+use std::path::Path;
 use tempfile::TempDir;
 
 // テスト用ヘルパー関数

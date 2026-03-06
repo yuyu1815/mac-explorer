@@ -89,8 +89,9 @@ pub fn run() {
             commands::utils::get_parent_path,
             commands::directory::complete_path,
             commands::utils::open_terminal_at,
-            commands::archive::compress_to_zip,
-            commands::archive::extract_zip,
+            commands::archive::compress_archive,
+            commands::archive::extract_archive,
+            commands::archive::list_archive_entries,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

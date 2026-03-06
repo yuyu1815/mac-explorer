@@ -7,6 +7,7 @@ import {
     FolderOpen, Settings, ChevronUp, ChevronDown, Monitor, PanelRight, ArrowDownAZ, EyeOff,
     Archive, FileArchive
 } from 'lucide-react';
+import { isArchive, archiveFilters, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
 
 export const Toolbar = () => {
     const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes } = useAppStore();
@@ -170,28 +171,35 @@ export const Toolbar = () => {
             const { save } = await import('@tauri-apps/plugin-dialog');
             const firstPath = Array.from(selectedFiles)[0];
             const defaultName = selectedFiles.size === 1
-                ? (firstPath?.split('/').pop()?.replace(/\.[^.]+$/, '') || 'archive') + '.zip'
+                ? getFileNameWithoutExtension(firstPath || 'archive') + '.zip'
                 : 'archive.zip';
-            const zipPath = await save({
+            const archivePath = await save({
                 defaultPath: defaultName,
-                filters: [{ name: 'ZIP Archive', extensions: ['zip'] }]
+                filters: archiveFilters
             });
-            if (zipPath) {
-                await invoke('compress_to_zip', {
+            if (archivePath) {
+                const format = getArchiveFormat(archivePath);
+                const result = await invoke('compress_archive', {
                     sources: Array.from(selectedFiles),
-                    destZipPath: zipPath,
-                });
+                    destArchivePath: archivePath,
+                    format,
+                }) as { errors: Array<{ file_path: string; message: string }> };
+
+                if (result.errors.length > 0) {
+                    alert(`圧縮が完了しましたが、${result.errors.length}個のファイルでエラーが発生しました:\n${result.errors.map(e => `  - ${e.file_path}: ${e.message}`).join('\n')}`);
+                }
                 refreshFiles();
             }
         } catch (err) {
             console.error('Compression failed:', err);
+            alert(`圧縮に失敗しました: ${err}`);
         }
     };
 
     const handleExtract = async () => {
         if (selectedFiles.size !== 1) return;
         const targetPath = Array.from(selectedFiles)[0];
-        if (!isZipArchive(targetPath)) return;
+        if (!isArchive(targetPath)) return;
         try {
             const { open } = await import('@tauri-apps/plugin-dialog');
             const destDir = await open({
@@ -200,33 +208,20 @@ export const Toolbar = () => {
                 title: '解凍先フォルダを選択'
             });
             if (destDir && typeof destDir === 'string') {
-                await invoke('extract_zip', {
-                    zipPath: targetPath,
+                const result = await invoke('extract_archive', {
+                    archivePath: targetPath,
                     destDir: destDir,
-                });
+                }) as { errors: string[] };
+
+                if (result.errors.length > 0) {
+                    alert(`解凍が完了しましたが、${result.errors.length}個のエラーが発生しました:\n${result.errors.join('\n')}`);
+                }
                 refreshFiles();
             }
         } catch (err) {
             console.error('Extraction failed:', err);
+            alert(`解凍に失敗しました: ${err}`);
         }
-    };
-
-    // ZIPベースのアーカイブ形式の拡張子
-    const isZipArchive = (path: string | null | undefined) => {
-        if (!path) return false;
-        const lower = path.toLowerCase();
-        return lower.endsWith('.zip') ||
-               lower.endsWith('.jar') ||
-               lower.endsWith('.war') ||
-               lower.endsWith('.ear') ||
-               lower.endsWith('.apk') ||
-               lower.endsWith('.docx') ||
-               lower.endsWith('.xlsx') ||
-               lower.endsWith('.pptx') ||
-               lower.endsWith('.odt') ||
-               lower.endsWith('.ods') ||
-               lower.endsWith('.odp') ||
-               lower.endsWith('.epub');
     };
 
     const handleNewFolder = async () => {
@@ -283,7 +278,7 @@ export const Toolbar = () => {
             <div className="ribbon-group">
                 <div className="ribbon-group-items">
                     <LargeButton icon={<Archive size={32} strokeWidth={1} color="#0078D7" />} label="圧縮" onClick={handleCompress} disabled={selectedFiles.size === 0} />
-                    <LargeButton icon={<FileArchive size={32} strokeWidth={1} color="#107C10" />} label="展開" onClick={handleExtract} disabled={selectedFiles.size !== 1 || !isZipArchive(Array.from(selectedFiles)[0])} />
+                    <LargeButton icon={<FileArchive size={32} strokeWidth={1} color="#107C10" />} label="展開" onClick={handleExtract} disabled={selectedFiles.size !== 1 || !isArchive(Array.from(selectedFiles)[0])} />
                 </div>
                 <div className="ribbon-group-title">圧縮/展開</div>
             </div>

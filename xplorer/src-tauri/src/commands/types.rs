@@ -76,7 +76,7 @@ pub struct CompressionProgress {
 /// 圧縮結果
 #[derive(Serialize)]
 pub struct CompressionResult {
-    pub zip_path: String,
+    pub archive_path: String,
     pub files_count: u32,
     pub original_size: u64,
     pub compressed_size: u64,
@@ -99,4 +99,22 @@ pub struct ExtractionResult {
     pub extracted_count: u32,
     pub extracted_size: u64,
     pub destination: String,
+    pub errors: Vec<String>,
+}
+
+/// 圧縮エラー情報
+#[derive(Serialize)]
+pub struct CompressionError {
+    pub file_path: String,
+    pub message: String,
+}
+
+/// 圧縮結果（エラー付き）
+#[derive(Serialize)]
+pub struct CompressionResultWithErrors {
+    pub archive_path: String,
+    pub files_count: u32,
+    pub original_size: u64,
+    pub compressed_size: u64,
+    pub errors: Vec<CompressionError>,
 }
