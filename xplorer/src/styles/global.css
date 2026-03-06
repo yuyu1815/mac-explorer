@@ -212,13 +212,13 @@ body {
     opacity: 0.5;
 }
 
-/* ゼブラスタイルの追加 */
-.file-item.zebra {
+/* ゼブラスタイルの追加 - 選択時は無効化して色を統一する */
+.file-item.zebra:not(.selected) {
     background-color: rgba(0, 0, 0, 0.02);
 }
 
 @media (prefers-color-scheme: dark) {
-    .file-item.zebra {
+    .file-item.zebra:not(.selected) {
         background-color: rgba(255, 255, 255, 0.02);
     }
 }
