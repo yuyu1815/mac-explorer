@@ -4,6 +4,7 @@ import { useAppStore } from '../stores/appStore';
 import { ContextMenu } from './ContextMenu';
 import { Folder } from 'lucide-react';
 import { PropertiesDialog } from './PropertiesDialog';
+import { isArchive } from '../utils/archive';
 
 const FolderIcon = ({ size }: { size: number }) => (
     <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
@@ -220,7 +221,7 @@ export const MainPane = () => {
     };
 
     const handleDoubleClick = async (file: any) => {
-        if (file.is_dir) {
+        if (file.is_dir || isArchive(file.path)) {
             setCurrentPath(file.path);
         } else {
             try {

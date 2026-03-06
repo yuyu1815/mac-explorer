@@ -3,7 +3,7 @@
 pub mod commands;
 
 // Re-export for integration tests
-pub use commands::{file_ops, utils};
+pub use commands::{directory, file_ops, utils};
 
 use tauri::Manager;
 

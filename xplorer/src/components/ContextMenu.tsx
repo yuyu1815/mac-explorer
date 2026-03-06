@@ -16,7 +16,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreateFolder }: ContextMenuProps) => {
-    const { tabs, activeTabId, setFiles, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, confirmOverwrite } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, confirmOverwrite } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -274,7 +274,13 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                 <>
                     {!isMultiple && (
                         <ContextMenuItem icon={<ExternalLink size={16} />} label="開く(O)" onClick={() => handleAction(async () => {
-                            if (targetPath) await invoke('open_file_default', { path: targetPath });
+                            if (targetPath) {
+                                if (isArchive(targetPath)) {
+                                    setCurrentPath(targetPath);
+                                } else {
+                                    await invoke('open_file_default', { path: targetPath });
+                                }
+                            }
                         })} />
                     )}
                     <ContextMenuSeparator />

@@ -13,6 +13,18 @@ use super::types::{
     ExtractionProgress, ExtractionResult,
 };
 
+/// サポートされているアーカイブ拡張子の一覧
+pub const SUPPORTED_ARCHIVE_EXTENSIONS: &[&str] = &[
+    ".zip", ".7z", ".tar", ".tar.gz", ".tgz", 
+    ".tar.bz2", ".tar.xz", ".tar.zst"
+];
+
+/// 指定されたパスがサポート対象のアーカイブかどうかを判定
+pub fn is_archive_file(path: &str) -> bool {
+    let lower = path.to_lowercase();
+    SUPPORTED_ARCHIVE_EXTENSIONS.iter().any(|ext| lower.ends_with(ext))
+}
+
 /// 操作の一時停止/キャンセル制御用の共有ステート
 pub struct OperationControl {
     pub paused: AtomicBool,
@@ -563,6 +575,10 @@ pub async fn extract_archive(
 /// アーカイブ内のエントリ一覧を取得
 #[tauri::command]
 pub async fn list_archive_entries(archive_path: String) -> Result<Vec<ArchiveEntry>, String> {
+    list_archive_entries_internal(archive_path).await
+}
+
+pub async fn list_archive_entries_internal(archive_path: String) -> Result<Vec<ArchiveEntry>, String> {
     let src = archive_path.clone();
 
     tokio::task::spawn_blocking(move || {
