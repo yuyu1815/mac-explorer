@@ -1,7 +1,9 @@
-use serde::Serialize;
+//! フロントエンドとバックエンド間でやり取りされるデータ構造を定義するモジュール。
 
-/// ファイル一覧のエントリ
-#[derive(Serialize)]
+use serde::{Deserialize, Serialize};
+
+/// ファイルまたはディレクトリの基本情報を保持する構造体。
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileEntry {
     pub name: String,
     pub path: String,

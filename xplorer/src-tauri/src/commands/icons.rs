@@ -1,3 +1,8 @@
+//! macOSの `NSWorkspace` を利用してファイルや拡張子のアイコンを取得するモジュール。
+//! 
+//! 取得したアイコンはPNG形式に変換され、メモリおよびディスクの両方にキャッシュされます。
+//! これにより、大量のファイルを表示する際もパフォーマンスを維持します。
+
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
@@ -41,75 +46,57 @@ pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
 
     let png_data = unsafe {
         let pool: cocoa_id = msg_send![objc::class!(NSAutoreleasePool), new];
+        let workspace: cocoa_id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
 
-        let result = (|| -> Option<Vec<u8>> {
-            let workspace: cocoa_id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
+        let icon: cocoa_id = if let Some(ext) = id.strip_prefix("ext:") {
+            msg_send![workspace, iconForFileType: NSString::alloc(nil).init_str(ext)]
+        } else if id == "dir" {
+            msg_send![objc::class!(NSImage), imageNamed: NSString::alloc(nil).init_str("NSFolder")]
+        } else {
+            let path = id.strip_prefix("app:").or_else(|| id.strip_prefix("file:"))?;
+            msg_send![workspace, iconForFile: NSString::alloc(nil).init_str(path)]
+        };
 
-            let icon: cocoa_id = if let Some(ext) = id.strip_prefix("ext:") {
-                let ns_ext = NSString::alloc(nil).init_str(ext);
-                msg_send![workspace, iconForFileType: ns_ext]
-            } else if id == "dir" {
-                msg_send![objc::class!(NSImage), imageNamed: NSString::alloc(nil).init_str("NSFolder")]
-            } else {
-                let path = if let Some(p) = id.strip_prefix("app:") {
-                    p
-                } else if let Some(p) = id.strip_prefix("file:") {
-                    p
-                } else {
-                    return None;
-                };
-                let ns_path = NSString::alloc(nil).init_str(path);
-                msg_send![workspace, iconForFile: ns_path]
-            };
+        if icon == nil {
+            let _: () = msg_send![pool, drain];
+            return None;
+        }
 
-            if icon == nil {
-                return None;
-            }
+        let size = NSSize { width: 32.0, height: 32.0 };
+        let _: () = msg_send![icon, setSize: size];
 
-            let size = NSSize {
-                width: 32.0,
-                height: 32.0,
-            };
-            let _: () = msg_send![icon, setSize: size];
+        let mut rect = NSRect { origin: NSPoint { x: 0.0, y: 0.0 }, size };
+        let cg_image: cocoa_id = msg_send![icon, CGImageForProposedRect:&mut rect context:nil hints:nil];
+        if cg_image == nil {
+            let _: () = msg_send![pool, drain];
+            return None;
+        }
 
-            let mut rect = NSRect {
-                origin: NSPoint { x: 0.0, y: 0.0 },
-                size,
-            };
-            let cg_image: cocoa_id =
-                msg_send![icon, CGImageForProposedRect:&mut rect context:nil hints:nil];
-            if cg_image == nil {
-                return None;
-            }
+        let bitmap_rep: cocoa_id = msg_send![objc::class!(NSBitmapImageRep), alloc];
+        let bitmap_rep: cocoa_id = msg_send![bitmap_rep, initWithCGImage:cg_image];
+        if bitmap_rep == nil {
+            let _: () = msg_send![pool, drain];
+            return None;
+        }
 
-            let bitmap_rep_class = objc::class!(NSBitmapImageRep);
-            let bitmap_rep_alloc: cocoa_id = msg_send![bitmap_rep_class, alloc];
-            let bitmap_rep: cocoa_id = msg_send![bitmap_rep_alloc, initWithCGImage:cg_image];
-            if bitmap_rep == nil {
-                return None;
-            }
+        let empty_dict: cocoa_id = msg_send![objc::class!(NSDictionary), dictionary];
+        let png: cocoa_id = msg_send![bitmap_rep, representationUsingType: 4u64 properties: empty_dict];
+        if png == nil {
+            let _: () = msg_send![pool, drain];
+            return None;
+        }
 
-            let empty_dict: cocoa_id = msg_send![objc::class!(NSDictionary), dictionary];
-            let png: cocoa_id =
-                msg_send![bitmap_rep, representationUsingType: 4u64 properties: empty_dict];
-            if png == nil {
-                return None;
-            }
-
-            let length: usize = msg_send![png, length];
-            let bytes: *const u8 = msg_send![png, bytes];
-            Some(std::slice::from_raw_parts(bytes, length).to_vec())
-        })();
-
+        let length: usize = msg_send![png, length];
+        let bytes: *const u8 = msg_send![png, bytes];
+        let data = std::slice::from_raw_parts(bytes, length).to_vec();
         let _: () = msg_send![pool, drain];
-        result
-    }?;
+        data
+    };
 
     // 4. キャッシュに保存
     ICON_CACHE.insert(id.to_string(), png_data.clone());
     if let Some(cache_dir) = CACHE_DIR.get() {
-        let cache_file = cache_dir.join(format!("{}.png", hash_id(id)));
-        let _ = std::fs::write(cache_file, &png_data);
+        let _ = std::fs::write(cache_dir.join(format!("{}.png", hash_id(id))), &png_data);
     }
 
     Some(png_data)

@@ -1,3 +1,8 @@
+//! Xplorerバックエンドのメインエントリーポイント。
+//! 
+//! このモジュールでは、Tauriアプリケーションの起動、プラグインの初期化、
+//! カスタムURIスキームの登録、およびフロントエンドから呼び出されるコマンドの登録を行います。
+
 #![allow(unexpected_cfgs)]
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 pub mod commands;
@@ -8,6 +13,10 @@ pub use commands::{directory, file_ops, utils};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Tauriアプリケーションの実行を開始します。
+/// 
+/// プラグインの初期化、ステートの登録、アイコンキャッシュのセットアップ、
+/// および並列でのアイコンプリウォーム処理などを含みます。
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

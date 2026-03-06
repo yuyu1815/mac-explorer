@@ -1,3 +1,9 @@
+//! アーカイブ操作（圧縮、展開、エントリ一覧取得）およびその制御を行うコマンド。
+//! 
+//! `libarchive2` を使用して、ZIP, 7z, TARなどの多様なフォーマットをサポートします。
+//! 長時間の操作を中断・再開するための `OperationControl` や、セキュリティのための
+//! パストラバーサル防止ロジックを含みます。
+
 //https://github.com/AllenDang/libarchive-rs
 use std::fs::File;
 use std::io::{Read, Write};
@@ -24,13 +30,13 @@ pub const SUPPORTED_ARCHIVE_EXTENSIONS: &[&str] = &[
 
 /// 指定されたパスがサポート対象のアーカイブかどうかを判定
 pub fn is_archive_file(path: &str) -> bool {
-    let lower = path.to_lowercase();
-    SUPPORTED_ARCHIVE_EXTENSIONS
-        .iter()
-        .any(|ext| lower.ends_with(ext))
+    SUPPORTED_ARCHIVE_EXTENSIONS.iter().any(|ext| path.to_lowercase().ends_with(ext))
 }
 
-/// 操作の一時停止/キャンセル制御用の共有ステート
+/// 操作の一時停止（Pause）およびキャンセル（Cancel）を制御するためのアトミックなフラグ。
+/// 
+/// アーカイブ操作のループ内で定期的に `check()` が呼び出され、
+/// フラグの状態に応じてスレッドをブロックまたはエラー終了させます。
 pub struct OperationControl {
     pub paused: AtomicBool,
     pub cancelled: AtomicBool,
@@ -102,57 +108,31 @@ fn parse_format(format: &str) -> (ArchiveFormat, CompressionFormat) {
 }
 
 /// SystemTimeをUnixタイムスタンプに変換
-fn system_time_to_timestamp(time: Option<SystemTime>) -> i64 {
-    time.and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
+fn system_time_to_timestamp(t: Option<SystemTime>) -> i64 {
+    t.and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_secs() as i64).unwrap_or(0)
 }
 
-/// パストラバーサル攻撃を検出（macOSのみ）
+/// セキュリティ上のリスクがあるパスを検出します。
 fn is_path_traversal_attempt(path: &str) -> bool {
-    // "../" を含むパスは拒否
-    path.contains("../")
-        // 絶対パスも拒否（macOS）
-        || path.starts_with('/')
+    path.contains("../") || path.starts_with('/')
 }
 
 /// 複数のパスから共通の親ディレクトリを取得
 fn get_common_parent(paths: &[String]) -> Option<PathBuf> {
-    if paths.is_empty() {
-        return None;
-    }
-    if paths.len() == 1 {
-        return Some(Path::new(&paths[0]).parent()?.to_path_buf());
-    }
-
-    let mut common = PathBuf::from(&paths[0]);
-    for path in &paths[1..] {
-        let current = Path::new(path);
-        // 共通部分を取得
-        common = find_common_path(&common, current)?;
-    }
-    Some(common)
+    if paths.is_empty() { return None; }
+    if paths.len() == 1 { return Path::new(&paths[0]).parent().map(|p| p.to_path_buf()); }
+    paths.iter().skip(1).fold(Some(PathBuf::from(&paths[0])), |acc, p| acc.and_then(|a| find_common_path(&a, Path::new(p))))
 }
 
-/// 2つのパスの共通部分を見つける
 fn find_common_path(a: &Path, b: &Path) -> Option<PathBuf> {
-    let mut common = PathBuf::new();
-    for comp in a.components() {
-        let temp = common.join(comp);
-        if b.starts_with(&temp) {
-            common = temp;
-        } else {
-            break;
-        }
-    }
-    if common.as_os_str().is_empty() {
-        None
-    } else {
-        Some(common)
-    }
+    let common = a.components().zip(b.components()).take_while(|(ca, cb)| ca == cb).map(|(c, _)| c).collect::<PathBuf>();
+    if common.as_os_str().is_empty() { None } else { Some(common) }
 }
 
-/// ファイル/フォルダをアーカイブに圧縮
+/// 指定されたファイルやフォルダを一つのアーカイブファイルに圧縮します。
+/// 
+/// この関数は `tokio::task::spawn_blocking` を使用してバックグラウンドスレッドで実行され、
+/// `Channel` を通じてフロントエンドに進捗状況（ファイル数、バイト数、速度等）をリアルタイムに送信します。
 #[tauri::command]
 pub async fn compress_archive(
     sources: Vec<String>,
@@ -198,59 +178,44 @@ pub async fn compress_archive(
         // 共通の親ディレクトリを取得（相対パス計算用）
         let common_parent = get_common_parent(&sources);
 
-        let mut total_files = 0u32;
-        let mut total_bytes = 0u64;
         let mut file_list: Vec<(String, u64)> = Vec::new();
         let mut errors: Vec<CompressionError> = Vec::new();
-
-        // ファイル一覧を作成
         for src in &sources {
-            let src_path = Path::new(src);
-            if !src_path.exists() {
+            let path = Path::new(src);
+            if !path.exists() {
                 errors.push(CompressionError {
                     file_path: src.clone(),
-                    message: "ファイルが存在しません".to_string(),
+                    message: "NotFound".into(),
                 });
                 continue;
             }
 
-            if src_path.is_file() {
-                if let Ok(metadata) = std::fs::metadata(src_path) {
-                    total_files += 1;
-                    total_bytes += metadata.len();
-                    file_list.push((src.clone(), metadata.len()));
+            if path.is_file() {
+                if let Ok(m) = std::fs::metadata(path) {
+                    file_list.push((src.clone(), m.len()));
                 }
-            } else if src_path.is_dir() {
-                for entry in WalkDir::new(src_path).into_iter().filter_map(|e| e.ok()) {
-                    if entry.file_type().is_file() {
-                        if let Ok(metadata) = entry.metadata() {
-                            total_files += 1;
-                            total_bytes += metadata.len();
-                            file_list.push((entry.path().display().to_string(), metadata.len()));
-                        }
+            } else {
+                let walk = WalkDir::new(path).into_iter().flatten();
+                for e in walk.filter(|e| e.file_type().is_file()) {
+                    if let Ok(m) = e.metadata() {
+                        file_list.push((e.path().to_string_lossy().into(), m.len()));
                     }
                 }
             }
         }
 
-        if total_files == 0 && !errors.is_empty() {
-            return Err(format!(
-                "圧縮するファイルがありません: {}個のエラー",
-                errors.len()
-            ));
+        if file_list.is_empty() {
+            return if errors.is_empty() {
+                Err("NoFiles".into())
+            } else {
+                Err(format!("Errors: {}", errors.len()))
+            };
         }
 
-        if total_files == 0 {
-            return Err("圧縮するファイルがありません".to_string());
-        }
-
-        let (archive_format, compression_format) = parse_format(&fmt);
-
-        let mut archive = WriteArchive::new()
-            .format(archive_format)
-            .compression(compression_format)
-            .open_file(&dest)
-            .map_err(|e| format!("アーカイブを作成できません: {}", e))?;
+        let total_files = file_list.len() as u32;
+        let total_bytes = file_list.iter().map(|(_, s)| s).sum::<u64>();
+        let (fmt, comp) = parse_format(&fmt);
+        let mut archive = WriteArchive::new().format(fmt).compression(comp).open_file(&dest).map_err(|e| e.to_string())?;
 
         let mut files_processed = 0u32;
         let mut bytes_processed = 0u64;
@@ -259,61 +224,18 @@ pub async fn compress_archive(
         let mut last_bytes_processed = 0u64;
         let mut smoothed_speed = 0.0f64;
 
-        for (file_path, _file_size) in file_list {
+        for (file_path, _) in file_list {
             control.check()?;
             let path = Path::new(&file_path);
-            if !path.exists() || !path.is_file() {
-                continue;
-            }
+            if !path.exists() || !path.is_file() { continue; }
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
+            let arc_path = if sources.len() == 1 { name.into() } else { common_parent.as_ref().and_then(|p| path.strip_prefix(p).ok()).map(|p| p.to_string_lossy().into()).unwrap_or(file_path.clone()) };
 
-            let file_name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown");
+            let mut buf = Vec::new();
+            File::open(path).and_then(|mut f| f.read_to_end(&mut buf)).map_err(|e| e.to_string())?;
+            archive.add_file(&arc_path, &buf).map_err(|e| e.to_string())?;
 
-            // 相対パスを計算（共通親ディレクトリがある場合）
-            let archive_path = if sources.len() == 1 {
-                file_name.to_string()
-            } else if let Some(ref parent) = common_parent {
-                path.strip_prefix(parent)
-                    .map(|p| p.display().to_string())
-                    .unwrap_or_else(|_| file_path.clone())
-            } else {
-                file_path.clone()
-            };
-
-            match File::open(path) {
-                Ok(mut input) => {
-                    let mut buffer = Vec::new();
-                    match input.read_to_end(&mut buffer) {
-                        Ok(_) => {
-                            if let Err(e) = archive.add_file(&archive_path, &buffer) {
-                                errors.push(CompressionError {
-                                    file_path: file_path.clone(),
-                                    message: format!("アーカイブ書き込みエラー: {}", e),
-                                });
-                                continue;
-                            }
-                            bytes_processed += buffer.len() as u64;
-                        }
-                        Err(e) => {
-                            errors.push(CompressionError {
-                                file_path: file_path.clone(),
-                                message: format!("ファイル読み込みエラー: {}", e),
-                            });
-                            continue;
-                        }
-                    }
-                }
-                Err(e) => {
-                    errors.push(CompressionError {
-                        file_path: file_path.clone(),
-                        message: format!("ファイルオープンエラー: {}", e),
-                    });
-                    continue;
-                }
-            }
-
+            bytes_processed += buf.len() as u64;
             files_processed += 1;
 
             if files_processed.is_multiple_of(emit_interval) || files_processed == total_files {
@@ -333,7 +255,7 @@ pub async fn compress_archive(
                 };
 
                 let _ = channel.send(CompressionProgress {
-                    current_file: file_name.to_string(),
+                    current_file: name.to_string(),
                     files_processed,
                     total_files,
                     bytes_processed,
@@ -374,7 +296,10 @@ pub async fn compress_archive(
     .map_err(|e| format!("圧縮タスクエラー: {}", e))?
 }
 
-/// アーカイブを展開
+/// アーカイブファイルを指定されたディレクトリに展開します。
+/// 
+/// 展開前にディスク空き容量のチェックを行い、不足している場合は `INSUFFICIENT_SPACE` エラーを返します。
+/// セキュリティのため、各エントリのパスが宛先ディレクトリを逸脱していないか検証します。
 #[tauri::command]
 pub async fn extract_archive(
     archive_path: String,
@@ -400,25 +325,19 @@ pub async fn extract_archive(
                 .map_err(|e| format!("展開先ディレクトリを作成できません: {}", e))?;
         }
 
-        // エントリ数と解凍後の合計サイズを事前に取得
         let mut total_files = 0u32;
-        let mut total_uncompressed_bytes = 0u64;
+        let mut total_size = 0u64;
 
         {
-            let mut temp_archive =
-                ReadArchive::open(&src).map_err(|e| format!("アーカイブを開けません: {}", e))?;
-
-            while let Some(entry) = temp_archive
-                .next_entry()
-                .map_err(|e| format!("エントリの取得に失敗: {}", e))?
-            {
+            let mut tmp = ReadArchive::open(&src).map_err(|e| e.to_string())?;
+            while let Some(e) = tmp.next_entry().map_err(|e| e.to_string())? {
                 total_files += 1;
-                total_uncompressed_bytes += entry.size().max(0) as u64;
+                total_size += e.size().max(0) as u64;
             }
         }
 
         if total_files == 0 {
-            return Err("アーカイブが空です".to_string());
+            return Err("Empty".into());
         }
 
         // ディスク空き容量のチェック（macOS: statvfs）
@@ -430,10 +349,10 @@ pub async fn extract_archive(
                 let mut stat: libc::statvfs = std::mem::zeroed();
                 if libc::statvfs(dest_c.as_ptr(), &mut stat) == 0 {
                     let available = stat.f_bavail as u64 * stat.f_frsize as u64;
-                    if total_uncompressed_bytes > available {
+                    if total_size > available {
                         return Err(format!(
                             "INSUFFICIENT_SPACE:{}:{}:{}",
-                            total_uncompressed_bytes,
+                            total_size,
                             available,
                             dest_path.display()
                         ));
@@ -451,7 +370,7 @@ pub async fn extract_archive(
         let mut smoothed_speed = 0.0f64;
 
         // アーカイブ内のファイルの解凍後合計サイズをプログレスの分母とする
-        let total_bytes = total_uncompressed_bytes;
+        let total_bytes = total_size;
 
         let mut archive =
             ReadArchive::open(&src).map_err(|e| format!("アーカイブを開けません: {}", e))?;
