@@ -10,6 +10,7 @@ interface NodeProps {
     icon: React.ReactNode;
     level: number;
     defaultExpanded?: boolean;
+    autoExpand?: boolean;
 }
 
 interface VolumeInfo {
@@ -21,7 +22,7 @@ interface VolumeInfo {
     free_bytes_formatted: string;
 }
 
-const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false }: NodeProps) => {
+const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false, autoExpand = true }: NodeProps) => {
     const { tabs, activeTabId, setCurrentPath } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
@@ -33,10 +34,10 @@ const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false }: No
     const [hasFetched, setHasFetched] = useState(false);
 
     useEffect(() => {
-        if (currentPath.startsWith(path) && path !== currentPath) {
+        if (autoExpand && currentPath.startsWith(path) && path !== currentPath) {
             setIsExpanded(true);
         }
-    }, [currentPath, path]);
+    }, [currentPath, path, autoExpand]);
 
     useEffect(() => {
         if (isExpanded && !hasFetched) {
@@ -83,7 +84,7 @@ const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false }: No
                 <div>
                     {loading && <div className={styles.loading} style={{ paddingLeft: `${indent + 40}px` }}>読み込み中...</div>}
                     {!loading && children.map(child => (
-                        <FolderTreeItem key={child.path} path={child.path} name={child.name} icon={<FileText size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />} level={level + 1} />
+                        <FolderTreeItem key={child.path} path={child.path} name={child.name} icon={<FileText size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />} level={level + 1} autoExpand={autoExpand} />
                     ))}
                 </div>
             )}
@@ -134,7 +135,7 @@ export const SidePanel = () => {
     }, []);
 
     const quickAccessItems = [
-        { label: 'ホーム', path: '/', icon: <Home size={16} color="#0078D7" /> },
+        { label: 'ホーム', path: homeDir || '/', icon: <Home size={16} color="#0078D7" /> },
         ...(homeDir ? [
             { label: 'デスクトップ', path: `${homeDir}/Desktop`, icon: <Laptop size={16} color="#0078D7" /> },
             { label: 'ダウンロード', path: `${homeDir}/Downloads`, icon: <Download size={16} color="#0078D7" /> },
@@ -149,7 +150,7 @@ export const SidePanel = () => {
                 <FolderTreeItem path="quick-access-root" name="クイックアクセス" icon={<Home size={16} color="#0078D7" fill="transparent" />} level={0} defaultExpanded={true} />
                 <div style={{ paddingLeft: '8px' }}>
                     {quickAccessItems.map(item => (
-                        <FolderTreeItem key={item.path} path={item.path} name={item.label} icon={item.icon} level={1} />
+                        <FolderTreeItem key={item.path} path={item.path} name={item.label} icon={item.icon} level={1} autoExpand={false} />
                     ))}
                 </div>
             </div>
@@ -158,9 +159,9 @@ export const SidePanel = () => {
 
             {/* PC */}
             <div className={styles.section}>
-                <FolderTreeItem path="/" name="PC" icon={<Monitor size={16} color="#555" />} level={0} defaultExpanded={true} />
+                <FolderTreeItem path="/" name="PC" icon={<Monitor size={16} color="#555" />} level={0} defaultExpanded={true} autoExpand={false} />
                 {homeDir && (
-                    <FolderTreeItem path={homeDir} name={homeDir.split('/').pop() || 'User'} icon={<FileText size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />} level={1} defaultExpanded={false} />
+                    <FolderTreeItem path={homeDir} name={homeDir.split('/').pop() || 'User'} icon={<FileText size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />} level={1} defaultExpanded={false} autoExpand={false} />
                 )}
             </div>
 
