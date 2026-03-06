@@ -7,23 +7,20 @@ import { PropertiesDialog } from '../../dialogs/PropertiesDialog';
 import { isArchive } from '../../../utils/archive';
 import { FileEntry } from '../../../types';
 import { ipc } from '../../../services/ipc';
+import styles from './MainPane.module.css';
 
 const FolderIcon = ({ size }: { size: number }) => (
-    <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ flexShrink: 0 }} />
+    <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} className={styles.fileIconImg} />
 );
 
 const AppIcon = ({ iconId, size }: { iconId: string, size: number }) => {
     const iconUrl = `icon://localhost/${iconId}?v=3`;
     const badgeSize = Math.floor(size * 0.6);
     return (
-        <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className={styles.iconContainer} style={{ width: size, height: size }}>
             <FolderIcon size={size} />
-            <div style={{
-                position: 'absolute', bottom: -2, right: -2, width: badgeSize, height: badgeSize,
-                backgroundColor: 'var(--bg-main, #ffffff)', borderRadius: '2px', padding: '1px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-            }}>
-                <img src={iconUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <div className={styles.appBadge} style={{ width: badgeSize, height: badgeSize }}>
+                <img src={iconUrl} alt="" className={styles.appBadgeImg} />
             </div>
         </div>
     );
@@ -49,7 +46,8 @@ export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean, iconId:
                     parent.appendChild(fallback);
                 }
             }}
-            style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }}
+            style={{ width: size, height: size }}
+            className={styles.fileIconImg}
         />
     );
 };
@@ -538,7 +536,7 @@ export const MainPane = () => {
 
     const SortIndicator = ({ column }: { column: string }) => {
         if (sortBy !== column) return null;
-        return <span style={{ marginLeft: '4px', fontSize: '9px', color: '#666' }}>{sortDesc ? '▼' : '▲'}</span>;
+        return <span className={styles.sortIndicator}>{sortDesc ? '▼' : '▲'}</span>;
     };
 
     const INVALID_CHARS = /[\/:]/g;
@@ -546,7 +544,7 @@ export const MainPane = () => {
     const renderFileName = (file: FileEntry) => {
         if (renamingPath === file.path) {
             return (
-                <div style={{ position: 'relative', width: '100%' }}>
+                <div className={styles.renameInputWrapper}>
                     <input
                         ref={renameInputRef}
                         data-testid="rename-input"
@@ -569,35 +567,12 @@ export const MainPane = () => {
                         onBlur={commitRename}
                         onClick={(e) => e.stopPropagation()}
                         onDoubleClick={(e) => e.stopPropagation()}
-                        style={{
-                            background: '#FFFFFF',
-                            border: '1px solid black',
-                            color: '#000000',
-                            padding: '0 2px',
-                            height: '20px',
-                            fontSize: '12px',
-                            outline: 'none',
-                            width: '300px',
-                            maxWidth: '100%',
-                            fontFamily: 'Segoe UI',
-                            userSelect: 'text'
-                        }}
+                        className={styles.renameInput}
                     />
                     {renameWarning && (
                         <div
                             data-testid="rename-warning"
-                            style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                marginTop: '4px',
-                                padding: '4px 8px',
-                                fontSize: '11px',
-                                color: '#fff',
-                                backgroundColor: 'rgba(200, 50, 50, 0.9)',
-                                whiteSpace: 'nowrap',
-                                zIndex: 100,
-                            }}
+                            className={styles.renameWarning}
                         >
                             {renameWarning}
                         </div>
@@ -618,7 +593,7 @@ export const MainPane = () => {
             <span>
                 {parts.map((part: string, i: number) =>
                     part.toLowerCase() === searchQuery.toLowerCase() ? (
-                        <span key={i} style={{ backgroundColor: '#FFE200', color: '#000' }}>{part}</span>
+                        <span key={i} className={styles.searchHighlight}>{part}</span>
                     ) : (
                         <span key={i}>{part}</span>
                     )
@@ -626,7 +601,6 @@ export const MainPane = () => {
             </span>
         );
     };
-    const rowHeight = '22px';
 
     const handleColumnResize = (column: 'modified' | 'file_type' | 'size', startX: number) => {
         const startWidth = colWidths[column];
@@ -649,32 +623,32 @@ export const MainPane = () => {
     const ResizeHandle = ({ column }: { column: 'modified' | 'file_type' | 'size' }) => (
         <div
             onMouseDown={(e) => { e.stopPropagation(); handleColumnResize(column, e.clientX); }}
-            style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '4px', cursor: 'col-resize', zIndex: 5 }}
+            className={styles.resizeHandle}
         />
     );
 
     const renderDetailView = () => (
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
+        <table className={styles.detailTable}>
             <colgroup>
                 <col />
                 <col style={{ width: colWidths.modified }} />
                 <col style={{ width: colWidths.file_type }} />
                 <col style={{ width: colWidths.size }} />
             </colgroup>
-            <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-main)', zIndex: 10 }}>
-                <tr style={{ height: rowHeight, borderBottom: '1px solid var(--border-color)', fontSize: '12px', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('name', sortBy === 'name' ? !sortDesc : false)}>
+            <thead className={styles.detailHead}>
+                <tr className={styles.detailHeaderRow}>
+                    <th className={styles.detailHeaderCell} onClick={() => setSortParams('name', sortBy === 'name' ? !sortDesc : false)}>
                         名前 <SortIndicator column="name" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('modified', sortBy === 'modified' ? !sortDesc : false)}>
+                    <th className={styles.detailHeaderCell} onClick={() => setSortParams('modified', sortBy === 'modified' ? !sortDesc : false)}>
                         更新日時 <SortIndicator column="modified" />
                         <ResizeHandle column="modified" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', cursor: 'pointer', borderRight: '1px solid var(--border-color)', position: 'relative' }} onClick={() => setSortParams('file_type', sortBy === 'file_type' ? !sortDesc : false)}>
+                    <th className={styles.detailHeaderCell} onClick={() => setSortParams('file_type', sortBy === 'file_type' ? !sortDesc : false)}>
                         種類 <SortIndicator column="file_type" />
                         <ResizeHandle column="file_type" />
                     </th>
-                    <th style={{ padding: '0 6px', fontWeight: 'normal', textAlign: 'right', cursor: 'pointer', position: 'relative' }} onClick={() => setSortParams('size', sortBy === 'size' ? !sortDesc : false)}>
+                    <th className={`${styles.detailHeaderCell} ${styles.detailHeaderCellLast} ${styles.detailHeaderCellRight}`} onClick={() => setSortParams('size', sortBy === 'size' ? !sortDesc : false)}>
                         サイズ <SortIndicator column="size" />
                         <ResizeHandle column="size" />
                     </th>
@@ -714,20 +688,19 @@ export const MainPane = () => {
                             e.stopPropagation();
                             handleContextMenu(e, file.path);
                         }}
-                        className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${index % 2 === 1 ? ' zebra' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                        className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${index % 2 === 1 ? ' zebra' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.fileRow}`}
                         data-filepath={file.path}
-                        style={{ height: rowHeight, cursor: 'default' }}
                     >
-                        <td style={{ padding: '0 4px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: rowHeight }}>
+                        <td className={styles.detailCellName}>
                             <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} /> {renderFileName(file)}
                         </td>
-                        <td style={{ padding: '0 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                        <td className={styles.detailCellText}>
                             {file.modified_formatted}
                         </td>
-                        <td style={{ padding: '0 6px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td className={`${styles.detailCellText} ${styles.detailCellTextEllipsis}`}>
                             {file.file_type}
                         </td>
-                        <td style={{ padding: '0 6px', color: 'var(--text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td className={`${styles.detailCellText} ${styles.detailCellRight}`}>
                             {file.size_formatted}
                         </td>
                     </tr>
@@ -737,7 +710,7 @@ export const MainPane = () => {
     );
 
     const renderListView = () => (
-        <div style={{ display: 'flex', flexWrap: 'wrap', padding: '2px', alignContent: 'flex-start' }}>
+        <div className={styles.listView}>
             {sortedFiles.map(file => (
                 <div
                     key={file.path}
@@ -770,27 +743,18 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
-                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.listItem}`}
                     data-filepath={file.path}
-                    style={{
-                        cursor: 'default',
-                        padding: '0 6px',
-                        width: '240px',
-                        height: rowHeight,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                    }}
                 >
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{renderFileName(file)}</span>
+                    <span className={styles.listItemText}>{renderFileName(file)}</span>
                 </div>
             ))}
         </div>
     );
 
     const renderIconView = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${iconSize + 40}px, 1fr))`, gap: '4px', padding: '8px' }}>
+        <div className={styles.iconView} style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${iconSize + 40}px, 1fr))` }}>
             {sortedFiles.map(file => (
                 <div
                     key={file.path}
@@ -823,37 +787,18 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
-                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.iconItem}`}
                     data-filepath={file.path}
-                    style={{
-                        cursor: 'default',
-                        padding: '4px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '4px',
-                        textAlign: 'center'
-                    }}
                 >
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={iconSize} />
-                    <span style={{
-                        fontSize: '12px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        wordBreak: 'break-all',
-                        width: '100%',
-                        lineHeight: '1.2'
-                    }}>{renderFileName(file)}</span>
+                    <span className={styles.iconItemText} style={{ width: '100%' }}>{renderFileName(file)}</span>
                 </div>
             ))}
         </div>
     );
 
     const renderTilesView = () => (
-        <div style={{ display: 'flex', flexWrap: 'wrap', padding: '8px', alignContent: 'flex-start', gap: '4px' }}>
+        <div className={styles.listView} style={{ padding: '8px', gap: '4px' }}>
             {sortedFiles.map(file => (
                 <div
                     key={file.path}
@@ -886,16 +831,8 @@ export const MainPane = () => {
                         e.stopPropagation();
                         handleContextMenu(e, file.path);
                     }}
-                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''}`}
+                    className={`file-item${selectedFiles.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.listItem}`}
                     data-filepath={file.path}
-                    style={{
-                        cursor: 'default',
-                        padding: '4px',
-                        width: '240px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                    }}
                 >
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={48} />
                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
@@ -1036,8 +973,7 @@ export const MainPane = () => {
     return (
         <div
             ref={paneRef}
-            className="main-pane-container"
-            style={{ flex: 1, backgroundColor: 'var(--bg-main)', overflowY: 'auto', outline: 'none', position: 'relative', userSelect: 'none' }}
+            className={styles.paneContainer}
             onClick={() => { if (!renamingPath && !marquee && !marqueeJustEnded.current) clearSelection(); }}
             onDoubleClick={(e) => {
                 if ((e.target as HTMLElement).closest('.file-item')) return;
@@ -1056,7 +992,7 @@ export const MainPane = () => {
             tabIndex={0}
         >
             {files.length === 0 && (
-                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', width: '100%' }}>
+                <div className={styles.detailCellText} style={{ padding: '32px', textAlign: 'center', width: '100%' }}>
                     このフォルダーは空です。
                 </div>
             )}
@@ -1125,16 +1061,11 @@ export const MainPane = () => {
             )}
 
             {marqueeRect && (
-                <div style={{
-                    position: 'absolute',
+                <div className={styles.marquee} style={{
                     left: `${marqueeRect.left}px`,
                     top: `${marqueeRect.top}px`,
                     width: `${marqueeRect.width}px`,
                     height: `${marqueeRect.height}px`,
-                    backgroundColor: 'rgba(0, 120, 215, 0.4)',
-                    border: '1px solid rgba(0, 120, 215, 0.8)',
-                    pointerEvents: 'none',
-                    zIndex: 1000
                 }} />
             )}
         </div>

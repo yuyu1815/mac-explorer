@@ -1,0 +1,80 @@
+.statusBar {
+    height: var(--statusbar-height);
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 0 8px;
+    font-size: 11px;
+    color: var(--text-main);
+    user-select: none;
+    cursor: default;
+    position: relative;
+}
+
+.loadingContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    overflow: hidden;
+}
+
+.loadingBar {
+    height: 100%;
+    width: 30%;
+    background: linear-gradient(90deg, transparent, #0078D7, transparent);
+    animation: statusLoading 1.2s infinite;
+}
+
+@keyframes statusLoading {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(400%);
+    }
+}
+
+.statusLeft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.verticalSep {
+    height: 14px;
+    width: 1px;
+    background-color: var(--border-color);
+}
+
+.statusRight {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    gap: 2px;
+}
+
+.viewBtn {
+    height: 100%;
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+}
+
+.viewBtn:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--hover-border);
+}
+
+.viewBtnActive {
+    background-color: var(--selected-bg);
+    border-color: var(--border-active);
+    color: var(--text-main);
+}

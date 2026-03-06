@@ -1,5 +1,6 @@
 import { useAppStore } from '../../stores/appStore';
 import { AlignJustify, LayoutGrid } from 'lucide-react';
+import styles from './StatusBar.module.css';
 
 const formatSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -31,100 +32,39 @@ export const StatusBar = () => {
 
     return (
         <div
-            className="win10-status-bar"
+            className={styles.statusBar}
             data-testid="statusbar"
         >
             {loading && (
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', overflow: 'hidden' }}>
-                    <div className="status-loading-bar" />
+                <div className={styles.loadingContainer}>
+                    <div className={styles.loadingBar} />
                 </div>
             )}
-            <div className="status-left">
+            <div className={styles.statusLeft}>
                 <span>{totalCount} 個の項目</span>
                 {selectedCount > 0 && (
                     <>
-                        <div className="status-vertical-sep" />
+                        <div className={styles.verticalSep} />
                         <span>{selectedCount} 個の項目を選択 {selectedSize > 0 ? formatSize(selectedSize) : ''}</span>
                     </>
                 )}
             </div>
-            <div className="status-right">
+            <div className={styles.statusRight}>
                 <div
-                    className={`status-view-btn ${viewMode === 'detail' ? 'active' : ''}`}
+                    className={`${styles.viewBtn} ${viewMode === 'detail' ? styles.viewBtnActive : ''}`}
                     onClick={() => setViewMode('detail')}
                     title="詳細"
                 >
                     <AlignJustify size={14} />
                 </div>
                 <div
-                    className={`status-view-btn ${viewMode === 'large_icon' ? 'active' : ''}`}
+                    className={`${styles.viewBtn} ${viewMode === 'large_icon' ? styles.viewBtnActive : ''}`}
                     onClick={() => setViewMode('large_icon')}
                     title="大アイコン"
                 >
                     <LayoutGrid size={14} />
                 </div>
             </div>
-
-            <style>{`
-                .win10-status-bar {
-                    height: var(--statusbar-height);
-                    border-top: 1px solid var(--border-color);
-                    background-color: var(--bg-main);
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: 0 4px 0 8px;
-                    font-size: 11px;
-                    color: var(--text-main);
-                    user-select: none;
-                    cursor: default;
-                    position: relative;
-                }
-                .status-loading-bar {
-                    height: 100%;
-                    width: 30%;
-                    background: linear-gradient(90deg, transparent, #0078D7, transparent);
-                    animation: statusLoading 1.2s infinite;
-                }
-                @keyframes statusLoading {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(400%); }
-                }
-                .status-left {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                .status-vertical-sep {
-                    height: 14px;
-                    width: 1px;
-                    background-color: var(--border-color);
-                }
-                .status-right {
-                    display: flex;
-                    align-items: center;
-                    height: 100%;
-                    gap: 2px;
-                }
-                .status-view-btn {
-                    height: 100%;
-                    width: 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border: 1px solid transparent;
-                    color: var(--text-muted);
-                }
-                .status-view-btn:hover {
-                    background-color: var(--hover-bg);
-                    border-color: var(--hover-border);
-                }
-                .status-view-btn.active {
-                    background-color: var(--selected-bg);
-                    border-color: var(--border-active);
-                    color: var(--text-main);
-                }
-            `}</style>
         </div>
     );
 };

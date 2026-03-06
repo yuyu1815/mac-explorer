@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, ChevronDown, Folder } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import styles from './NavigationBar.module.css';
 
 export const NavigationBar = () => {
     const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery, toggleSelection } = useAppStore();
@@ -166,7 +167,7 @@ export const NavigationBar = () => {
     useEffect(() => {
         const handleOutsideClick = (e: MouseEvent) => {
             const target = e.target as HTMLElement;
-            if (target.closest('.breadcrumb-dropdown') || target.closest('.breadcrumb-arrow') || target.closest('.history-dropdown-toggle')) {
+            if (target.closest(`.${styles.dropdown}`) || target.closest(`.${styles.breadcrumbArrow}`) || target.closest(`.${styles.dropdownToggle}`)) {
                 return;
             }
             setDropdownPath(null);
@@ -185,27 +186,27 @@ export const NavigationBar = () => {
 
         return (
             <div
-                style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1, paddingLeft: '4px' }}
+                className={styles.breadcrumbContainer}
                 onClick={() => setIsEditing(true)}
             >
                 {/* Fixed Folder Icon on the left of breadcrumbs */}
-                <div style={{ display: 'flex', alignItems: 'center', padding: '0 4px', cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.folderIconWrapper} onClick={(e) => e.stopPropagation()}>
                     <Folder size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />
                 </div>
-                <ChevronRight size={14} color="var(--text-muted)" style={{ margin: '0 2px' }} />
+                <ChevronRight size={14} color="var(--text-muted)" className={styles.chevron} />
 
                 {currentPath.startsWith('/') && (
-                    <div className="breadcrumb-wrapper" style={{ position: 'relative' }}>
-                        <div onClick={(e) => { e.stopPropagation(); setCurrentPath('/'); }} className="breadcrumb-item">
+                    <div className={styles.breadcrumbWrapper}>
+                        <div onClick={(e) => { e.stopPropagation(); setCurrentPath('/'); }} className={styles.breadcrumbItem}>
                             /
                         </div>
-                        <div className="breadcrumb-arrow" onClick={(e) => handleArrowClick(e, '/')}>
+                        <div className={styles.breadcrumbArrow} onClick={(e) => handleArrowClick(e, '/')}>
                             <ChevronRight size={14} />
                         </div>
                         {dropdownPath === '/' && (
-                            <div className="breadcrumb-dropdown">
+                            <div className={styles.dropdown}>
                                 {dropdownItems.map(item => (
-                                    <div key={item.path} className="breadcrumb-dropdown-item" onMouseDown={(e) => {
+                                    <div key={item.path} className={styles.dropdownItem} onMouseDown={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         setCurrentPath(item.path);
@@ -215,7 +216,7 @@ export const NavigationBar = () => {
                                         <span>{item.name}</span>
                                     </div>
                                 ))}
-                                {dropdownItems.length === 0 && <div className="breadcrumb-dropdown-item" style={{ color: '#888' }}>空のフォルダー</div>}
+                                {dropdownItems.length === 0 && <div className={`${styles.dropdownItem} ${styles.emptyDropdown}`}>空のフォルダー</div>}
                             </div>
                         )}
                     </div>
@@ -228,17 +229,17 @@ export const NavigationBar = () => {
                     if (thisPath === '//') thisPath = '/';
 
                     return (
-                        <div key={i} className="breadcrumb-wrapper" style={{ position: 'relative' }}>
-                            <div onClick={(e) => handleBreadcrumbClick(e, i, parts)} className="breadcrumb-item">
+                        <div key={i} className={styles.breadcrumbWrapper}>
+                            <div onClick={(e) => handleBreadcrumbClick(e, i, parts)} className={styles.breadcrumbItem}>
                                 {part}
                             </div>
-                            <div className="breadcrumb-arrow" onClick={(e) => handleArrowClick(e, thisPath)}>
+                            <div className={styles.breadcrumbArrow} onClick={(e) => handleArrowClick(e, thisPath)}>
                                 <ChevronRight size={14} />
                             </div>
                             {dropdownPath === thisPath && (
-                                <div className="breadcrumb-dropdown">
+                                <div className={styles.dropdown}>
                                     {dropdownItems.map((item: any) => (
-                                        <div key={item.path} className="breadcrumb-dropdown-item" onMouseDown={(e: React.MouseEvent) => {
+                                        <div key={item.path} className={styles.dropdownItem} onMouseDown={(e: React.MouseEvent) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setCurrentPath(item.path);
@@ -248,7 +249,7 @@ export const NavigationBar = () => {
                                             <span>{item.name}</span>
                                         </div>
                                     ))}
-                                    {dropdownItems.length === 0 && <div className="breadcrumb-dropdown-item" style={{ color: '#888' }}>空のフォルダー</div>}
+                                    {dropdownItems.length === 0 && <div className={`${styles.dropdownItem} ${styles.emptyDropdown}`}>空のフォルダー</div>}
                                 </div>
                             )}
                         </div>
@@ -259,28 +260,20 @@ export const NavigationBar = () => {
     };
 
     return (
-        <div style={{
-            height: '38px', // Extremely compact Win10 style
-            display: 'flex',
-            alignItems: 'center',
-            padding: '4px 8px',
-            backgroundColor: 'var(--bg-main)',
-            gap: '4px',
-            borderBottom: '1px solid var(--border-color)'
-        }}>
+        <div className={styles.container}>
             {/* Nav Buttons */}
-            <div style={{ display: 'flex', gap: '2px' }}>
-                <button onClick={goBack} disabled={!canGoBack} className="win10-nav-btn" style={{ opacity: canGoBack ? 1 : 0.4 }}>
+            <div className={styles.navButtonContainer}>
+                <button onClick={goBack} disabled={!canGoBack} className={`${styles.navBtn} ${!canGoBack ? styles.navBtnDisabled : ''}`}>
                     <ArrowLeft size={16} strokeWidth={1.5} />
                 </button>
-                <button onClick={goForward} disabled={!canGoForward} className="win10-nav-btn" style={{ opacity: canGoForward ? 1 : 0.4 }}>
+                <button onClick={goForward} disabled={!canGoForward} className={`${styles.navBtn} ${!canGoForward ? styles.navBtnDisabled : ''}`}>
                     <ArrowRight size={16} strokeWidth={1.5} />
                 </button>
-                <div style={{ width: '4px' }}></div> {/* Tiny spacer */}
-                <button onClick={goUp} className="win10-nav-btn" style={{ marginLeft: '2px' }}>
+                <div className={styles.spacer}></div> {/* Tiny spacer */}
+                <button onClick={goUp} className={styles.navBtn}>
                     <ArrowUp size={16} strokeWidth={1.5} />
                 </button>
-                <button className="win10-nav-btn" onClick={async () => {
+                <button className={styles.navBtn} onClick={async () => {
                     const result = await invoke('list_directory', { path: currentPath, showHidden: false });
                     setFiles(result as any);
                     toggleSelection(currentPath, true, false, []);
@@ -290,10 +283,10 @@ export const NavigationBar = () => {
             </div>
 
             {/* Address Bar */}
-            <div className={`win10-address-bar ${isEditing ? 'editing' : ''}`} style={{ position: 'relative' }} onClick={() => !isEditing && setIsEditing(true)}>
+            <div className={`${styles.addressBar} ${isEditing ? styles.addressBarEditing : ''}`} onClick={() => !isEditing && setIsEditing(true)}>
                 {isEditing ? (
-                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', height: '100%', paddingLeft: '4px' }}>
-                        <Folder size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} style={{ marginRight: '6px' }} />
+                    <div className={styles.editingWrapper}>
+                        <Folder size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} className={styles.editingIcon} />
                         <input
                             ref={inputRef}
                             value={editValue}
@@ -303,23 +296,14 @@ export const NavigationBar = () => {
                                 setTimeout(() => handlePathSubmit(), 150);
                             }}
                             onKeyDown={handleKeyDown}
-                            style={{
-                                border: 'none',
-                                outline: 'none',
-                                background: 'transparent',
-                                flex: 1,
-                                height: '100%',
-                                color: 'var(--text-main)',
-                                fontSize: '13px',
-                                fontFamily: 'Segoe UI, sans-serif'
-                            }}
+                            className={styles.addressInput}
                         />
                         {pathSuggestions.length > 0 && (
-                            <div className="breadcrumb-dropdown" style={{ width: '100%' }}>
+                            <div className={styles.dropdown} style={{ width: '100%' }}>
                                 {pathSuggestions.map((item: any, idx: number) => (
                                     <div
                                         key={item.path}
-                                        className="breadcrumb-dropdown-item"
+                                        className={styles.dropdownItem}
                                         style={idx === suggestionIndex ? { backgroundColor: 'var(--hover-bg)' } : {}}
                                         onMouseDown={(e: React.MouseEvent) => {
                                             e.preventDefault();
@@ -344,7 +328,7 @@ export const NavigationBar = () => {
 
                 {/* History Dropdown Toggle */}
                 <div
-                    className="history-dropdown-toggle"
+                    className={styles.dropdownToggle}
                     onClick={(e) => {
                         e.stopPropagation();
                         setShowHistoryDropdown(!showHistoryDropdown);
@@ -354,9 +338,9 @@ export const NavigationBar = () => {
                     <ChevronDown size={14} color="var(--text-muted)" />
                 </div>
                 {showHistoryDropdown && activeTab && (
-                    <div className="breadcrumb-dropdown" style={{ right: 0, left: 'auto', minWidth: '300px' }}>
+                    <div className={`${styles.dropdown} ${styles.dropdownRight}`}>
                         {[...activeTab.history].reverse().map((path, idx) => (
-                            <div key={idx} className="breadcrumb-dropdown-item" onMouseDown={(e) => {
+                            <div key={idx} className={styles.dropdownItem} onMouseDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setCurrentPath(path);
@@ -366,181 +350,24 @@ export const NavigationBar = () => {
                                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{path}</span>
                             </div>
                         ))}
-                        {activeTab.history.length === 0 && <div className="breadcrumb-dropdown-item" style={{ color: '#888' }}>履歴がありません</div>}
+                        {activeTab.history.length === 0 && <div className={`${styles.dropdownItem} ${styles.emptyDropdown}`}>履歴がありません</div>}
                     </div>
                 )}
             </div>
 
             {/* Search Box */}
-            <div className="win10-search-bar">
+            <div className={styles.searchBar}>
                 <input
                     ref={searchInputRef}
                     placeholder={`${folderName} の検索`}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{
-                        border: 'none',
-                        outline: 'none',
-                        background: 'transparent',
-                        flex: 1,
-                        color: 'var(--text-main)',
-                        fontSize: '12px',
-                        paddingLeft: '8px'
-                    }}
+                    className={styles.searchInput}
                 />
-                <div className="search-icon-wrapper">
+                <div className={styles.searchIconWrapper}>
                     <Search size={14} color="var(--text-muted)" strokeWidth={1.5} />
                 </div>
             </div>
-
-            {/* Embedded styles for extreme density */}
-            <style>{`
-                .win10-nav-btn {
-                    width: 34px;
-                    height: 34px;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    background: transparent;
-                    border: 1px solid transparent;
-                    border-radius: 4px; /* Win11 uses more rounded, Win10 uses less */
-                    color: var(--text-main);
-                    cursor: pointer;
-                    outline: none;
-                }
-                .win10-nav-btn:hover {
-                    background-color: var(--hover-bg);
-                }
-                .win10-nav-btn:active {
-                    background-color: var(--selected-bg);
-                }
-                
-                .win10-address-bar {
-                    flex: 1;
-                    height: 28px;
-                    display: flex;
-                    align-items: center;
-                    background-color: transparent;
-                    border: 1px solid transparent;
-                    padding: 0 2px;
-                    margin: 0 4px;
-                    cursor: default;
-                }
-                .win10-address-bar:hover {
-                    background-color: transparent;
-                    border: 1px solid var(--border-color);
-                }
-                .win10-address-bar.editing {
-                    background-color: var(--bg-main);
-                    border: 1px solid #0078D7;
-                    outline: 1px auto #0078D7;
-                    cursor: text;
-                }
-
-                .win10-search-bar {
-                    width: 240px;
-                    height: 28px;
-                    display: flex;
-                    align-items: center;
-                    background-color: transparent;
-                    border: 1px solid var(--border-color);
-                    padding: 0 4px;
-                    margin-left: 2px;
-                }
-                .win10-search-bar:hover {
-                    border: 1px solid #999;
-                }
-                .win10-search-bar:focus-within {
-                    border: 1px solid #0078D7;
-                    box-shadow: inset 0 0 0 1px #0078D7;
-                }
-
-                .search-icon-wrapper {
-                    width: 24px;
-                    height: 100%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: default;
-                }
-                .search-icon-wrapper:hover {
-                    background-color: var(--hover-bg);
-                }
-
-                .breadcrumb-wrapper {
-                    display: flex;
-                    align-items: center;
-                    height: 24px;
-                }
-                .breadcrumb-item {
-                    display: flex;
-                    align-items: center;
-                    padding: 0 4px;
-                    height: 100%;
-                    font-size: 13px;
-                    color: var(--text-main);
-                    cursor: pointer;
-                    border: 1px solid transparent;
-                }
-                .breadcrumb-item:hover {
-                    background-color: var(--hover-bg);
-                    border: 1px solid var(--hover-border);
-                }
-                .breadcrumb-arrow {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 16px;
-                    height: 24px;
-                    color: var(--text-muted);
-                    cursor: pointer;
-                    border: 1px solid transparent;
-                }
-                .breadcrumb-arrow:hover {
-                    background-color: var(--hover-bg);
-                    border: 1px solid var(--hover-border);
-                }
-
-                .history-dropdown-toggle {
-                    width: 24px;
-                    height: 100%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    border: 1px solid transparent;
-                }
-                .history-dropdown-toggle:hover {
-                    background-color: var(--hover-bg);
-                    border: 1px solid var(--hover-border);
-                }
-
-                .breadcrumb-dropdown {
-                    position: absolute;
-                    top: 100%;
-                    left: 0;
-                    min-width: 200px;
-                    max-height: 400px;
-                    overflow-y: auto;
-                    background-color: var(--bg-main);
-                    border: 1px solid var(--border-color);
-                    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-                    z-index: 1000;
-                    padding: 2px 0;
-                }
-                .breadcrumb-dropdown-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 4px 12px;
-                    font-size: 13px;
-                    color: var(--text-main);
-                    cursor: pointer;
-                }
-                .breadcrumb-dropdown-item:hover {
-                    background-color: var(--hover-bg);
-                }
-            `}</style>
         </div>
     );
 };

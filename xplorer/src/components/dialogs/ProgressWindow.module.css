@@ -1,0 +1,192 @@
+.container {
+    width: 100%;
+    height: 100vh;
+    background-color: #202020;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    border: 1px solid #333;
+    overflow: hidden;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: #ffffff;
+}
+
+.titleBar {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 12px;
+    user-select: none;
+    background-color: #202020;
+}
+
+.titleLeft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.titleIcon {
+    font-size: 14px;
+}
+
+.titleText {
+    font-size: 12px;
+}
+
+.titleButtons {
+    display: flex;
+}
+
+.titleBtn {
+    width: 46px;
+    height: 32px;
+    border: none;
+    background-color: transparent;
+    color: #fff;
+    cursor: pointer;
+}
+
+.titleBtnMinimize {
+    font-size: 10px;
+}
+
+.titleBtnMaximize {
+    font-size: 12px;
+    color: #555;
+}
+
+.titleBtnClose {
+    font-size: 14px;
+}
+
+.titleBtnClose:hover {
+    background-color: #e81123;
+}
+
+.mainContent {
+    flex: 1;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.subtitle {
+    font-size: 12px;
+    color: #e0e0e0;
+    margin-bottom: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.percentageText {
+    font-size: 24px;
+    font-weight: 400;
+    color: #ffffff;
+}
+
+.headerButtons {
+    display: flex;
+    gap: 4px;
+}
+
+.headerBtn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-size: 16px;
+    width: 32px;
+    height: 32px;
+}
+
+.headerBtn:hover {
+    background-color: #444;
+}
+
+.headerBtnClose:hover {
+    background-color: #e81123;
+}
+
+.detailsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.canvas {
+    width: 100%;
+    height: 70px;
+    display: block;
+    border: 1px solid #444;
+}
+
+.detailsInfo {
+    font-size: 12px;
+    color: #e0e0e0;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.infoItem {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.simpleProgressBar {
+    height: 4px;
+    background-color: #333;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.simpleProgressFill {
+    height: 100%;
+    background-color: #60cdff;
+    transition: width 0.3s;
+}
+
+.accordionFooter {
+    background-color: #202020;
+    padding: 12px 20px;
+    font-size: 12px;
+    color: #e0e0e0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.errorContainer {
+    padding: 20px;
+    font-family: "Segoe UI", sans-serif;
+    background-color: #212121;
+    color: #fff;
+    height: 100vh;
+}
+
+.errorTitle {
+    color: #ff99a4;
+}
+
+.errorBtn {
+    margin-top: 20px;
+    padding: 6px 16px;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+}

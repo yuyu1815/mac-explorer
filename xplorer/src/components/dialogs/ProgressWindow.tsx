@@ -3,6 +3,7 @@ import { invoke, Channel } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { InsufficientSpaceDialog } from './InsufficientSpaceDialog';
+import styles from './ProgressWindow.module.css';
 
 export interface ProgressData {
     current_file: string;
@@ -144,7 +145,7 @@ const IntegratedSpeedGraph: React.FC<{
             ref={canvasRef}
             width={480}
             height={70}
-            style={{ width: '100%', height: '70px', display: 'block', border: '1px solid #444' }}
+            className={styles.canvas}
         />
     );
 };
@@ -353,10 +354,10 @@ export const ProgressWindow: React.FC = () => {
 
     if (errorMsg) {
         return (
-            <div style={{ padding: '20px', fontFamily: '"Segoe UI", sans-serif', backgroundColor: '#212121', color: '#fff', height: '100vh' }}>
-                <h3 style={{ color: '#ff99a4' }}>エラーが発生しました</h3>
+            <div className={styles.errorContainer}>
+                <h3 className={styles.errorTitle}>エラーが発生しました</h3>
                 <p>{errorMsg}</p>
-                <button onClick={() => getCurrentWebviewWindow().close()} style={{ marginTop: '20px', padding: '6px 16px', backgroundColor: '#333', color: '#fff', border: '1px solid #555' }}>
+                <button onClick={() => getCurrentWebviewWindow().close()} className={styles.errorBtn}>
                     閉じる
                 </button>
             </div>
@@ -368,86 +369,65 @@ export const ProgressWindow: React.FC = () => {
         : 0;
 
     return (
-        <div data-tauri-drag-region style={{
-            width: '100%', height: '100vh',
-            backgroundColor: '#202020', // ダークテーマ背景
-            display: 'flex', flexDirection: 'column',
-            boxSizing: 'border-box',
-            border: '1px solid #333',
-            overflow: 'hidden',
-            fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
-            color: '#ffffff',
-        }}>
+        <div data-tauri-drag-region className={styles.container}>
             {/* タイトルバー */}
-            <div data-tauri-drag-region style={{
-                height: '32px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '0 8px 0 12px',
-                userSelect: 'none',
-                backgroundColor: '#202020',
-            }}>
-                <div data-tauri-drag-region style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                    <span style={{ fontSize: '14px' }}>🕒</span>
-                    <span style={{ fontSize: '12px' }}>{isPaused ? '一時停止' : (progress?.complete ? '完了' : `${percentage}% 完了`)}</span>
+            <div data-tauri-drag-region className={styles.titleBar}>
+                <div data-tauri-drag-region className={styles.titleLeft}>
+                    <span className={styles.titleIcon}>🕒</span>
+                    <span className={styles.titleText}>{isPaused ? '一時停止' : (progress?.complete ? '完了' : `${percentage}% 完了`)}</span>
                 </div>
-                <div style={{ display: 'flex' }}>
-                    <button style={{ width: '46px', height: '32px', border: 'none', backgroundColor: 'transparent', color: '#fff', fontSize: '10px' }}>_</button>
-                    <button style={{ width: '46px', height: '32px', border: 'none', backgroundColor: 'transparent', color: '#555', fontSize: '12px' }}>☐</button>
+                <div className={styles.titleButtons}>
+                    <button className={`${styles.titleBtn} ${styles.titleBtnMinimize}`}>_</button>
+                    <button className={`${styles.titleBtn} ${styles.titleBtnMaximize}`}>☐</button>
                     <button
                         onClick={async () => {
                             await invoke('cancel_operation').catch(console.error);
                             getCurrentWebviewWindow().close().catch(console.error);
                         }}
-                        style={{ width: '46px', height: '32px', border: 'none', backgroundColor: 'transparent', color: '#fff', fontSize: '14px', cursor: 'pointer' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e81123'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                        className={`${styles.titleBtn} ${styles.titleBtnClose}`}
                     >✕</button>
                 </div>
             </div>
 
             {/* メインコンテンツ */}
-            <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className={styles.mainContent}>
 
                 {/* サブタイトル */}
-                <div style={{ fontSize: '12px', color: '#e0e0e0', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div className={styles.subtitle}>
                     {progress?.total_files || 0} 個の項目を{actionInfo.action}中: {progress?.current_file ? '...' : ''} から {actionInfo.dest}
                 </div>
 
                 {/* 大ヘッダー */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '400', color: '#ffffff' }}>
+                <div className={styles.header}>
+                    <div className={styles.percentageText}>
                         {progress?.complete ? '100% 完了' : `${percentage}% 完了`}
                     </div>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className={styles.headerButtons}>
                         <button
                             onClick={togglePause}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '16px', width: '32px', height: '32px' }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#444'}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                            className={styles.headerBtn}
                         >{isPaused ? '▶' : '⏸'}</button>
                         <button
                             onClick={async () => {
                                 await invoke('cancel_operation').catch(console.error);
                                 getCurrentWebviewWindow().close().catch(console.error);
                             }}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '16px', width: '32px', height: '32px' }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e81123'}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                            className={`${styles.headerBtn} ${styles.headerBtnClose}`}
                         >✕</button>
                     </div>
                 </div>
 
                 {/* グラフ ＆ 詳細 (展開時のみ) */}
                 {isExpanded ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div className={styles.detailsContainer}>
                         <IntegratedSpeedGraph
                             speedHistory={speedHistory}
                             percentage={percentage}
                             currentSpeedText={formatSpeed(currentSpeed)}
                         />
 
-                        <div style={{ fontSize: '12px', color: '#e0e0e0', lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div className={styles.detailsInfo}>
+                            <div className={styles.infoItem}>
                                 名前: {progress?.current_file || '...'}
                             </div>
                             <div>
@@ -460,8 +440,8 @@ export const ProgressWindow: React.FC = () => {
                     </div>
                 ) : (
                     /* 非展開時は標準のプログレスバーのみ */
-                    <div style={{ height: '4px', backgroundColor: '#333', overflow: 'hidden', marginTop: '8px' }}>
-                        <div style={{ height: '100%', width: `${percentage}%`, backgroundColor: '#60cdff', transition: 'width 0.3s' }} />
+                    <div className={styles.simpleProgressBar}>
+                        <div className={styles.simpleProgressFill} style={{ width: `${percentage}%` }} />
                     </div>
                 )}
             </div>
@@ -469,13 +449,7 @@ export const ProgressWindow: React.FC = () => {
             {/* アコーディオン フッター */}
             <div
                 onClick={toggleExpanded}
-                style={{
-                    backgroundColor: '#202020',
-                    padding: '12px 20px',
-                    fontSize: '12px', color: '#e0e0e0',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                }}
+                className={styles.accordionFooter}
             >
                 <span>{isExpanded ? '⌃' : '⌄'}</span>
                 <span>詳細情報の{isExpanded ? '非表示' : '表示'}</span>

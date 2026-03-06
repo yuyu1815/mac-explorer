@@ -1,0 +1,245 @@
+.container {
+    height: 38px;
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    background-color: var(--bg-main);
+    gap: 4px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.navButtonContainer {
+    display: flex;
+    gap: 2px;
+}
+
+.navBtn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text-main);
+    cursor: pointer;
+    outline: none;
+}
+
+.navBtn:hover {
+    background-color: var(--hover-bg);
+}
+
+.navBtn:active {
+    background-color: var(--selected-bg);
+}
+
+.navBtnDisabled {
+    opacity: 0.4;
+}
+
+.spacer {
+    width: 4px;
+}
+
+.addressBar {
+    flex: 1;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    background-color: transparent;
+    border: 1px solid transparent;
+    padding: 0 2px;
+    margin: 0 4px;
+    cursor: default;
+    position: relative;
+}
+
+.addressBar:hover {
+    border: 1px solid var(--border-color);
+}
+
+.addressBarEditing {
+    background-color: var(--bg-main);
+    border: 1px solid #0078D7;
+    outline: 1px auto #0078D7;
+    cursor: text;
+}
+
+.breadcrumbContainer {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    flex: 1;
+    padding-left: 4px;
+}
+
+.folderIconWrapper {
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    cursor: default;
+}
+
+.chevron {
+    margin: 0 2px;
+}
+
+.breadcrumbWrapper {
+    display: flex;
+    align-items: center;
+    height: 24px;
+    position: relative;
+}
+
+.breadcrumbItem {
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    height: 100%;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.breadcrumbItem:hover {
+    background-color: var(--hover-bg);
+    border: 1px solid var(--hover-border);
+}
+
+.breadcrumbArrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 24px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.breadcrumbArrow:hover {
+    background-color: var(--hover-bg);
+    border: 1px solid var(--hover-border);
+}
+
+.dropdownToggle {
+    width: 24px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.dropdownToggle:hover {
+    background-color: var(--hover-bg);
+    border: 1px solid var(--hover-border);
+}
+
+.dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: var(--bg-main);
+    border: 1px solid var(--border-color);
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    padding: 2px 0;
+}
+
+.dropdownRight {
+    right: 0;
+    left: auto;
+    min-width: 300px;
+}
+
+.dropdownItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.dropdownItem:hover {
+    background-color: var(--hover-bg);
+}
+
+.emptyDropdown {
+    color: #888;
+}
+
+.editingWrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding-left: 4px;
+}
+
+.editingIcon {
+    margin-right: 6px;
+}
+
+.addressInput {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    height: 100%;
+    color: var(--text-main);
+    font-size: 13px;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.searchBar {
+    width: 240px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    padding: 0 4px;
+    margin-left: 2px;
+}
+
+.searchBar:hover {
+    border: 1px solid #999;
+}
+
+.searchBar:focus-within {
+    border: 1px solid #0078D7;
+    box-shadow: inset 0 0 0 1px #0078D7;
+}
+
+.searchInput {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    color: var(--text-main);
+    font-size: 12px;
+    padding-left: 8px;
+}
+
+.searchIconWrapper {
+    width: 24px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+}
+
+.searchIconWrapper:hover {
+    background-color: var(--hover-bg);
+}
