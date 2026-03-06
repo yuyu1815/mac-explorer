@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 
 export const ExtractPromptDialog: React.FC = () => {
     const extractPrompt = useAppStore(state => state.extractPrompt);
@@ -19,8 +19,13 @@ export const ExtractPromptDialog: React.FC = () => {
 
     const handleBrowse = async () => {
         try {
-            const selected = await invoke<string | null>('select_directory');
-            if (selected) {
+            const selected = await open({
+                directory: true,
+                multiple: false,
+                defaultPath: destPath || undefined,
+                title: '展開先フォルダーを選択',
+            });
+            if (selected && typeof selected === 'string') {
                 setDestPath(selected);
             }
         } catch (error) {
