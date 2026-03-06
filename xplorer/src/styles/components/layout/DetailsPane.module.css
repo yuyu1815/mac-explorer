@@ -1,0 +1,80 @@
+.detailsPane {
+    width: 220px;
+    min-width: 180px;
+    max-width: 320px;
+    border-left: 1px solid var(--border-color);
+    background-color: var(--bg-main);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 12px;
+    font-size: 12px;
+}
+
+.detailsContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.detailsIcon {
+    font-size: 48px;
+    margin-bottom: 8px;
+    margin-top: 8px;
+}
+
+.detailsName {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-main);
+    text-align: center;
+    word-break: break-all;
+    margin-bottom: 12px;
+}
+
+.detailsProps {
+    width: 100%;
+}
+
+.detailRow {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detailRowLabel {
+    color: #888;
+    font-size: 11px;
+    flex-shrink: 0;
+    margin-right: 8px;
+}
+
+.detailRowValue {
+    color: var(--text-main);
+    font-size: 11px;
+    text-align: right;
+    word-break: break-all;
+}
+
+.detailsEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.emptyIcon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.emptyText {
+    color: #888;
+    font-size: 11px;
+}
+
+.multiSelectIcon {
+    font-size: 32px;
+}

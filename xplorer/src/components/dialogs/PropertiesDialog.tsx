@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { invoke, Channel } from '@tauri-apps/api/core';
 import { useAppStore } from '../../stores/appStore';
 import { FileIcon } from '../features/file-manager/MainPane';
-import '../../styles/components/PropertiesDialog.css';
+import styles from '../../styles/components/dialogs/PropertiesDialog.module.css';
 
 interface PropertyProgress {
     size_bytes: number;
@@ -102,106 +102,106 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
     }, [path]);
 
     return (
-        <div className="properties-dialog-overlay" onMouseDown={onClose}>
-            <div className="properties-dialog-window" onMouseDown={e => e.stopPropagation()}>
-                <div className="properties-dialog-titlebar">
-                    <div className="titlebar-text">{props ? `${props.name}のプロパティ` : 'プロパティ'}</div>
-                    <div className="titlebar-close" onClick={onClose}>✕</div>
+        <div className={styles.overlay} onMouseDown={onClose}>
+            <div className={styles.window} onMouseDown={e => e.stopPropagation()}>
+                <div className={styles.titlebar}>
+                    <div className={styles.titlebarText}>{props ? `${props.name}のプロパティ` : 'プロパティ'}</div>
+                    <div className={styles.titlebarClose} onClick={onClose}>✕</div>
                 </div>
 
-                <div className="properties-dialog-content">
+                <div className={styles.content}>
                     {loading ? (
-                        <div className="properties-loading">読み込み中...</div>
+                        <div className={styles.loading}>読み込み中...</div>
                     ) : error ? (
-                        <div className="properties-error">エラー: {error}</div>
+                        <div className={styles.error}>エラー: {error}</div>
                     ) : props ? (
-                        <div className="properties-tabs-container">
-                            <div className="properties-tabs">
-                                <div className="properties-tab active">全般</div>
+                        <div className={styles.tabsContainer}>
+                            <div className={styles.tabs}>
+                                <div className={`${styles.tab} ${styles.active}`}>全般</div>
                             </div>
 
-                            <div className="properties-tab-content">
-                                <div className="prop-row prop-header">
-                                    <div className="prop-icon">
+                            <div className={styles.tabContent}>
+                                <div className={`${styles.row} ${styles.headerRow}`}>
+                                    <div className={styles.icon}>
                                         <FileIcon isDir={isDir} iconId={iconId} size={32} />
                                     </div>
                                     <input
                                         type="text"
-                                        className="prop-name-input"
+                                        className={styles.nameInput}
                                         value={nameInputValue}
                                         onChange={e => setNameInputValue(e.target.value)}
                                         readOnly // Rename unsupported here yet
                                     />
                                 </div>
 
-                                <div className="prop-divider"></div>
+                                <div className={styles.divider}></div>
 
-                                <div className="prop-row">
-                                    <div className="prop-label">ファイルの種類:</div>
-                                    <div className="prop-value">{props.file_type}</div>
+                                <div className={styles.row}>
+                                    <div className={styles.label}>ファイルの種類:</div>
+                                    <div className={styles.value}>{props.file_type}</div>
                                 </div>
                                 {!isDir && (
-                                    <div className="prop-row">
-                                        <div className="prop-label">プログラム:</div>
-                                        <div className="prop-value">(不明) <button className="prop-btn-small" disabled>変更(C)...</button></div>
+                                    <div className={styles.row}>
+                                        <div className={styles.label}>プログラム:</div>
+                                        <div className={styles.value}>(不明) <button className={styles.btnSmall} disabled>変更(C)...</button></div>
                                     </div>
                                 )}
 
-                                <div className="prop-divider"></div>
+                                <div className={styles.divider}></div>
 
-                                <div className="prop-row">
-                                    <div className="prop-label">場所:</div>
-                                    <div className="prop-value">{props.location}</div>
+                                <div className={styles.row}>
+                                    <div className={styles.label}>場所:</div>
+                                    <div className={styles.value}>{props.location}</div>
                                 </div>
-                                <div className="prop-row">
-                                    <div className="prop-label">サイズ:</div>
-                                    <div className="prop-value">{props.size_formatted} ({props.size_bytes.toLocaleString()} バイト)</div>
+                                <div className={styles.row}>
+                                    <div className={styles.label}>サイズ:</div>
+                                    <div className={styles.value}>{props.size_formatted} ({props.size_bytes.toLocaleString()} バイト)</div>
                                 </div>
-                                <div className="prop-row">
-                                    <div className="prop-label">ディスク上のサイズ:</div>
-                                    <div className="prop-value">{props.size_on_disk_formatted} ({props.size_on_disk_bytes.toLocaleString()} バイト)</div>
+                                <div className={styles.row}>
+                                    <div className={styles.label}>ディスク上のサイズ:</div>
+                                    <div className={styles.value}>{props.size_on_disk_formatted} ({props.size_on_disk_bytes.toLocaleString()} バイト)</div>
                                 </div>
                                 {isDir && (
-                                    <div className="prop-row">
-                                        <div className="prop-label">内容:</div>
-                                        <div className="prop-value">{props.contains_files} ファイル、{props.contains_folders} フォルダー</div>
+                                    <div className={styles.row}>
+                                        <div className={styles.label}>内容:</div>
+                                        <div className={styles.value}>{props.contains_files} ファイル、{props.contains_folders} フォルダー</div>
                                     </div>
                                 )}
 
-                                <div className="prop-divider"></div>
+                                <div className={styles.divider}></div>
 
-                                <div className="prop-row">
-                                    <div className="prop-label">作成日時:</div>
-                                    <div className="prop-value">{props.created_formatted}</div>
+                                <div className={styles.row}>
+                                    <div className={styles.label}>作成日時:</div>
+                                    <div className={styles.value}>{props.created_formatted}</div>
                                 </div>
-                                <div className="prop-row">
-                                    <div className="prop-label">更新日時:</div>
-                                    <div className="prop-value">{props.modified_formatted}</div>
+                                <div className={styles.row}>
+                                    <div className={styles.label}>更新日時:</div>
+                                    <div className={styles.value}>{props.modified_formatted}</div>
                                 </div>
-                                <div className="prop-row">
-                                    <div className="prop-label">アクセス日時:</div>
-                                    <div className="prop-value">{props.accessed_formatted}</div>
+                                <div className={styles.row}>
+                                    <div className={styles.label}>アクセス日時:</div>
+                                    <div className={styles.value}>{props.accessed_formatted}</div>
                                 </div>
 
-                                <div className="prop-divider"></div>
+                                <div className={styles.divider}></div>
 
-                                <div className="prop-row">
-                                    <div className="prop-label">属性:</div>
-                                    <div className="prop-attrs">
+                                <div className={styles.row}>
+                                    <div className={styles.label}>属性:</div>
+                                    <div className={styles.attrs}>
                                         <label><input type="checkbox" checked={props.is_readonly} readOnly /> 読み取り専用(R)</label>
                                         <label><input type="checkbox" checked={props.is_hidden} readOnly /> 隠しファイル(H)</label>
                                     </div>
-                                    <div className="prop-btn-advanced"><button className="prop-btn-small" disabled>詳細設定(D)...</button></div>
+                                    <div className={styles.btnAdvanced}><button className={styles.btnSmall} disabled>詳細設定(D)...</button></div>
                                 </div>
                             </div>
                         </div>
                     ) : null}
                 </div>
 
-                <div className="properties-dialog-footer">
-                    <button className="prop-btn" onClick={onClose}>OK</button>
-                    <button className="prop-btn" onClick={onClose}>キャンセル</button>
-                    <button className="prop-btn" disabled>適用(A)</button>
+                <div className={styles.footer}>
+                    <button className={styles.btn} onClick={onClose}>OK</button>
+                    <button className={styles.btn} onClick={onClose}>キャンセル</button>
+                    <button className={styles.btn} disabled>適用(A)</button>
                 </div>
             </div>
         </div>

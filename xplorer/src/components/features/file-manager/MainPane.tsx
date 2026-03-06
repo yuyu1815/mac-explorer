@@ -7,7 +7,7 @@ import { PropertiesDialog } from '../../dialogs/PropertiesDialog';
 import { isArchive } from '../../../utils/archive';
 import { FileEntry } from '../../../types';
 import { ipc } from '../../../services/ipc';
-import styles from './MainPane.module.css';
+import styles from '../../../styles/components/features/file-manager/MainPane.module.css';
 
 const FolderIcon = ({ size }: { size: number }) => (
     <Folder size={size} fill="#FFB900" color="#F2A000" strokeWidth={1} className={styles.fileIconImg} />

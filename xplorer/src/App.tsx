@@ -11,6 +11,7 @@ import { OverwriteConfirmDialog } from './components/dialogs/OverwriteConfirmDia
 import { ExtractPromptDialog } from './components/dialogs/ExtractPromptDialog';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
+import styles from './styles/App.module.css';
 
 function App() {
   const showDetailsPane = useAppStore(s => s.showDetailsPane);
@@ -77,19 +78,19 @@ function App() {
   }
 
   return (
-    <div className="app-container">
-      <div style={{ backgroundColor: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)' }}>
+    <div className={styles.appContainer}>
+      <div className={styles.topSection}>
         <TitleBar />
         <NavigationBar />
         <Toolbar />
       </div>
-      <div className="main-content">
-        <div style={{ width: sideWidth, flexShrink: 0 }}>
+      <div className={styles.mainContent}>
+        <div className={styles.sideWrapper} style={{ width: sideWidth }}>
           <SidePanel />
         </div>
         <div
           onMouseDown={handleSideResize}
-          style={{ width: '3px', cursor: 'col-resize', backgroundColor: 'var(--border-color)', flexShrink: 0 }}
+          className={styles.resizer}
         />
         <MainPane />
         {showDetailsPane && <DetailsPane />}

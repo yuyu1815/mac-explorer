@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../../../utils/archive';
 import { ipc } from '../../../services/ipc';
+import styles from '../../../styles/components/features/file-manager/ContextMenu.module.css';
 
 interface ContextMenuProps {
     x: number;
@@ -208,9 +209,9 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
     const pathsToActOn: string[] = (targetPath && selectedFiles.has(targetPath)) ? Array.from(selectedFiles) : targetPath ? [targetPath] : [];
 
     return (
-        <div ref={menuRef} className="win32-context-menu" style={{ top: position.top, left: position.left }}>
+        <div ref={menuRef} className={styles.menu} style={{ top: position.top, left: position.left }}>
             {/* Background Gutter */}
-            <div className="win32-ContextMenu-gutter"></div>
+            <div className={styles.gutter}></div>
 
             {!targetPath ? (
                 <>
@@ -322,55 +323,14 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     })} />
                 </>
             )}
-
-            <style>{`
-                .win32-context-menu {
-                    position: fixed;
-                    background-color: #FFFFFF;
-                    border: 1px solid #A0A0A0;
-                    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-                    padding: 2px 0;
-                    min-width: 220px;
-                    z-index: 1000;
-                    font-size: 12px;
-                    color: #000000;
-                    font-family: 'Segoe UI', Arial, sans-serif;
-                    border-radius: 0;
-                }
-                .win32-ContextMenu-gutter {
-                    position: absolute;
-                    top: 2px;
-                    bottom: 2px;
-                    left: 2px;
-                    width: 24px;
-                    background-color: #F2F2F2;
-                    border-right: 1px solid #E2E3E4;
-                    z-index: -1;
-                }
-                @media (prefers-color-scheme: dark) {
-                    .win32-context-menu {
-                        background-color: #2B2B2B;
-                        border: 1px solid #4D4D4D;
-                        color: #FFFFFF;
-                    }
-                    .win32-ContextMenu-gutter {
-                        background-color: #202020;
-                        border-right: 1px solid #333333;
-                    }
-                }
-            `}</style>
         </div>
     );
 };
 
 const ContextMenuItem = ({ icon, label, onClick, disabled = false }: { icon?: React.ReactNode, label: string, onClick?: () => void, disabled?: boolean }) => {
-    const [hovered, setHovered] = useState(false);
-
     return (
         <div
-            className={`win32-context-item ${disabled ? 'disabled' : ''} ${hovered && !disabled ? 'hovered' : ''}`}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
+            className={`${styles.item} ${disabled ? styles.disabled : ''}`}
             onClick={(e) => {
                 if (!disabled && onClick) {
                     e.stopPropagation();
@@ -378,100 +338,28 @@ const ContextMenuItem = ({ icon, label, onClick, disabled = false }: { icon?: Re
                 }
             }}
         >
-            <div className="win32-context-icon">
+            <div className={styles.icon}>
                 {icon}
             </div>
-            <div className="win32-context-label">
+            <div className={styles.label}>
                 {label}
             </div>
-
-            <style>{`
-                .win32-context-item {
-                    display: flex;
-                    align-items: center;
-                    padding: 3px 0;
-                    cursor: default;
-                    position: relative;
-                }
-                .win32-context-item.hovered {
-                    background-color: #E5F3FF;
-                }
-                .win32-context-item.disabled {
-                    color: #A0A0A0;
-                }
-                .win32-context-icon {
-                    width: 24px;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    color: #555555;
-                }
-                .win32-context-label {
-                    flex: 1;
-                    padding-left: 8px;
-                    padding-right: 16px;
-                }
-                
-                .win32-context-submenu-container {
-                    position: relative;
-                }
-                .win32-context-submenu {
-                    position: absolute;
-                    top: 0;
-                    left: 100%;
-                    background-color: #FFFFFF;
-                    border: 1px solid #A0A0A0;
-                    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-                    padding: 2px 0;
-                    min-width: 200px;
-                    z-index: 1001;
-                    display: none;
-                }
-                .win32-context-submenu-container:hover .win32-context-submenu {
-                    display: block;
-                }
-
-                @media (prefers-color-scheme: dark) {
-                    .win32-context-item.hovered {
-                        background-color: #444444;
-                    }
-                    .win32-context-icon {
-                        color: #AAAAAA;
-                    }
-                    .win32-context-submenu {
-                        background-color: #2B2B2B;
-                        border: 1px solid #4D4D4D;
-                    }
-                }
-            `}</style>
         </div>
     );
 };
 
 const ContextSubMenuItem = ({ icon, label, children }: { icon?: React.ReactNode, label: string, children: React.ReactNode }) => {
     return (
-        <div className="win32-context-submenu-container">
+        <div className={styles.submenuContainer}>
             <ContextMenuItem icon={icon} label={label + " ▸"} />
-            <div className="win32-context-submenu">
-                <div className="win32-ContextMenu-gutter"></div>
+            <div className={styles.submenu}>
+                <div className={styles.gutter}></div>
                 {children}
             </div>
         </div>
     );
 };
+
 const ContextMenuSeparator = () => (
-    <div className="win32-context-separator">
-        <style>{`
-            .win32-context-separator {
-                height: 1px;
-                background-color: #E2E3E4;
-                margin: 3px 0 3px 28px;
-            }
-            @media (prefers-color-scheme: dark) {
-                .win32-context-separator {
-                    background-color: #4D4D4D;
-                }
-            }
-        `}</style>
-    </div>
+    <div className={styles.separator} />
 );

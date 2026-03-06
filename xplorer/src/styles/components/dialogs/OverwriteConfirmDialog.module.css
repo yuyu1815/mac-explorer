@@ -1,0 +1,124 @@
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialog {
+    background-color: #ffffff;
+    border: 1px solid #005A9E;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    width: 500px;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    color: #000000;
+}
+
+.titleBar {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.title {
+    font-size: 12px;
+    color: #000;
+}
+
+.closeButton {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.1s, color 0.1s;
+}
+
+.closeButton:hover {
+    background-color: #e81123;
+    color: #fff;
+}
+
+.content {
+    padding: 24px;
+}
+
+.header {
+    font-size: 15px;
+    font-weight: normal;
+    color: #003399;
+    margin-top: 0;
+    margin-bottom: 24px;
+}
+
+.optionsList {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.footer {
+    padding: 12px 24px;
+    background-color: #f0f0f0;
+    border-top: 1px solid #dfdfdf;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.checkboxLabel {
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* OptionButton styles */
+.optionButton {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px;
+    background-color: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: background-color 0.1s, border-color 0.1s;
+}
+
+.optionButton:hover {
+    background-color: #e5f1fb;
+    border-color: #99d1ff;
+}
+
+.optionIcon {
+    margin-top: 2px;
+}
+
+.optionText {
+    flex: 1;
+}
+
+.optionTitle {
+    font-size: 13px;
+    color: #003399;
+    margin-bottom: 4px;
+}
+
+.optionDescription {
+    font-size: 12px;
+    color: #555;
+}

@@ -1,4 +1,4 @@
-.properties-dialog-overlay {
+.overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -11,7 +11,7 @@
     z-index: 9999;
 }
 
-.properties-dialog-window {
+.window {
     width: 380px;
     background-color: #f0f0f0;
     border: 1px solid #aaa;
@@ -23,7 +23,7 @@
     color: #000;
 }
 
-.properties-dialog-titlebar {
+.titlebar {
     height: 30px;
     background-color: #ffffff;
     display: flex;
@@ -34,33 +34,50 @@
     user-select: none;
 }
 
-.titlebar-text {
+.titlebarText {
     font-size: 12px;
 }
 
-.titlebar-close {
+.titlebarClose {
     cursor: pointer;
     padding: 2px 8px;
 }
 
-.titlebar-close:hover {
+.titlebarClose:hover {
     background-color: #e81123;
     color: white;
 }
 
-.properties-dialog-content {
+.content {
     padding: 12px;
     background-color: #ffffff;
     flex: 1;
 }
 
-.properties-tabs {
+.loading {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+.error {
+    padding: 20px;
+    text-align: center;
+    color: #e81123;
+}
+
+.tabsContainer {
+    display: flex;
+    flex-direction: column;
+}
+
+.tabs {
     display: flex;
     border-bottom: 1px solid #d9d9d9;
     margin-bottom: 12px;
 }
 
-.properties-tab {
+.tab {
     padding: 4px 12px;
     border: 1px solid transparent;
     border-bottom: none;
@@ -68,80 +85,83 @@
     cursor: default;
 }
 
-.properties-tab.active {
+.tab.active {
     background-color: #ffffff;
     border-color: #d9d9d9;
     border-top: 2px solid #0078d7;
 }
 
-.properties-tab-content {
+.tabContent {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
-.prop-row {
+.row {
     display: flex;
     align-items: flex-start;
 }
 
-.prop-header {
+.headerRow {
     align-items: center;
     gap: 12px;
     margin-bottom: 6px;
 }
 
-.prop-icon {
+.icon {
     width: 48px;
     display: flex;
     justify-content: center;
 }
 
-.prop-name-input {
+.nameInput {
     flex: 1;
     padding: 2px 4px;
     font-size: 13px;
     border: 1px solid #ccc;
+    background-color: #fff;
+    color: #000;
 }
 
-.prop-divider {
+.divider {
     height: 1px;
     background-color: #e5e5e5;
     margin: 6px 0;
 }
 
-.prop-label {
+.label {
     width: 120px;
     color: #333;
 }
 
-.prop-value {
+.value {
     flex: 1;
     word-break: break-all;
 }
 
-.prop-attrs {
+.attrs {
     display: flex;
     gap: 16px;
     flex: 1;
 }
 
-.prop-attrs label {
+.attrs label {
     display: flex;
     align-items: center;
     gap: 4px;
 }
 
-.prop-btn-small {
+.btnSmall {
     padding: 2px 8px;
     font-size: 11px;
+    cursor: pointer;
 }
 
-.prop-btn-advanced {
+.btnAdvanced {
     margin-left: auto;
 }
 
-.properties-dialog-footer {
+.footer {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
@@ -150,76 +170,99 @@
     border-top: 1px solid #dfdfdf;
 }
 
-.prop-btn {
+.btn {
     min-width: 75px;
     padding: 4px 12px;
     border: 1px solid #adadad;
     background-color: #e1e1e1;
     cursor: default;
     font-size: 12px;
+    color: #000;
 }
 
-.prop-btn:hover:not(:disabled) {
+.btn:hover:not(:disabled) {
     background-color: #e5f1fb;
     border-color: #0078d7;
 }
 
-.prop-btn:disabled {
+.btn:disabled {
     color: #888;
 }
 
+/* Dark mode support */
 @media (prefers-color-scheme: dark) {
-    .properties-dialog-window {
+    .window {
         background-color: #2b2b2b;
         color: #fff;
         border-color: #444;
     }
 
-    .properties-dialog-titlebar {
+    .titlebar {
         background-color: #202020;
         border-color: #333;
     }
 
-    .properties-dialog-content {
+    .titlebarText {
+        color: #fff;
+    }
+
+    .content {
         background-color: #2b2b2b;
     }
 
-    .properties-tabs {
+    .loading {
+        color: #aaa;
+    }
+
+    .tabs {
         border-color: #444;
     }
 
-    .properties-tab.active {
+    .tab.active {
         background-color: #2b2b2b;
         border-color: #444;
         border-top-color: #0078d7;
+        color: #fff;
     }
 
-    .prop-divider {
+    .tab:not(.active) {
+        color: #aaa;
+    }
+
+    .divider {
         background-color: #444;
     }
 
-    .prop-name-input {
+    .nameInput {
         background-color: #1a1a1a;
         color: #fff;
         border-color: #555;
     }
 
-    .prop-label {
+    .label {
         color: #ccc;
     }
 
-    .properties-dialog-footer {
+    .value {
+        color: #eee;
+    }
+
+    .footer {
         background-color: #202020;
         border-color: #333;
     }
 
-    .prop-btn {
+    .btn {
         background-color: #333;
         color: #fff;
         border-color: #555;
     }
 
-    .prop-btn:hover:not(:disabled) {
+    .btn:hover:not(:disabled) {
         background-color: #444;
+    }
+
+    .btn:disabled {
+        color: #555;
     }
 }

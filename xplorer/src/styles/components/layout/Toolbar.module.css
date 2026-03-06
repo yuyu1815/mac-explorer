@@ -1,0 +1,245 @@
+.ribbonContainer {
+    background-color: var(--bg-titlebar);
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+    z-index: 100;
+}
+
+.tabsContainer {
+    height: 24px;
+    display: flex;
+    align-items: flex-end;
+    padding-left: 0;
+    background-color: transparent;
+}
+
+.fileMenuBtn {
+    height: 24px;
+    background-color: #1979CA;
+    color: white;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    cursor: default;
+}
+
+.fileMenuBtn:hover {
+    background-color: #2b88d8;
+}
+
+.tab {
+    height: 24px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    cursor: default;
+    border: 1px solid transparent;
+    border-bottom: none;
+    margin-left: 2px;
+    color: var(--text-main);
+}
+
+.tab:hover:not(.active) {
+    background-color: var(--hover-bg);
+    border-color: transparent;
+}
+
+.tab.active {
+    background-color: var(--bg-main);
+    border-color: var(--border-color);
+    border-bottom: 1px solid var(--bg-main);
+    position: relative;
+    z-index: 102;
+}
+
+.pinBtn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+}
+
+.pinBtn:hover {
+    background-color: var(--hover-bg);
+}
+
+.pane {
+    height: 94px;
+    background-color: var(--bg-main);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.pane.popupMode {
+    position: absolute;
+    top: 24px;
+    left: 0;
+    right: 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 101;
+}
+
+.content {
+    display: flex;
+    height: 100%;
+    padding: 2px 0;
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+    height: 88px;
+    margin: 0 2px;
+}
+
+.groupItems {
+    display: flex;
+    flex: 1;
+    padding: 0 2px;
+    gap: 2px;
+}
+
+.groupTitle {
+    height: 16px;
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    line-height: 16px;
+}
+
+.smallButtonCol {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+}
+
+.viewGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(4, 22px);
+    gap: 1px;
+    margin-left: 8px;
+    width: 220px;
+    height: 66px;
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1px;
+    background-color: var(--bg-main);
+}
+
+.checkboxCol {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 8px;
+    height: 100%;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkboxLabel input[type="checkbox"] {
+    margin: 0 6px 0 0;
+}
+
+.verticalSeparator {
+    width: 1px;
+    background-color: var(--border-color);
+    margin: 4px;
+}
+
+/* LargeButton styles */
+.btnLarge {
+    min-width: 56px;
+    width: max-content;
+    height: 68px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 4px 6px;
+    cursor: default;
+    border: 1px solid transparent;
+    border-radius: 0;
+    transition: background-color 0.1s;
+}
+
+.btnLarge:hover:not(.disabled) {
+    background-color: var(--hover-bg);
+    border-color: var(--hover-border);
+}
+
+.btnLarge.disabled {
+    opacity: 0.5;
+}
+
+.btnLarge .largeIconContainer {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2px;
+}
+
+.btnLarge .largeLabelContainer {
+    font-size: 11px;
+    text-align: center;
+    line-height: 1.2;
+    white-space: pre-wrap;
+}
+
+/* SmallButton styles */
+.btnSmall {
+    height: 22px;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    cursor: default;
+    border: 1px solid transparent;
+    border-radius: 0;
+    transition: background-color 0.1s;
+}
+
+.btnSmall:hover:not(.disabled) {
+    background-color: var(--hover-bg);
+    border-color: var(--hover-border);
+}
+
+.btnSmall.active {
+    background-color: var(--selected-bg);
+    border-color: var(--selected-border);
+}
+
+.btnSmall.disabled {
+    opacity: 0.5;
+}
+
+.btnSmall .smallIconContainer {
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+}
+
+.btnSmall .smallLabelContainer {
+    font-size: 12px;
+    white-space: nowrap;
+}

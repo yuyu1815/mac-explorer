@@ -1,0 +1,132 @@
+.sidePanel {
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-main);
+    border-right: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-top: 8px;
+}
+
+.section {
+    padding: 0 8px;
+}
+
+.divider {
+    margin: 16px 0;
+    border-bottom: 1px solid #E5E5E5;
+    width: 90%;
+    margin-left: 5%;
+}
+
+.sectionTitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 4px 8px;
+    font-weight: bold;
+}
+
+/* FolderTreeItem styles */
+.treeItem {
+    display: flex;
+    align-items: center;
+    padding: 4px 0;
+    cursor: pointer;
+    color: var(--text-main);
+    font-size: 13px;
+    height: 24px;
+    outline: none;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+    transition: background-color 0.1s;
+}
+
+.treeItem:hover:not(.selected) {
+    background-color: var(--hover-bg);
+}
+
+.treeItem.selected {
+    background-color: var(--selected-bg);
+}
+
+.toggleIcon {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    padding-left: 4px;
+}
+
+.itemIcon {
+    margin-left: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.itemName {
+    margin-left: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.loading {
+    padding-left: 40px;
+    /* Base indent + offset */
+    font-size: 11px;
+    color: #999;
+    padding-top: 2px;
+}
+
+/* VolumeItem styles */
+.volumeItem {
+    padding: 4px 8px 4px 28px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.1s;
+}
+
+.volumeItem:hover:not(.selected) {
+    background-color: var(--hover-bg);
+}
+
+.volumeItem.selected {
+    background-color: var(--selected-bg);
+}
+
+.volumeHeader {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.volumeName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.volumeBarContainer {
+    margin-top: 2px;
+    margin-left: 22px;
+}
+
+.progressBarBack {
+    height: 4px;
+    background-color: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progressBarFill {
+    height: 100%;
+    border-radius: 2px;
+}
+
+.volumeStats {
+    font-size: 10px;
+    color: #888;
+    margin-top: 1px;
+}

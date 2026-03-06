@@ -3,7 +3,7 @@ import { invoke, Channel } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { InsufficientSpaceDialog } from './InsufficientSpaceDialog';
-import styles from './ProgressWindow.module.css';
+import styles from '../../styles/components/dialogs/ProgressWindow.module.css';
 
 export interface ProgressData {
     current_file: string;

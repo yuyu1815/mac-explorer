@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, ChevronDown, Folder } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import styles from './NavigationBar.module.css';
+import styles from '../../styles/components/layout/NavigationBar.module.css';
 
 export const NavigationBar = () => {
     const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery, toggleSelection } = useAppStore();

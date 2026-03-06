@@ -1,0 +1,35 @@
+.appContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+}
+
+.topSection {
+    background-color: var(--bg-main);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.mainContent {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.sideWrapper {
+    flex-shrink: 0;
+}
+
+.resizer {
+    width: 3px;
+    cursor: col-resize;
+    background-color: var(--border-color);
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+
+.resizer:hover {
+    background-color: var(--accent-color, #0078d7);
+}
