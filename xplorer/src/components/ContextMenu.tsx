@@ -69,8 +69,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
 
     const handleNewFile = async () => {
         try {
-            const sep = currentPath.includes('\\') ? '\\' : '/';
-            let newPath = currentPath.endsWith(sep) ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}${sep}新しいテキスト ドキュメント.txt`;
+            let newPath = currentPath.endsWith('/') ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}/新しいテキスト ドキュメント.txt`;
             await invoke('create_file', { path: newPath });
             refreshFiles();
         } catch (err) {
@@ -85,8 +84,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                 ? getFileNameWithoutExtension(targetPath || 'archive') + '.zip'
                 : 'archive.zip';
 
-            const sep = currentPath.includes('\\') ? '\\' : '/';
-            const archivePath = currentPath.endsWith(sep) ? `${currentPath}${defaultName}` : `${currentPath}${sep}${defaultName}`;
+            const archivePath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
 
             const format = getArchiveFormat(archivePath);
             const result = await invoke('compress_archive', {
@@ -109,8 +107,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
         if (!targetPath) return;
         try {
             const baseDir = getFileNameWithoutExtension(targetPath);
-            const sep = currentPath.includes('\\') ? '\\' : '/';
-            const destDir = currentPath.endsWith(sep) ? `${currentPath}${baseDir}` : `${currentPath}${sep}${baseDir}`;
+            const destDir = currentPath.endsWith('/') ? `${currentPath}${baseDir}` : `${currentPath}/${baseDir}`;
 
             const result = await invoke('extract_archive', {
                 archivePath: targetPath,
