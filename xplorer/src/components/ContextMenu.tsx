@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, Channel } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
 import { ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard, LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive } from 'lucide-react';
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../utils/archive';
@@ -86,11 +86,17 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
 
             const archivePath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
 
+            const channel = new Channel<any>();
+            channel.onmessage = (progress) => {
+                console.log('Compression progress:', progress);
+            };
+
             const format = getArchiveFormat(archivePath);
             const result = await invoke('compress_archive', {
                 sources: pathsToActOn,
                 destArchivePath: archivePath,
                 format,
+                channel,
             }) as { errors: Array<{ file_path: string; message: string }> };
 
             if (result.errors.length > 0) {
@@ -109,9 +115,15 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             const baseDir = getFileNameWithoutExtension(targetPath);
             const destDir = currentPath.endsWith('/') ? `${currentPath}${baseDir}` : `${currentPath}/${baseDir}`;
 
+            const channel = new Channel<any>();
+            channel.onmessage = (progress) => {
+                console.log('Extraction progress:', progress);
+            };
+
             const result = await invoke('extract_archive', {
                 archivePath: targetPath,
                 destDir: destDir,
+                channel,
             }) as { errors: string[] };
 
             if (result.errors.length > 0) {

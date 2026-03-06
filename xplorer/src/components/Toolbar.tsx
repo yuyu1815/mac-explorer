@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, Channel } from '@tauri-apps/api/core';
 import {
     ClipboardPaste, Scissors, Copy, Link as LinkIcon, Edit2, Trash2, FolderPlus,
     FilePlus, List, AlignJustify, LayoutGrid, CheckSquare, XSquare, ArrowRightSquare,
@@ -174,11 +174,17 @@ export const Toolbar = () => {
 
             const archivePath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
 
+            const channel = new Channel<any>();
+            channel.onmessage = (progress) => {
+                console.log('Compression progress:', progress);
+            };
+
             const format = getArchiveFormat(archivePath);
             const result = await invoke('compress_archive', {
                 sources: Array.from(selectedFiles),
                 destArchivePath: archivePath,
                 format,
+                channel,
             }) as { errors: Array<{ file_path: string; message: string }> };
 
             if (result.errors.length > 0) {
@@ -199,9 +205,15 @@ export const Toolbar = () => {
             const baseDir = getFileNameWithoutExtension(targetPath);
             const destDir = currentPath.endsWith('/') ? `${currentPath}${baseDir}` : `${currentPath}/${baseDir}`;
 
+            const channel = new Channel<any>();
+            channel.onmessage = (progress) => {
+                console.log('Extraction progress:', progress);
+            };
+
             const result = await invoke('extract_archive', {
                 archivePath: targetPath,
                 destDir: destDir,
+                channel,
             }) as { errors: string[] };
 
             if (result.errors.length > 0) {
