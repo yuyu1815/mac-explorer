@@ -1,5 +1,5 @@
 //! ファイルやディレクトリの詳細なプロパティ（メタデータ）を取得するモジュール。
-//! 
+//!
 //! 基本情報（名前、パス、種類）に加えて、macOSのFinder風の情報ウィンドウ表示や、
 //! フォルダサイズの再帰的な計算（ストリーミング含む）をサポートします。
 
@@ -32,40 +32,65 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
     let is_dir = metadata.is_dir();
     let size_bytes = metadata.len();
 
-    let name = path_buf.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.clone());
+    let name = path_buf
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.clone());
     let (contains_files, contains_folders) = (0, 0);
-    
+
     // タイムスタンプ取得の共通化
     let to_ts = |t: std::io::Result<std::time::SystemTime>| {
-        t.ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_secs() as i64).unwrap_or(0)
+        t.ok()
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0)
     };
 
     let file_type = if is_dir {
         "ファイル フォルダー".to_string()
     } else {
-        path_buf.extension()
+        path_buf
+            .extension()
             .map(|ext| format!("{} ファイル", ext.to_string_lossy().to_uppercase()))
             .unwrap_or_else(|| "ファイル".to_string())
     };
 
-    let size_on_disk = if is_dir || size_bytes == 0 { 0 } else { size_bytes.div_ceil(4096) * 4096 };
+    let size_on_disk = if is_dir || size_bytes == 0 {
+        0
+    } else {
+        size_bytes.div_ceil(4096) * 4096
+    };
 
     Ok(DetailedProperties {
         name,
         path,
         file_type,
-        location: path_buf.parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default(),
+        location: path_buf
+            .parent()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default(),
         size_bytes,
-        size_formatted: if is_dir { "計算中...".to_string() } else { format_size(size_bytes) },
+        size_formatted: if is_dir {
+            "計算中...".to_string()
+        } else {
+            format_size(size_bytes)
+        },
         size_on_disk_bytes: size_on_disk,
-        size_on_disk_formatted: if is_dir { String::new() } else { format_size(size_on_disk) },
+        size_on_disk_formatted: if is_dir {
+            String::new()
+        } else {
+            format_size(size_on_disk)
+        },
         contains_files,
         contains_folders,
         created_formatted: format_timestamp(to_ts(metadata.created())),
         modified_formatted: format_timestamp(to_ts(metadata.modified())),
         accessed_formatted: format_timestamp(to_ts(metadata.accessed())),
         is_readonly: metadata.permissions().mode() & 0o222 == 0,
-        is_hidden: path_buf.file_name().map(|n| n.to_string_lossy().starts_with('.')).unwrap_or(false),
+        is_hidden: path_buf
+            .file_name()
+            .map(|n| n.to_string_lossy().starts_with('.'))
+            .unwrap_or(false),
     })
 }
 
@@ -101,7 +126,7 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
             }
         }
     }
-    
+
     props.size_formatted = format_size(props.size_bytes);
     props.size_on_disk_bytes = props.size_bytes.div_ceil(4096) * 4096;
     props.size_on_disk_formatted = format_size(props.size_on_disk_bytes);
@@ -110,11 +135,22 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
 
 /// フォルダサイズをストリーミング計算
 #[tauri::command]
-pub async fn get_detailed_properties_streaming(path: String, channel: tauri::ipc::Channel<PropertyProgress>) -> Result<DetailedProperties, String> {
+pub async fn get_detailed_properties_streaming(
+    path: String,
+    channel: tauri::ipc::Channel<PropertyProgress>,
+) -> Result<DetailedProperties, String> {
     let props = get_basic_properties(path.clone()).await?;
     if props.file_type != "ファイル フォルダー" {
         let sod = props.size_bytes.div_ceil(4096) * 4096;
-        let _ = channel.send(PropertyProgress { size_bytes: props.size_bytes, size_formatted: props.size_formatted.clone(), size_on_disk_bytes: sod, size_on_disk_formatted: format_size(sod), contains_files: 0, contains_folders: 0, complete: true });
+        let _ = channel.send(PropertyProgress {
+            size_bytes: props.size_bytes,
+            size_formatted: props.size_formatted.clone(),
+            size_on_disk_bytes: sod,
+            size_on_disk_formatted: format_size(sod),
+            contains_files: 0,
+            contains_folders: 0,
+            complete: true,
+        });
         return Ok(props);
     }
 
@@ -160,7 +196,15 @@ pub async fn get_detailed_properties_streaming(path: String, channel: tauri::ipc
         }
 
         let sod = size.div_ceil(4096) * 4096;
-        let _ = channel.send(PropertyProgress { size_bytes: size, size_formatted: format_size(size), size_on_disk_bytes: sod, size_on_disk_formatted: format_size(sod), contains_files: files, contains_folders: folders, complete: true });
+        let _ = channel.send(PropertyProgress {
+            size_bytes: size,
+            size_formatted: format_size(size),
+            size_on_disk_bytes: sod,
+            size_on_disk_formatted: format_size(sod),
+            contains_files: files,
+            contains_folders: folders,
+            complete: true,
+        });
     });
     Ok(props)
 }

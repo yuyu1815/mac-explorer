@@ -1,5 +1,5 @@
 //! macOSの `NSWorkspace` を利用してファイルや拡張子のアイコンを取得するモジュール。
-//! 
+//!
 //! 取得したアイコンはPNG形式に変換され、メモリおよびディスクの両方にキャッシュされます。
 //! これにより、大量のファイルを表示する際もパフォーマンスを維持します。
 
@@ -53,7 +53,9 @@ pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
         } else if id == "dir" {
             msg_send![objc::class!(NSImage), imageNamed: NSString::alloc(nil).init_str("NSFolder")]
         } else {
-            let path = id.strip_prefix("app:").or_else(|| id.strip_prefix("file:"))?;
+            let path = id
+                .strip_prefix("app:")
+                .or_else(|| id.strip_prefix("file:"))?;
             msg_send![workspace, iconForFile: NSString::alloc(nil).init_str(path)]
         };
 
@@ -62,11 +64,18 @@ pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
             return None;
         }
 
-        let size = NSSize { width: 32.0, height: 32.0 };
+        let size = NSSize {
+            width: 32.0,
+            height: 32.0,
+        };
         let _: () = msg_send![icon, setSize: size];
 
-        let mut rect = NSRect { origin: NSPoint { x: 0.0, y: 0.0 }, size };
-        let cg_image: cocoa_id = msg_send![icon, CGImageForProposedRect:&mut rect context:nil hints:nil];
+        let mut rect = NSRect {
+            origin: NSPoint { x: 0.0, y: 0.0 },
+            size,
+        };
+        let cg_image: cocoa_id =
+            msg_send![icon, CGImageForProposedRect:&mut rect context:nil hints:nil];
         if cg_image == nil {
             let _: () = msg_send![pool, drain];
             return None;
@@ -80,7 +89,8 @@ pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
         }
 
         let empty_dict: cocoa_id = msg_send![objc::class!(NSDictionary), dictionary];
-        let png: cocoa_id = msg_send![bitmap_rep, representationUsingType: 4u64 properties: empty_dict];
+        let png: cocoa_id =
+            msg_send![bitmap_rep, representationUsingType: 4u64 properties: empty_dict];
         if png == nil {
             let _: () = msg_send![pool, drain];
             return None;
