@@ -8,7 +8,7 @@
 pub mod commands;
 
 // Re-export for integration tests
-pub use commands::{directory, file_ops, utils};
+pub use commands::{directory, file_ops, utils, watcher};
 
 use tauri::Manager;
 
@@ -27,6 +27,11 @@ pub fn run() {
             // アーカイブ操作の一時停止/キャンセル制御用のステートを登録
             app.manage(std::sync::Arc::new(
                 commands::archive::OperationControl::new(),
+            ));
+
+            // ファイルシステム監視用のステートを登録
+            app.manage(std::sync::Arc::new(
+                commands::watcher::WatcherState::new(),
             ));
 
             // アイコンキャッシュの初期化
@@ -105,6 +110,8 @@ pub fn run() {
             commands::archive::pause_operation,
             commands::archive::resume_operation,
             commands::archive::cancel_operation,
+            commands::watcher::watch_path,
+            commands::watcher::unwatch_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
