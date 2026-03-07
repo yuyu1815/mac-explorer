@@ -6,3 +6,4 @@ pub mod properties;
 pub mod types;
 pub mod utils;
 pub mod volumes;
+pub mod watcher;
