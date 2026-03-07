@@ -85,12 +85,14 @@ describe('MainPane', () => {
             });
         });
 
-        it('詳細表示モードで列ヘッダーが表示される', () => {
+        it('詳細表示モードで列ヘッダーが表示される', async () => {
             render(<MainPane />);
-            expect(screen.getByText(/名前/)).toBeInTheDocument();
-            expect(screen.getByText(/更新日時/)).toBeInTheDocument();
-            expect(screen.getByText(/種類/)).toBeInTheDocument();
-            expect(screen.getByText(/サイズ/)).toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByText(/名前/)).toBeInTheDocument();
+                expect(screen.getByText(/更新日時/)).toBeInTheDocument();
+                expect(screen.getByText(/種類/)).toBeInTheDocument();
+                expect(screen.getByText(/サイズ/)).toBeInTheDocument();
+            });
         });
     });
 
