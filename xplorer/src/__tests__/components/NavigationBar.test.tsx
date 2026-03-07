@@ -44,13 +44,10 @@ describe('NavigationBar Component', () => {
     it('switches to input mode when breadcrumb container is clicked', () => {
         // Arrange
         render(<NavigationBar />);
-        const documentsBreadcrumb = screen.getByText('Documents');
-        const breadcrumbContainer = documentsBreadcrumb.closest('.win10-address-bar');
+        const breadcrumbContainer = screen.getByText('Documents').parentElement!.parentElement!;
 
         // Act
-        if (breadcrumbContainer) {
-            fireEvent.click(breadcrumbContainer);
-        }
+        fireEvent.click(breadcrumbContainer);
 
         // Assert
         const input = screen.getByDisplayValue('/Users/test/Documents');

@@ -77,7 +77,7 @@ describe('ContextMenu — 空白右クリック（targetPath=null）', () => {
         const pasteItem = screen.getByText('貼り付け(P)').parentElement as HTMLElement;
 
         // Assert
-        expect(pasteItem.classList.contains('disabled')).toBe(true);
+        expect(pasteItem).toHaveClass(/disabled/);
     });
 
     it('clipboardにデータがあるとき「貼り付け」は有効（opacity: 1）', () => {

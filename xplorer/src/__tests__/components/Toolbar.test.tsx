@@ -36,14 +36,14 @@ describe('Toolbar Component', () => {
         render(<Toolbar />);
 
         // Act
-        const cutBtn = screen.getByText('切り取り').closest('.ribbon-btn');
-        const copyBtn = screen.getByText('コピー').closest('.ribbon-btn');
-        const deleteBtn = screen.getByText('削除').closest('.ribbon-btn');
+        const cutBtn = screen.getByText('切り取り').parentElement!;
+        const copyBtn = screen.getByText('コピー').parentElement!;
+        const deleteBtn = screen.getByText('削除').parentElement!;
 
         // Assert
-        expect(cutBtn).toHaveClass('disabled');
-        expect(copyBtn).toHaveClass('disabled');
-        expect(deleteBtn).toHaveClass('disabled');
+        expect(cutBtn).toHaveClass(/disabled/);
+        expect(copyBtn).toHaveClass(/disabled/);
+        expect(deleteBtn).toHaveClass(/disabled/);
     });
 
     it('enables cut, copy, delete when files are selected', () => {
@@ -52,14 +52,14 @@ describe('Toolbar Component', () => {
         render(<Toolbar />);
 
         // Act
-        const cutBtn = screen.getByText('切り取り').closest('.ribbon-btn');
-        const copyBtn = screen.getByText('コピー').closest('.ribbon-btn');
-        const deleteBtn = screen.getByText('削除').closest('.ribbon-btn');
+        const cutBtn = screen.getByText('切り取り').parentElement!;
+        const copyBtn = screen.getByText('コピー').parentElement!;
+        const deleteBtn = screen.getByText('削除').parentElement!;
 
         // Assert
-        expect(cutBtn).not.toHaveClass('disabled');
-        expect(copyBtn).not.toHaveClass('disabled');
-        expect(deleteBtn).not.toHaveClass('disabled');
+        expect(cutBtn).not.toHaveClass(/disabled/);
+        expect(copyBtn).not.toHaveClass(/disabled/);
+        expect(deleteBtn).not.toHaveClass(/disabled/);
     });
 
     it('changes view mode in store when clicked', () => {
@@ -68,9 +68,9 @@ describe('Toolbar Component', () => {
         fireEvent.click(screen.getByText('表示'));
 
         // Act
-        const listBtn = screen.getByText('一覧').closest('.ribbon-btn')!;
-        const iconBtn = screen.getByText('特大アイコン').closest('.ribbon-btn')!;
-        const detailBtn = screen.getByText('詳細').closest('.ribbon-btn')!;
+        const listBtn = screen.getByText('一覧').parentElement!;
+        const iconBtn = screen.getByText(/特大アイコン/).parentElement!;
+        const detailBtn = screen.getByText('詳細').parentElement!;
 
         fireEvent.click(listBtn);
 
