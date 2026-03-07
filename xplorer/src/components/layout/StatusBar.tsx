@@ -1,6 +1,6 @@
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '@/stores/appStore';
 import { AlignJustify, LayoutGrid } from 'lucide-react';
-import styles from '../../styles/components/layout/StatusBar.module.css';
+import styles from '@/styles/components/layout/StatusBar.module.css';
 
 const formatSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;

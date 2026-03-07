@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '@/stores/appStore';
 import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, ChevronDown, Folder } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import { useNavigationBar } from '../../hooks/useNavigationBar';
-import styles from '../../styles/components/layout/NavigationBar.module.css';
+import { useNavigationBar } from '@/hooks/useNavigationBar';
+import styles from '@/styles/components/layout/NavigationBar.module.css';
 
 export const NavigationBar = () => {
     const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery, toggleSelection } = useAppStore();
@@ -15,7 +15,7 @@ export const NavigationBar = () => {
     const currentPath = activeTab?.currentPath || '/'; // default to something so it doesn't crash
     const folderName = currentPath.split('/').pop() || 'エクスプローラー';
 
-    const { inputValue, setInputValue, suggestions, handleInputChange, breadcrumbs } = useNavigationBar(currentPath, setCurrentPath);
+    const { inputValue, setInputValue, suggestions, handleInputChange, breadcrumbs } = useNavigationBar(currentPath);
     const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
     const [dropdownPath, setDropdownPath] = useState<string | null>(null);
     const [dropdownItems, setDropdownItems] = useState<{ name: string, path: string }[]>([]);

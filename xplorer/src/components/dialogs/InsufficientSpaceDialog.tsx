@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from '../../styles/components/dialogs/InsufficientSpaceDialog.module.css';
+import styles from '@/styles/components/dialogs/InsufficientSpaceDialog.module.css';
 
 // Windows 10 の「ディスク容量不足」ダイアログ
 interface InsufficientSpaceDialogProps {

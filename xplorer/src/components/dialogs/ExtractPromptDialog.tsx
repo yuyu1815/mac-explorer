@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '@/stores/appStore';
 import { open } from '@tauri-apps/plugin-dialog';
-import styles from '../../styles/components/dialogs/ExtractPromptDialog.module.css';
+import styles from '@/styles/components/dialogs/ExtractPromptDialog.module.css';
 
 export const ExtractPromptDialog: React.FC = () => {
     const extractPrompt = useAppStore(state => state.extractPrompt);

@@ -1,8 +1,8 @@
 import React from 'react';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '@/stores/appStore';
 import { Check, SkipForward } from 'lucide-react';
-import '../../styles/global.css';
-import styles from '../../styles/components/dialogs/OverwriteConfirmDialog.module.css';
+import '@/styles/global.css';
+import styles from '@/styles/components/dialogs/OverwriteConfirmDialog.module.css';
 
 // Windows 10 の「ファイルの置換またはスキップ」ダイアログ
 export const OverwriteConfirmDialog: React.FC = () => {

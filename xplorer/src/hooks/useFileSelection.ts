@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { FileEntry } from '../types';
-import { useAppStore } from '../stores/appStore';
+import { FileEntry } from '@/types';
+import { useAppStore } from '@/stores/appStore';
 
 export const useFileSelection = (files: FileEntry[]) => {
     // グローバル状態を使用

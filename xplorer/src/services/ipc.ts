@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { FileEntry } from '../types';
+import { FileEntry } from '@/types';
 
 export const ipc = {
     listDirectory: (path: string) => invoke<FileEntry[]>('list_directory', { path }),

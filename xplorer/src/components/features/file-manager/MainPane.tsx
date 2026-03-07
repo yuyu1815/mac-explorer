@@ -1,19 +1,19 @@
 import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore } from '../../../stores/appStore';
+import { useAppStore } from '@/stores/appStore';
 import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
     FileAudio, FileImage, FileArchive, FileCode
 } from 'lucide-react';
-import { PropertiesDialog } from '../../dialogs/PropertiesDialog';
-import { isArchive } from '../../../utils/archive';
-import { FileEntry } from '../../../types';
-import { ipc } from '../../../services/ipc';
-import { useFileSystem } from '../../../hooks/useFileSystem';
-import { useFileOperations } from '../../../hooks/useFileOperations';
-import { useFileSelection } from '../../../hooks/useFileSelection';
-import styles from '../../../styles/components/features/file-manager/MainPane.module.css';
+import { PropertiesDialog } from '@/components/dialogs/PropertiesDialog';
+import { isArchive } from '@/utils/archive';
+import { FileEntry } from '@/types';
+import { ipc } from '@/services/ipc';
+import { useFileSystem } from '@/hooks/useFileSystem';
+import { useFileOperations } from '@/hooks/useFileOperations';
+import { useFileSelection } from '@/hooks/useFileSelection';
+import styles from '@/styles/components/features/file-manager/MainPane.module.css';
 
 const FolderIcon = ({ size = 16, color = '#FFB900', iconId }: { size?: number, color?: string, iconId?: string }) => {
     const [failed, setFailed] = useState(false);
@@ -110,11 +110,25 @@ export const MainPane = () => {
 
     const {
         selectedPaths, toggleSelection: hookToggleSelection, clearSelection,
-        marquee, containerRef, onMouseDown, onMouseMove, onMouseUp
+        marquee, containerRef, onMouseDown: hookOnMouseDown, onMouseMove, onMouseUp: hookOnMouseUp
     } = useFileSelection(files);
 
-
     const marqueeJustEnded = useRef(false);
+
+    const onMouseDown = (e: React.MouseEvent) => {
+        marqueeJustEnded.current = false;
+        hookOnMouseDown(e);
+    };
+
+    const onMouseUp = () => {
+        if (marquee) {
+            marqueeJustEnded.current = true;
+            setTimeout(() => {
+                marqueeJustEnded.current = false;
+            }, 100);
+        }
+        hookOnMouseUp();
+    };
     const [batchRenameState, setBatchRenameState] = useState<{ prefix: string; startNum: number } | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, target: string | null } | null>(null);
     const [dragTarget, setDragTarget] = useState<string | null>(null);
@@ -862,7 +876,7 @@ export const MainPane = () => {
         <div
             ref={containerRef}
             className={styles.paneContainer}
-            onClick={(e) => {
+            onClick={() => {
                 if (renamingPath) {
                     commitRename();
                 } else if (!marquee && !marqueeJustEnded.current) {
