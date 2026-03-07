@@ -1,5 +1,5 @@
 //! システムにマウントされているボリューム（ディスク）の一覧を取得するモジュール。
-//! 
+//!
 //! Macintosh HD（ルート）および `/Volumes` 直下の外部ドライブをスキャンし、
 //! `statvfs` を使用して空き容量や合計サイズを取得します。
 
@@ -31,14 +31,17 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
         .unwrap_or_default();
 
     let (total, free) = get_statvfs_info("/");
-    volumes.insert(0, VolumeInfo {
-        name: "Macintosh HD".to_string(),
-        path: "/".to_string(),
-        total_bytes: total,
-        free_bytes: free,
-        total_bytes_formatted: format_size(total),
-        free_bytes_formatted: format_size(free),
-    });
+    volumes.insert(
+        0,
+        VolumeInfo {
+            name: "Macintosh HD".to_string(),
+            path: "/".to_string(),
+            total_bytes: total,
+            free_bytes: free,
+            total_bytes_formatted: format_size(total),
+            free_bytes_formatted: format_size(free),
+        },
+    );
 
     Ok(volumes)
 }
