@@ -64,16 +64,10 @@ pub fn run() {
                 &decoded_path
             };
 
-            // IDからバイナリを取得（PNG or TIFF）
+            // IDからバイナリを取得（常にPNG形式）
             if let Some(data) = commands::icons::get_icon_binary(&icon_id[1..]) {
-                // PNG先頭マジックバイトで Content-Type を判定
-                let content_type = if data.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
-                    "image/png"
-                } else {
-                    "image/tiff"
-                };
                 tauri::http::Response::builder()
-                    .header("Content-Type", content_type)
+                    .header("Content-Type", "image/png")
                     .header("Cache-Control", "public, max-age=300")
                     .body(data)
                     .unwrap()
