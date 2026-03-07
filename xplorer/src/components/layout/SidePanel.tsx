@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '@/stores/appStore';
 import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import styles from '../../styles/components/layout/SidePanel.module.css';
+import styles from '@/styles/components/layout/SidePanel.module.css';
 
 interface NodeProps {
     path: string;

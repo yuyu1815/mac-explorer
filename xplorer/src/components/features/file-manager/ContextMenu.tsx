@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useAppStore } from '../../../stores/appStore';
+import { useAppStore } from '@/stores/appStore';
 import {
     ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard,
     LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive
 } from 'lucide-react';
-import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '../../../utils/archive';
-import { ipc } from '../../../services/ipc';
-import styles from '../../../styles/components/features/file-manager/ContextMenu.module.css';
+import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '@/utils/archive';
+import { ipc } from '@/services/ipc';
+import styles from '@/styles/components/features/file-manager/ContextMenu.module.css';
 
 interface ContextMenuProps {
     x: number;

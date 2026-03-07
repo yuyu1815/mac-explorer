@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import { Tab, AppState } from '../types';
+import { Tab, AppState } from '@/types';
 
 const createNewTab = (id: string, path: string = ''): Tab => ({
     id,

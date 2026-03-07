@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { FileEntry } from '../types';
-import { useAppStore } from '../stores/appStore';
+import { FileEntry } from '@/types';
+import { useAppStore } from '@/stores/appStore';
 
 interface UseFileSystemProps {
     currentPath: string;

@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { FileEntry } from '../types';
+import { FileEntry } from '@/types';
 
-export const useNavigationBar = (currentPath: string, onNavigate: (path: string) => void) => {
+export const useNavigationBar = (currentPath: string) => {
     const [inputValue, setInputValue] = useState(currentPath);
     const [suggestions, setSuggestions] = useState<FileEntry[]>([]);
 

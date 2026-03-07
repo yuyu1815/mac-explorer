@@ -1,5 +1,5 @@
-import { useAppStore } from '../../stores/appStore';
-import styles from '../../styles/components/layout/TitleBar.module.css';
+import { useAppStore } from '@/stores/appStore';
+import styles from '@/styles/components/layout/TitleBar.module.css';
 
 export const TitleBar = () => {
   const { tabs, activeTabId } = useAppStore();

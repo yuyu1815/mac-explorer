@@ -1,6 +1,6 @@
-import { useAppStore } from '../../stores/appStore';
-import { FileEntry } from '../../types';
-import styles from '../../styles/components/layout/DetailsPane.module.css';
+import { useAppStore } from '@/stores/appStore';
+import { FileEntry } from '@/types';
+import styles from '@/styles/components/layout/DetailsPane.module.css';
 
 const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 バイト';
