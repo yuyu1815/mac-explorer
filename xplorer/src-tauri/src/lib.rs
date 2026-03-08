@@ -91,6 +91,8 @@ pub fn run() {
             commands::properties::get_basic_properties,
             commands::properties::get_detailed_properties,
             commands::properties::get_detailed_properties_streaming,
+            commands::properties::get_applications_for_file,
+            commands::properties::set_default_application,
             commands::file_ops::create_directory,
             commands::file_ops::copy_files,
             commands::file_ops::move_files,

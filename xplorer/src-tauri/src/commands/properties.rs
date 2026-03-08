@@ -6,9 +6,20 @@
 use std::os::unix::fs::PermissionsExt;
 use std::time::UNIX_EPOCH;
 
+use serde::Serialize;
+
 use super::types::DetailedProperties;
 use super::types::PropertyProgress;
 use super::utils::{format_size, format_timestamp};
+
+/// アプリケーション情報
+#[derive(Serialize, Clone)]
+pub struct ApplicationInfo {
+    pub name: String,
+    pub path: String,
+    pub icon_id: String,
+    pub bundle_identifier: String,
+}
 
 /// ファイルを開くデフォルトアプリケーションの情報を取得
 /// 戻り値: (アプリ名, アイコンID)
@@ -65,6 +76,179 @@ fn get_default_application(path: &str) -> Option<(String, String)> {
 #[cfg(not(target_os = "macos"))]
 fn get_default_application(_path: &str) -> Option<(String, String)> {
     None
+}
+
+/// ファイルを開けるアプリケーション一覧を取得
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn get_applications_for_file(path: String) -> Result<Vec<ApplicationInfo>, String> {
+    use cocoa::base::{id as cocoa_id, nil};
+    use cocoa::foundation::{NSArray, NSString};
+    use objc::{msg_send, sel, sel_impl};
+    use std::ffi::CStr;
+    use std::path::Path;
+
+    if Path::new(&path).is_dir() {
+        return Ok(Vec::new());
+    }
+
+    unsafe {
+        let pool: cocoa_id = msg_send![objc::class!(NSAutoreleasePool), new];
+
+        // NSURL.fileURLWithPath:
+        let ns_path = NSString::alloc(nil).init_str(&path);
+        let url: cocoa_id = msg_send![objc::class!(NSURL), fileURLWithPath: ns_path];
+
+        // NSWorkspace.sharedWorkspace
+        let workspace: cocoa_id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
+
+        // [workspace URLsForApplicationsToOpenURL:url]
+        let app_urls: cocoa_id = msg_send![workspace, URLsForApplicationsToOpenURL: url];
+
+        let mut apps = Vec::new();
+        let count = NSArray::count(app_urls);
+
+        for i in 0..count {
+            let app_url: cocoa_id = NSArray::objectAtIndex(app_urls, i);
+            let app_path: cocoa_id = msg_send![app_url, path];
+            let bytes: *const i8 = msg_send![app_path, UTF8String];
+
+            if let Ok(app_path_str) = CStr::from_ptr(bytes).to_str() {
+                if let Some(app_name) = Path::new(app_path_str)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_string())
+                {
+                    // Bundle identifierを取得
+                    let bundle_id = get_bundle_identifier(app_path_str);
+
+                    apps.push(ApplicationInfo {
+                        name: app_name,
+                        path: app_path_str.to_string(),
+                        icon_id: format!("app:{}", app_path_str),
+                        bundle_identifier: bundle_id.unwrap_or_default(),
+                    });
+                }
+            }
+        }
+
+        let _: () = msg_send![pool, drain];
+        Ok(apps)
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn get_applications_for_file(_path: String) -> Result<Vec<ApplicationInfo>, String> {
+    Ok(Vec::new())
+}
+
+/// Bundle Identifierを取得
+#[cfg(target_os = "macos")]
+fn get_bundle_identifier(app_path: &str) -> Option<String> {
+    use cocoa::base::{id as cocoa_id, nil};
+    use cocoa::foundation::NSString;
+    use objc::{msg_send, sel, sel_impl};
+    use std::ffi::CStr;
+
+    unsafe {
+        let ns_path = NSString::alloc(nil).init_str(app_path);
+        let bundle: cocoa_id = msg_send![objc::class!(NSBundle), bundleWithPath: ns_path];
+
+        if bundle == nil {
+            return None;
+        }
+
+        let bundle_id: cocoa_id = msg_send![bundle, bundleIdentifier];
+        if bundle_id == nil {
+            return None;
+        }
+
+        let bytes: *const i8 = msg_send![bundle_id, UTF8String];
+        CStr::from_ptr(bytes).to_str().ok().map(|s| s.to_string())
+    }
+}
+
+/// デフォルトアプリケーションを変更
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn set_default_application(path: String, bundle_identifier: String) -> Result<(), String> {
+    use cocoa::base::{id as cocoa_id, nil};
+    use cocoa::foundation::NSString;
+    use objc::{msg_send, sel, sel_impl};
+    use std::ffi::CString;
+
+    unsafe {
+        let pool: cocoa_id = msg_send![objc::class!(NSAutoreleasePool), new];
+
+        // ファイルのUTI (Uniform Type Identifier) を取得
+        let ns_path = NSString::alloc(nil).init_str(&path);
+        let url: cocoa_id = msg_send![objc::class!(NSURL), fileURLWithPath: ns_path];
+
+        let workspace: cocoa_id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
+        let uti: cocoa_id = msg_send![workspace, typeOfFile: url error: std::ptr::null_mut::<objc::runtime::Object>()];
+
+        if uti == nil {
+            let _: () = msg_send![pool, drain];
+            return Err("Failed to get UTI for file".to_string());
+        }
+
+        // UTIを文字列に変換
+        let uti_bytes: *const i8 = msg_send![uti, UTF8String];
+        let uti_str = std::ffi::CStr::from_ptr(uti_bytes).to_str().unwrap_or("");
+
+        // LSSetDefaultRoleHandlerForContentType を使用
+        // CoreServicesが必要
+
+        // LSDefaultHandlerを設定
+        let success: bool = {
+            // Launch Services APIを使用
+            let core_services = dlopen(
+                b"/System/Library/Frameworks/CoreServices.framework/CoreServices\0".as_ptr() as *const i8,
+                1, // RTLD_LAZY
+            );
+
+            if core_services.is_null() {
+                let _: () = msg_send![pool, drain];
+                return Err("Failed to load CoreServices".to_string());
+            }
+
+            let func_name = b"LSSetDefaultRoleHandlerForContentType\0";
+            let func: Option<unsafe extern "C" fn(*const i8, *const i8, i32) -> i32> =
+                std::mem::transmute(dlsym(core_services, func_name.as_ptr() as *const i8));
+
+            dlclose(core_services);
+
+            if let Some(set_handler) = func {
+                let uti_cstr = CString::new(uti_str).unwrap();
+                let bundle_cstr = CString::new(bundle_identifier.as_str()).unwrap();
+                // kLSRolesAll = 0xFFFFFFFF
+                set_handler(uti_cstr.as_ptr(), bundle_cstr.as_ptr(), 0xFFFFFFFFu32 as i32) == 0
+            } else {
+                false
+            }
+        };
+
+        let _: () = msg_send![pool, drain];
+
+        if success {
+            Ok(())
+        } else {
+            Err("Failed to set default application".to_string())
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn set_default_application(_path: String, _bundle_identifier: String) -> Result<(), String> {
+    Err("Not supported on this platform".to_string())
+}
+
+extern "C" {
+    fn dlopen(filename: *const i8, flag: i32) -> *mut std::ffi::c_void;
+    fn dlsym(handle: *mut std::ffi::c_void, symbol: *const i8) -> *mut std::ffi::c_void;
+    fn dlclose(handle: *mut std::ffi::c_void) -> i32;
 }
 
 #[tauri::command]

@@ -165,6 +165,45 @@
     cursor: pointer;
 }
 
+.appSelector {
+    position: relative;
+    display: inline-block;
+}
+
+.appDropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    margin-top: 2px;
+}
+
+.appItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #000;
+}
+
+.appItem:hover {
+    background-color: #e5f1fb;
+}
+
+.appLoading {
+    padding: 10px;
+    color: #666;
+    font-size: 12px;
+}
+
 .btnAdvanced {
     margin-left: auto;
 }
@@ -276,5 +315,22 @@
 
     .btn:disabled {
         color: #555;
+    }
+
+    .appDropdown {
+        background-color: #2b2b2b;
+        border-color: #555;
+    }
+
+    .appItem {
+        color: #eee;
+    }
+
+    .appItem:hover {
+        background-color: #094771;
+    }
+
+    .appLoading {
+        color: #aaa;
     }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { invoke, Channel } from '@tauri-apps/api/core';
 import { useAppStore } from '@/stores/appStore';
 import { FileIcon } from '@/components/features/file-manager/MainPane';
@@ -12,6 +12,13 @@ interface PropertyProgress {
     contains_files: number;
     contains_folders: number;
     complete: boolean;
+}
+
+interface ApplicationInfo {
+    name: string;
+    path: string;
+    icon_id: string;
+    bundle_identifier: string;
 }
 
 interface PropertiesDialogProps {
@@ -44,12 +51,54 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [nameInputValue, setNameInputValue] = useState("");
+    const [showAppMenu, setShowAppMenu] = useState(false);
+    const [applications, setApplications] = useState<ApplicationInfo[]>([]);
+    const [loadingApps, setLoadingApps] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Need to get the entry to access icon_id
     const activeTab = useAppStore(state => state.tabs.find(t => t.id === useAppStore.getState().activeTabId));
     const entry = activeTab?.files.find(f => f.path === path);
     const isDir = props?.file_type === 'ファイル フォルダー';
     const iconId = entry?.icon_id || (isDir ? 'dir' : '');
+
+    // 外部クリックでドロップダウンを閉じる
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setShowAppMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const loadApplications = async () => {
+        if (loadingApps || applications.length > 0) return;
+        setLoadingApps(true);
+        try {
+            const apps = await invoke<ApplicationInfo[]>('get_applications_for_file', { path });
+            setApplications(apps);
+        } catch (err) {
+            console.error('Failed to load applications:', err);
+        } finally {
+            setLoadingApps(false);
+        }
+    };
+
+    const handleAppSelect = async (app: ApplicationInfo) => {
+        try {
+            await invoke('set_default_application', { path, bundleIdentifier: app.bundle_identifier });
+            setProps(prev => prev ? {
+                ...prev,
+                default_application: app.name,
+                default_application_icon_id: app.icon_id,
+            } : null);
+            setShowAppMenu(false);
+        } catch (err) {
+            console.error('Failed to set default application:', err);
+        }
+    };
 
     useEffect(() => {
         let mounted = true;
@@ -145,12 +194,41 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
                                 {!isDir && (
                                     <div className={styles.row}>
                                         <div className={styles.label}>プログラム:</div>
-                                        <div className={styles.valueWithIcon}>
+                                        <div className={styles.valueWithIcon} ref={dropdownRef}>
                                             {props.default_application_icon_id && (
                                                 <FileIcon isDir={false} iconId={props.default_application_icon_id} size={16} />
                                             )}
                                             <span>{props.default_application || '(不明)'}</span>
-                                            {' '}<button className={styles.btnSmall} disabled>変更(C)...</button>
+                                            {' '}
+                                            <div className={styles.appSelector}>
+                                                <button
+                                                    className={styles.btnSmall}
+                                                    onClick={() => {
+                                                        setShowAppMenu(!showAppMenu);
+                                                        loadApplications();
+                                                    }}
+                                                >
+                                                    変更(C)...
+                                                </button>
+                                                {showAppMenu && (
+                                                    <div className={styles.appDropdown}>
+                                                        {loadingApps ? (
+                                                            <div className={styles.appLoading}>読み込み中...</div>
+                                                        ) : (
+                                                            applications.map(app => (
+                                                                <div
+                                                                    key={app.bundle_identifier}
+                                                                    className={styles.appItem}
+                                                                    onClick={() => handleAppSelect(app)}
+                                                                >
+                                                                    <FileIcon isDir={false} iconId={app.icon_id} size={16} />
+                                                                    <span>{app.name}</span>
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
