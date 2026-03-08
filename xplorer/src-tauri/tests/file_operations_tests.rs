@@ -497,3 +497,215 @@ mod archive_utils {
         assert_eq!(rel1, "/src/file.rs");
     }
 }
+
+// =============================================================================
+// バッチリネームのテスト
+// =============================================================================
+
+mod batch_rename_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_batch_rename_multiple_files() {
+        let temp = ProjectTempDir::new("batch_rename_multi");
+        let file1 = temp.path().join("old1.txt");
+        let file2 = temp.path().join("old2.txt");
+        let file3 = temp.path().join("old3.txt");
+        fs::write(&file1, "content1").unwrap();
+        fs::write(&file2, "content2").unwrap();
+        fs::write(&file3, "content3").unwrap();
+
+        let paths = vec![
+            file1.to_string_lossy().to_string(),
+            file2.to_string_lossy().to_string(),
+            file3.to_string_lossy().to_string(),
+        ];
+        let new_names = vec!["new1.txt".to_string(), "new2.txt".to_string(), "new3.txt".to_string()];
+
+        let result = batch_rename(paths, new_names).await;
+        assert!(result.is_ok());
+
+        assert!(temp.path().join("new1.txt").exists());
+        assert!(temp.path().join("new2.txt").exists());
+        assert!(temp.path().join("new3.txt").exists());
+        assert!(!temp.path().join("old1.txt").exists());
+    }
+
+    #[tokio::test]
+    async fn test_batch_rename_mismatched_counts() {
+        let temp = ProjectTempDir::new("batch_rename_mismatch");
+        let file1 = temp.path().join("file.txt");
+        fs::write(&file1, "content").unwrap();
+
+        let paths = vec![file1.to_string_lossy().to_string()];
+        let new_names = vec!["new1.txt".to_string(), "new2.txt".to_string()];
+
+        let result = batch_rename(paths, new_names).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_batch_rename_empty_lists() {
+        let result = batch_rename(vec![], vec![]).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_batch_rename_directories() {
+        let temp = ProjectTempDir::new("batch_rename_dirs");
+        let dir1 = temp.path().join("olddir1");
+        let dir2 = temp.path().join("olddir2");
+        fs::create_dir(&dir1).unwrap();
+        fs::create_dir(&dir2).unwrap();
+        fs::write(dir1.join("file.txt"), "content").unwrap();
+
+        let paths = vec![
+            dir1.to_string_lossy().to_string(),
+            dir2.to_string_lossy().to_string(),
+        ];
+        let new_names = vec!["newdir1".to_string(), "newdir2".to_string()];
+
+        let result = batch_rename(paths, new_names).await;
+        assert!(result.is_ok());
+
+        assert!(temp.path().join("newdir1").exists());
+        assert!(temp.path().join("newdir1/file.txt").exists());
+        assert!(temp.path().join("newdir2").exists());
+    }
+
+    #[tokio::test]
+    async fn test_batch_rename_with_special_chars() {
+        let temp = ProjectTempDir::new("batch_rename_special");
+        let file = temp.path().join("old.txt");
+        fs::write(&file, "content").unwrap();
+
+        let paths = vec![file.to_string_lossy().to_string()];
+        let new_names = vec!["file with spaces.txt".to_string()];
+
+        let result = batch_rename(paths, new_names).await;
+        assert!(result.is_ok());
+        assert!(temp.path().join("file with spaces.txt").exists());
+    }
+}
+
+// =============================================================================
+// check_exists のテスト
+// =============================================================================
+
+mod check_exists_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_check_exists_file_present() {
+        let temp = ProjectTempDir::new("check_exists_file");
+        let file = temp.path().join("exists.txt");
+        fs::write(&file, "content").unwrap();
+
+        let result = check_exists(file.to_string_lossy().to_string()).await.unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_check_exists_file_absent() {
+        let temp = ProjectTempDir::new("check_exists_absent");
+        let file = temp.path().join("notexists.txt");
+
+        let result = check_exists(file.to_string_lossy().to_string()).await.unwrap();
+        assert!(!result);
+    }
+
+    #[tokio::test]
+    async fn test_check_exists_directory() {
+        let temp = ProjectTempDir::new("check_exists_dir");
+        let dir = temp.path().join("subdir");
+        fs::create_dir(&dir).unwrap();
+
+        let result = check_exists(dir.to_string_lossy().to_string()).await.unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_check_exists_nested_path() {
+        let temp = ProjectTempDir::new("check_exists_nested");
+        let nested = temp.path().join("a/b/c/file.txt");
+        fs::create_dir_all(nested.parent().unwrap()).unwrap();
+        fs::write(&nested, "content").unwrap();
+
+        let result = check_exists(nested.to_string_lossy().to_string()).await.unwrap();
+        assert!(result);
+
+        let result = check_exists(temp.path().join("a/b").to_string_lossy().to_string())
+            .await
+            .unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_check_exists_root() {
+        let result = check_exists("/".to_string()).await.unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_check_exists_hidden_file() {
+        let temp = ProjectTempDir::new("check_exists_hidden");
+        let hidden = temp.path().join(".hidden");
+        fs::write(&hidden, "hidden content").unwrap();
+
+        let result = check_exists(hidden.to_string_lossy().to_string())
+            .await
+            .unwrap();
+        assert!(result);
+    }
+}
+
+// =============================================================================
+// open_file_default と open_terminal_at のテスト
+// 注: これらは外部プロセスを起動するため、基本的な成功確認のみ
+// =============================================================================
+
+mod external_commands_tests {
+    use super::*;
+    use xplorer_lib::commands::utils::open_file_default;
+    use xplorer_lib::commands::utils::open_terminal_at;
+
+    #[tokio::test]
+    async fn test_open_file_default_existing_file() {
+        let temp = ProjectTempDir::new("open_file_default");
+        let file = temp.path().join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        // This will actually open the file in the default app
+        // We just verify it doesn't error
+        let result = open_file_default(file.to_string_lossy().to_string()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_open_file_default_directory() {
+        let temp = ProjectTempDir::new("open_file_dir");
+
+        // Opening a directory should work
+        let result = open_file_default(temp.path().to_string_lossy().to_string()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_open_terminal_at_valid_directory() {
+        let temp = ProjectTempDir::new("open_terminal");
+
+        let result = open_terminal_at(temp.path().to_string_lossy().to_string()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_open_terminal_at_invalid_path() {
+        // Not a directory should fail
+        let temp = ProjectTempDir::new("open_terminal_invalid");
+        let file = temp.path().join("file.txt");
+        fs::write(&file, "content").unwrap();
+
+        let result = open_terminal_at(file.to_string_lossy().to_string()).await;
+        assert!(result.is_err());
+    }
+}
