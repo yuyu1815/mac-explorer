@@ -35,6 +35,7 @@ interface DetailedProperties {
     accessed_formatted: string;
     is_readonly: boolean;
     is_hidden: boolean;
+    default_application: string | null;
 }
 
 export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClose }) => {
@@ -143,7 +144,10 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
                                 {!isDir && (
                                     <div className={styles.row}>
                                         <div className={styles.label}>プログラム:</div>
-                                        <div className={styles.value}>(不明) <button className={styles.btnSmall} disabled>変更(C)...</button></div>
+                                        <div className={styles.value}>
+                                            {props.default_application || '(不明)'}
+                                            {' '}<button className={styles.btnSmall} disabled>変更(C)...</button>
+                                        </div>
                                     </div>
                                 )}
 

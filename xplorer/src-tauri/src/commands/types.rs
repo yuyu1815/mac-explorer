@@ -52,6 +52,7 @@ pub struct DetailedProperties {
     pub accessed_formatted: String,
     pub is_readonly: bool,
     pub is_hidden: bool,
+    pub default_application: Option<String>,
 }
 
 /// ボリューム情報

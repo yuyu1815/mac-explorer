@@ -516,3 +516,119 @@ mod edge_cases {
         assert!(result.size_bytes >= 100);
     }
 }
+
+// =============================================================================
+// デフォルトアプリケーション取得のテスト
+// =============================================================================
+
+mod default_application_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_default_application_for_text_file() {
+        // Arrange
+        let temp = ProjectTempDir::new("default_app_txt");
+        let file = temp.path().join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Act
+        let result = get_basic_properties(file.to_string_lossy().to_string())
+            .await
+            .unwrap();
+
+        // Assert - .txt files usually have a default app on macOS
+        assert!(result.default_application.is_some(),
+            "default_application should be Some for .txt files");
+        let app_name = result.default_application.unwrap();
+        assert!(!app_name.is_empty(), "app name should not be empty");
+    }
+
+    #[tokio::test]
+    async fn test_default_application_for_directory() {
+        // Arrange
+        let temp = ProjectTempDir::new("default_app_dir");
+        let dir = temp.path().join("testdir");
+        fs::create_dir(&dir).unwrap();
+
+        // Act
+        let result = get_basic_properties(dir.to_string_lossy().to_string())
+            .await
+            .unwrap();
+
+        // Assert - directories should not have a default application
+        assert!(result.default_application.is_none(),
+            "default_application should be None for directories");
+    }
+
+    #[tokio::test]
+    async fn test_default_application_for_json_file() {
+        // Arrange
+        let temp = ProjectTempDir::new("default_app_json");
+        let file = temp.path().join("test.json");
+        fs::write(&file, "{}").unwrap();
+
+        // Act
+        let result = get_basic_properties(file.to_string_lossy().to_string())
+            .await
+            .unwrap();
+
+        // Assert - .json files usually have a default app
+        assert!(result.default_application.is_some(),
+            "default_application should be Some for .json files");
+    }
+
+    #[tokio::test]
+    async fn test_default_application_for_rust_file() {
+        // Arrange
+        let temp = ProjectTempDir::new("default_app_rust");
+        let file = temp.path().join("main.rs");
+        fs::write(&file, "fn main() {}").unwrap();
+
+        // Act
+        let result = get_basic_properties(file.to_string_lossy().to_string())
+            .await
+            .unwrap();
+
+        // Assert - .rs files usually have a default app (e.g., VS Code, Xcode)
+        assert!(result.default_application.is_some(),
+            "default_application should be Some for .rs files");
+    }
+
+    #[tokio::test]
+    async fn test_default_application_for_unknown_extension() {
+        // Arrange
+        let temp = ProjectTempDir::new("default_app_unknown");
+        let file = temp.path().join("test.xyz123unknown");
+        fs::write(&file, "content").unwrap();
+
+        // Act
+        let _result = get_basic_properties(file.to_string_lossy().to_string())
+            .await
+            .unwrap();
+
+        // Assert - unknown extensions may or may not have a default app
+        // We just verify the field exists and doesn't crash
+        // (could be Some or None depending on system configuration)
+    }
+
+    #[tokio::test]
+    async fn test_default_application_returns_app_name_not_path() {
+        // Arrange
+        let temp = ProjectTempDir::new("default_app_name");
+        let file = temp.path().join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Act
+        let result = get_basic_properties(file.to_string_lossy().to_string())
+            .await
+            .unwrap();
+
+        // Assert - should return app name, not full path
+        if let Some(app_name) = result.default_application {
+            assert!(!app_name.contains('/'),
+                "app name should not contain path separator, got: {}", app_name);
+            assert!(!app_name.ends_with(".app"),
+                "app name should not end with .app, got: {}", app_name);
+        }
+    }
+}

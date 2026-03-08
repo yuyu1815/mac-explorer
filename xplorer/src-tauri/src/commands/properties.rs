@@ -10,6 +10,58 @@ use super::types::DetailedProperties;
 use super::types::PropertyProgress;
 use super::utils::{format_size, format_timestamp};
 
+/// ファイルを開くデフォルトアプリケーションのパスを取得
+#[cfg(target_os = "macos")]
+fn get_default_application(path: &str) -> Option<String> {
+    use cocoa::base::{id as cocoa_id, nil};
+    use cocoa::foundation::NSString;
+    use objc::{msg_send, sel, sel_impl};
+    use std::ffi::CStr;
+    use std::path::Path;
+
+    // ディレクトリの場合は取得しない
+    if Path::new(path).is_dir() {
+        return None;
+    }
+
+    unsafe {
+        let pool: cocoa_id = msg_send![objc::class!(NSAutoreleasePool), new];
+
+        // NSURL.fileURLWithPath:
+        let ns_path = NSString::alloc(nil).init_str(path);
+        let url: cocoa_id = msg_send![objc::class!(NSURL), fileURLWithPath: ns_path];
+
+        // NSWorkspace.sharedWorkspace
+        let workspace: cocoa_id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
+
+        // [workspace URLForApplicationToOpenURL:url]
+        let app_url: cocoa_id = msg_send![workspace, URLForApplicationToOpenURL: url];
+
+        let result = if app_url == nil {
+            None
+        } else {
+            // [app_url path]
+            let app_path: cocoa_id = msg_send![app_url, path];
+            let bytes: *const i8 = msg_send![app_path, UTF8String];
+            let app_path_str = CStr::from_ptr(bytes).to_str().ok()?;
+
+            // アプリ名を抽出（例: /Applications/Visual Studio Code.app -> Visual Studio Code）
+            Path::new(app_path_str)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(|s| s.to_string())
+        };
+
+        let _: () = msg_send![pool, drain];
+        result
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn get_default_application(_path: &str) -> Option<String> {
+    None
+}
+
 #[tauri::command]
 pub async fn show_properties(path: String) -> Result<(), String> {
     let script = format!(
@@ -61,6 +113,8 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
         size_bytes.div_ceil(4096) * 4096
     };
 
+    let default_application = get_default_application(&path);
+
     Ok(DetailedProperties {
         name,
         path,
@@ -91,6 +145,7 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
             .file_name()
             .map(|n| n.to_string_lossy().starts_with('.'))
             .unwrap_or(false),
+        default_application,
     })
 }
 
