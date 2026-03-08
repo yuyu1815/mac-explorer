@@ -8,7 +8,7 @@
 pub mod commands;
 
 // Re-export for integration tests
-pub use commands::{directory, file_ops, utils, watcher};
+pub use commands::{archive, directory, file_ops, icons, properties, utils, volumes, watcher};
 
 use tauri::Manager;
 
