@@ -17,6 +17,7 @@ pub struct FileEntry {
     pub file_type: String,
     pub is_hidden: bool,
     pub is_symlink: bool,
+    pub is_archive: bool,
     pub permissions: String,
     pub icon_id: String,
 }

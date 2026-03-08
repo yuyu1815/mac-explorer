@@ -121,6 +121,7 @@ pub async fn list_archive_internal(
                 },
                 is_hidden: name.starts_with('.'),
                 is_symlink: false,
+                is_archive: false, // アーカイブ内部のエントリはアーカイブではない
                 permissions: if is_dir {
                     "755".to_string()
                 } else {
@@ -200,6 +201,7 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
                 },
                 is_hidden: entry.file_name().to_string_lossy().starts_with('.'),
                 is_symlink: meta.file_type().is_symlink(),
+                is_archive: is_archive_file(&path_str),
                 permissions: format!("{:o}", meta.permissions().mode() & 0o777),
                 icon_id: get_entry_icon_id(is_dir, &path_str, ext),
             })
