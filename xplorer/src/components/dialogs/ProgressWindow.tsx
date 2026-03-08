@@ -10,41 +10,16 @@ export interface ProgressData {
     files_processed: number;
     total_files: number;
     bytes_processed: number;
+    bytes_processed_formatted: string;
     total_bytes: number;
+    total_bytes_formatted: string;
+    speed: number;
+    speed_formatted: string;
+    eta: number;
+    eta_formatted: string;
+    progress_percent: number;
     complete: boolean;
 }
-
-// 速度の人間可読フォーマット
-const formatSpeed = (bytesPerSec: number): string => {
-    if (bytesPerSec <= 0) return '0 bytes/s';
-    if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} bytes/s`;
-    if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
-    if (bytesPerSec < 1024 * 1024 * 1024) return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
-    return `${(bytesPerSec / (1024 * 1024 * 1024)).toFixed(2)} GB/s`;
-};
-
-// バイト数の人間可読フォーマット
-const formatBytes = (bytes: number): string => {
-    if (bytes <= 0) return '0 bytes';
-    if (bytes < 1024) return `${bytes} bytes`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-};
-
-// 残り時間の人間可読フォーマット
-const formatTimeRemaining = (seconds: number): string => {
-    if (!isFinite(seconds) || seconds <= 0) return '計算中...';
-    if (seconds < 60) return `約 ${Math.ceil(seconds)} 秒`;
-    if (seconds < 3600) {
-        const m = Math.floor(seconds / 60);
-        const s = Math.ceil(seconds % 60);
-        return `約 ${m} 分 ${s} 秒`;
-    }
-    const h = Math.floor(seconds / 3600);
-    const m = Math.ceil((seconds % 3600) / 60);
-    return `約 ${h} 時間 ${m} 分`;
-};
 
 // Windows 10風 グラフ一体型プログレスバー
 const IntegratedSpeedGraph: React.FC<{
@@ -158,18 +133,14 @@ export const ProgressWindow: React.FC = () => {
     } | null>(null);
     const [isExpanded, setIsExpanded] = useState(true);
     const [speedHistory, setSpeedHistory] = useState<number[]>([]);
-    const [currentSpeed, setCurrentSpeed] = useState(0);
-    const [timeRemaining, setTimeRemaining] = useState<string>('計算中...');
     const [isPaused, setIsPaused] = useState(false);
 
     // ExtractPromptのpayload用
     const [actionInfo, setActionInfo] = useState<{ action: string, dest: string }>({ action: 'コピー', dest: '' });
 
-    const prevBytesRef = useRef(-1); // -1 = 未初期化
     const startTimeRef = useRef(Date.now());
     const speedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const progressRef = useRef<ProgressData | null>(null);
-    const smoothedSpeedRef = useRef(0); // EMA用
     const isPausedRef = useRef(false);
 
     const togglePause = () => {
@@ -196,36 +167,12 @@ export const ProgressWindow: React.FC = () => {
             const p = progressRef.current;
             if (!p || p.complete) return;
 
-            const now = p.bytes_processed;
-
-            if (prevBytesRef.current < 0) {
-                prevBytesRef.current = now;
-                return;
-            }
-
-            const rawDelta = Math.max(0, now - prevBytesRef.current) * 5; // 0.2s間隔なので5倍して秒換算
-            prevBytesRef.current = now;
-
-            const alpha = 0.3;
-            smoothedSpeedRef.current = smoothedSpeedRef.current === 0
-                ? rawDelta
-                : alpha * rawDelta + (1 - alpha) * smoothedSpeedRef.current;
-
-            const speed = Math.round(smoothedSpeedRef.current);
-            setCurrentSpeed(speed);
-
+            // Use backend's speed for the graph history
+            const speed = p.speed;
             setSpeedHistory(prev => {
                 const next = [...prev, speed];
                 return next.length > 100 ? next.slice(-100) : next; // 0.2s * 100 = 20s分を表示
             });
-
-            const elapsed = (Date.now() - startTimeRef.current) / 1000;
-            if (elapsed > 0 && p.total_bytes > 0 && p.bytes_processed > 0) {
-                const avgSpeed = p.bytes_processed / elapsed;
-                const remaining = p.total_bytes - p.bytes_processed;
-                const estSeconds = remaining / avgSpeed;
-                setTimeRemaining(formatTimeRemaining(estSeconds));
-            }
         }, 200);
 
         return () => {
@@ -423,7 +370,7 @@ export const ProgressWindow: React.FC = () => {
                         <IntegratedSpeedGraph
                             speedHistory={speedHistory}
                             percentage={percentage}
-                            currentSpeedText={formatSpeed(currentSpeed)}
+                            currentSpeedText={progress?.speed_formatted || '0 B/s'}
                         />
 
                         <div className={styles.detailsInfo}>
@@ -431,10 +378,10 @@ export const ProgressWindow: React.FC = () => {
                                 名前: {progress?.current_file || '...'}
                             </div>
                             <div>
-                                残り時間: {progress?.complete ? '完了' : timeRemaining}
+                                残り時間: {progress?.complete ? '完了' : (progress?.eta_formatted || '計算中...')}
                             </div>
                             <div>
-                                残りの項目: {progress ? (progress.total_files - progress.files_processed).toLocaleString() : 0} ({progress ? formatBytes(progress.total_bytes - progress.bytes_processed) : '0 bytes'})
+                                残りの項目: {progress ? (progress.total_files - progress.files_processed).toLocaleString() : 0} ({progress?.bytes_processed_formatted || '0 B'} / {progress?.total_bytes_formatted || '0 B'})
                             </div>
                         </div>
                     </div>

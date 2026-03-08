@@ -7,7 +7,6 @@ import {
     FileAudio, FileImage, FileArchive, FileCode
 } from 'lucide-react';
 import { PropertiesDialog } from '@/components/dialogs/PropertiesDialog';
-import { isArchive } from '@/utils/archive';
 import { FileEntry } from '@/types';
 import { ipc } from '@/services/ipc';
 import { useFileSystem } from '@/hooks/useFileSystem';
@@ -168,7 +167,7 @@ export const MainPane = () => {
     }, [renamingPath, renameValue]);
 
     const handleDoubleClick = useCallback(async (file: FileEntry) => {
-        if (file.is_dir || isArchive(file.path)) {
+        if (file.is_dir || file.is_archive) {
             setCurrentPath(file.path);
         } else {
             ipc.openFileDefault(file.path);

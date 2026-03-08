@@ -56,7 +56,7 @@ describe('MainPane', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(invoke).mockImplementation((cmd, args: any) => {
+        vi.mocked(invoke).mockImplementation((cmd, _args: any) => {
             if (cmd === 'list_files_sorted') return Promise.resolve(mockFiles);
             if (cmd === 'watch_path') return Promise.resolve();
             if (cmd === 'rename_file') return Promise.resolve();

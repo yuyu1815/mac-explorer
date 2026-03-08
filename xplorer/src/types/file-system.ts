@@ -11,6 +11,7 @@ export interface FileEntry {
     file_type: string;
     is_hidden: boolean;
     is_symlink: boolean;
+    is_archive: boolean;
     permissions: string;
     icon_id: string;
 }
