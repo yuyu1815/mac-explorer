@@ -6,7 +6,10 @@
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use tempfile::TempDir;
+
+mod test_utils;
+use test_utils::ProjectTempDir;
+
 use xplorer_lib::commands::file_ops::*;
 use xplorer_lib::commands::utils::{get_home_dir, get_parent_path};
 
@@ -77,7 +80,7 @@ mod create_directory_tests {
 
     #[tokio::test]
     async fn test_create_single_directory() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("create_single_dir");
         let new_dir = temp.path().join("new_folder");
         assert!(create_directory(new_dir.to_string_lossy().to_string())
             .await
@@ -87,7 +90,7 @@ mod create_directory_tests {
 
     #[tokio::test]
     async fn test_create_nested_directories() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("create_nested_dirs");
         let nested = temp.path().join("a/b/c/d/e");
         assert!(create_directory(nested.to_string_lossy().to_string())
             .await
@@ -97,7 +100,7 @@ mod create_directory_tests {
 
     #[tokio::test]
     async fn test_create_existing_directory() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("create_existing_dir");
         let existing = temp.path().join("existing");
         fs::create_dir(&existing).unwrap();
         assert!(create_directory(existing.to_string_lossy().to_string())
@@ -107,7 +110,7 @@ mod create_directory_tests {
 
     #[tokio::test]
     async fn test_create_directory_with_special_chars() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("create_dir_special_chars");
         let special = temp.path().join("folder with spaces");
         assert!(create_directory(special.to_string_lossy().to_string())
             .await
@@ -132,7 +135,7 @@ mod create_file_tests {
 
     #[tokio::test]
     async fn test_create_simple_file() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("create_simple_file");
         let file_path = temp.path().join("test.txt");
         assert!(create_file(file_path.to_string_lossy().to_string())
             .await
@@ -142,7 +145,7 @@ mod create_file_tests {
 
     #[tokio::test]
     async fn test_create_file_overwrites_existing() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("create_file_overwrite");
         let file_path = temp.path().join("existing.txt");
         let mut file = fs::File::create(&file_path).unwrap();
         file.write_all(b"original content").unwrap();
@@ -155,7 +158,7 @@ mod create_file_tests {
 
     #[tokio::test]
     async fn test_create_file_nonexistent_parent() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("create_file_no_parent");
         let file_path = temp.path().join("nonexistent/test.txt");
         assert!(create_file(file_path.to_string_lossy().to_string())
             .await
@@ -172,7 +175,7 @@ mod copy_files_tests {
 
     #[tokio::test]
     async fn test_copy_single_file() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("copy_single_file");
         let src = temp.path().join("source.txt");
         let dest_dir = temp.path().join("dest");
         fs::write(&src, "test content").unwrap();
@@ -192,7 +195,7 @@ mod copy_files_tests {
 
     #[tokio::test]
     async fn test_copy_multiple_files() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("copy_multiple_files");
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
@@ -214,7 +217,7 @@ mod copy_files_tests {
 
     #[tokio::test]
     async fn test_copy_nonexistent_file_skipped() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("copy_nonexistent_file");
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
@@ -228,7 +231,7 @@ mod copy_files_tests {
 
     #[tokio::test]
     async fn test_copy_empty_list() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("copy_empty_list");
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
@@ -247,7 +250,7 @@ mod move_files_tests {
 
     #[tokio::test]
     async fn test_move_single_file() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("move_single_file");
         let src = temp.path().join("source.txt");
         let dest_dir = temp.path().join("dest");
         fs::write(&src, "test content").unwrap();
@@ -266,7 +269,7 @@ mod move_files_tests {
 
     #[tokio::test]
     async fn test_move_multiple_files() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("move_multiple_files");
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
@@ -294,7 +297,7 @@ mod move_files_tests {
 
     #[tokio::test]
     async fn test_move_nonexistent_file_skipped() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("move_nonexistent_file");
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
@@ -316,7 +319,7 @@ mod delete_files_tests {
 
     #[tokio::test]
     async fn test_delete_single_file() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("delete_single_file");
         let file = temp.path().join("to_delete.txt");
         fs::write(&file, "content").unwrap();
 
@@ -330,7 +333,7 @@ mod delete_files_tests {
 
     #[tokio::test]
     async fn test_delete_directory_with_contents() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("delete_dir_with_contents");
         let dir = temp.path().join("to_delete");
         fs::create_dir(&dir).unwrap();
         fs::write(dir.join("file1.txt"), "content").unwrap();
@@ -345,7 +348,7 @@ mod delete_files_tests {
 
     #[tokio::test]
     async fn test_delete_empty_directory() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("delete_empty_dir");
         let dir = temp.path().join("empty_dir");
         fs::create_dir(&dir).unwrap();
 
@@ -357,7 +360,7 @@ mod delete_files_tests {
 
     #[tokio::test]
     async fn test_delete_multiple_files() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("delete_multiple_files");
         let files: Vec<_> = (0..3)
             .map(|i| {
                 let path = temp.path().join(format!("file{}.txt", i));
@@ -392,7 +395,7 @@ mod rename_file_tests {
 
     #[tokio::test]
     async fn test_rename_file() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("rename_file");
         let old = temp.path().join("old_name.txt");
         fs::write(&old, "content").unwrap();
 
@@ -408,7 +411,7 @@ mod rename_file_tests {
 
     #[tokio::test]
     async fn test_rename_directory() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("rename_directory");
         let old = temp.path().join("old_dir");
         fs::create_dir(&old).unwrap();
         fs::write(old.join("file.txt"), "content").unwrap();
@@ -425,7 +428,7 @@ mod rename_file_tests {
 
     #[tokio::test]
     async fn test_rename_with_special_chars() {
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("rename_special_chars");
         let old = temp.path().join("old.txt");
         fs::write(&old, "content").unwrap();
 

@@ -5,7 +5,9 @@
 
 use std::fs;
 use std::path::Path;
-use tempfile::TempDir;
+
+mod test_utils;
+use test_utils::ProjectTempDir;
 
 // テスト用ヘルパー関数
 mod helpers {
@@ -63,7 +65,7 @@ mod file_size_thresholds {
     #[test]
     fn test_empty_file() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("empty_file");
         let file = temp.path().join("empty.txt");
 
         // Act
@@ -77,7 +79,7 @@ mod file_size_thresholds {
     #[test]
     fn test_one_byte_file() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("one_byte_file");
         let file = temp.path().join("one_byte.txt");
 
         // Act
@@ -91,7 +93,7 @@ mod file_size_thresholds {
     #[test]
     fn test_4kb_boundary() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("4kb_boundary");
         let file_just_under = temp.path().join("4095.bin");
         let file_exact = temp.path().join("4096.bin");
         let file_just_over = temp.path().join("4097.bin");
@@ -110,7 +112,7 @@ mod file_size_thresholds {
     #[test]
     fn test_large_file_1gb() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("large_file_1gb");
         let file = temp.path().join("large.bin");
         let expected_size: u64 = 1024 * 1024 * 1024;
 
@@ -125,7 +127,7 @@ mod file_size_thresholds {
     #[test]
     fn test_very_long_filename() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("very_long_filename");
         let long_name = "a".repeat(255);
         let file = temp.path().join(&long_name);
         let too_long = "a".repeat(256);
@@ -154,7 +156,7 @@ mod directory_thresholds {
     #[test]
     fn test_deep_directory_structure() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("deep_dir_structure");
         let depth = 50;
         let expected_dirs = 51; // temp + 50 levels
 
@@ -170,7 +172,7 @@ mod directory_thresholds {
     #[test]
     fn test_many_files_in_directory() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("many_files_in_dir");
         let file_count = 1000;
 
         // Act
@@ -187,7 +189,7 @@ mod directory_thresholds {
     #[test]
     fn test_nested_many_files() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("nested_many_files");
         let dir_count = 10;
         let files_per_dir = 100;
 
@@ -210,7 +212,7 @@ mod directory_thresholds {
     #[test]
     fn test_empty_directory_handling() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("empty_dir_handling");
         let empty = temp.path().join("empty");
         fs::create_dir(&empty).unwrap();
 
@@ -232,7 +234,7 @@ mod special_filenames {
     #[test]
     fn test_unicode_filename_japanese() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("unicode_filename_japanese");
         let file = temp.path().join("日本語ファイル名.txt");
         let content = "内容";
 
@@ -247,7 +249,7 @@ mod special_filenames {
     #[test]
     fn test_unicode_filename_emoji() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("unicode_filename_emoji");
         let file = temp.path().join("📄file_🎉.txt");
 
         // Act
@@ -260,7 +262,7 @@ mod special_filenames {
     #[test]
     fn test_spaces_in_filename() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("spaces_in_filename");
         let files = vec![
             "file with spaces.txt",
             "  leading spaces.txt",
@@ -279,7 +281,7 @@ mod special_filenames {
     #[test]
     fn test_hidden_file() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("hidden_file");
         let hidden = temp.path().join(".hidden_file");
 
         // Act
@@ -297,7 +299,7 @@ mod special_filenames {
     #[test]
     fn test_multiple_extensions() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("multiple_extensions");
         let file = temp.path().join("archive.tar.gz");
 
         // Act
@@ -311,7 +313,7 @@ mod special_filenames {
     #[test]
     fn test_no_extension() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("no_extension");
         let file = temp.path().join("README");
 
         // Act
@@ -325,7 +327,7 @@ mod special_filenames {
     #[test]
     fn test_dotfile_with_extension() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("dotfile_with_extension");
         let file = temp.path().join(".gitignore");
 
         // Act
@@ -346,7 +348,8 @@ mod error_handling {
     #[test]
     fn test_read_nonexistent_file() {
         // Arrange
-        let nonexistent_path = "/nonexistent/path/file.txt";
+        let temp = ProjectTempDir::new("read_nonexistent_file");
+        let nonexistent_path = temp.path().join("nonexistent/file.txt");
 
         // Act
         let result = fs::read_to_string(nonexistent_path);
@@ -358,7 +361,7 @@ mod error_handling {
     #[test]
     fn test_write_to_nonexistent_directory() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("write_to_nonexistent_dir");
         let file = temp.path().join("nonexistent/nested/dir/file.txt");
 
         // Act
@@ -371,7 +374,8 @@ mod error_handling {
     #[test]
     fn test_delete_nonexistent_file() {
         // Arrange
-        let nonexistent = "/nonexistent/file.txt";
+        let temp = ProjectTempDir::new("delete_nonexistent_file");
+        let nonexistent = temp.path().join("nonexistent.txt");
 
         // Act
         let result = fs::remove_file(nonexistent);
@@ -383,7 +387,7 @@ mod error_handling {
     #[test]
     fn test_create_file_in_readonly_directory() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("create_file_in_readonly_dir");
         let readonly_dir = temp.path().join("readonly");
         fs::create_dir(&readonly_dir).unwrap();
         let mut perms = fs::metadata(&readonly_dir).unwrap().permissions();
@@ -406,7 +410,7 @@ mod error_handling {
     #[test]
     fn test_path_with_null_byte() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("path_with_null_byte");
         let invalid_path = temp.path().join("file\0name.txt");
 
         // Act
@@ -429,7 +433,7 @@ mod concurrency {
     #[test]
     fn test_concurrent_file_creation() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("concurrent_file_creation");
         let temp = Arc::new(temp);
         let thread_count = 10;
 
@@ -456,7 +460,7 @@ mod concurrency {
     #[test]
     fn test_concurrent_read_same_file() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("concurrent_read_same_file");
         let file = temp.path().join("shared.txt");
         let expected_content = "shared content";
         fs::write(&file, expected_content).unwrap();
@@ -490,7 +494,7 @@ mod symlink_handling {
     #[test]
     fn test_file_symlink() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("file_symlink");
         let original = temp.path().join("original.txt");
         let link = temp.path().join("link.txt");
         fs::write(&original, "original content").unwrap();
@@ -513,7 +517,7 @@ mod symlink_handling {
     #[test]
     fn test_directory_symlink() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("directory_symlink");
         let original_dir = temp.path().join("original_dir");
         let link_dir = temp.path().join("link_dir");
         fs::create_dir(&original_dir).unwrap();
@@ -534,7 +538,7 @@ mod symlink_handling {
     #[test]
     fn test_broken_symlink() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("broken_symlink");
         let nonexistent = temp.path().join("nonexistent.txt");
         let broken_link = temp.path().join("broken_link");
 
@@ -561,7 +565,7 @@ mod folder_size_calculation {
     #[test]
     fn test_empty_folder_size() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("empty_folder_size");
         let empty = temp.path().join("empty");
         fs::create_dir(&empty).unwrap();
 
@@ -576,7 +580,7 @@ mod folder_size_calculation {
     #[test]
     fn test_folder_with_various_file_sizes() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("folder_various_sizes");
         let sizes = [0, 1, 100, 1024, 4096, 1024 * 1024, 10 * 1024 * 1024];
 
         // Act
@@ -598,7 +602,7 @@ mod folder_size_calculation {
     #[test]
     fn test_deeply_nested_file_size() {
         // Arrange
-        let temp = TempDir::new().unwrap();
+        let temp = ProjectTempDir::new("deeply_nested_file_size");
         let depth = 20;
         let content = "deep content";
 

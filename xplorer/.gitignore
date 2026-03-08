@@ -30,6 +30,7 @@ src-tauri/Cargo.lock
 # Test and coverage
 coverage/
 .nyc_output/
+.tmp/
 
 # Environment
 .env

@@ -1,11 +1,14 @@
 use std::fs::File;
-use tempfile::tempdir;
+
+mod test_utils;
+use test_utils::ProjectTempDir;
+
 use xplorer_lib::directory::{list_directory, split_archive_path};
 
 #[tokio::test]
 async fn test_archive_browsing() {
-    let dir = tempdir().unwrap();
-    let zip_path = dir.path().join("test.zip");
+    let temp = ProjectTempDir::new("archive_browsing");
+    let zip_path = temp.path().join("test.zip");
     let zip_path_str = zip_path.to_str().unwrap();
 
     // 1. ファイルを作成

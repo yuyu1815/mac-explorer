@@ -6,7 +6,9 @@
 use libarchive2::{ArchiveFormat, CompressionFormat, ReadArchive, WriteArchive};
 use std::fs;
 use std::path::Path;
-use tempfile::TempDir;
+
+mod test_utils;
+use test_utils::ProjectTempDir;
 
 /// テスト用ヘルパー：ZIPアーカイブを作成
 fn create_test_zip(
@@ -32,7 +34,7 @@ fn create_test_zip(
 #[test]
 fn test_create_simple_zip_archive() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("create_simple_zip");
     let zip_path = temp.path().join("test.zip");
     let content1: &[u8] = b"content1";
     let content2: &[u8] = b"content2";
@@ -49,7 +51,7 @@ fn test_create_simple_zip_archive() {
 #[test]
 fn test_create_zip_with_unicode_filename() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("create_zip_unicode");
     let zip_path = temp.path().join("unicode.zip");
     let content1: &[u8] = b"content";
     let content2: &[u8] = b"emoji content";
@@ -69,7 +71,7 @@ fn test_create_zip_with_unicode_filename() {
 #[test]
 fn test_extract_zip_archive() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("extract_zip");
     let zip_path = temp.path().join("extract_test.zip");
     let extract_dir = temp.path().join("extracted");
     fs::create_dir(&extract_dir).unwrap();
@@ -162,7 +164,7 @@ fn test_common_parent_directory() {
 #[test]
 fn test_empty_directory_compression() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("empty_dir_compression");
     let empty_dir = temp.path().join("empty");
     fs::create_dir(&empty_dir).unwrap();
 
@@ -183,7 +185,7 @@ fn test_empty_directory_compression() {
 #[test]
 fn test_large_file_compression() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("large_file_compression");
     let large_content = vec![0u8; 1024 * 1024]; // 1MB
     let zip_path = temp.path().join("large.zip");
 
@@ -210,7 +212,7 @@ fn test_large_file_compression() {
 #[test]
 fn test_nested_directory_structure() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("nested_dir_structure");
     let base = temp.path().join("nested");
     let deep_dir = base.join("level1/level2/level3");
     fs::create_dir_all(&deep_dir).unwrap();
@@ -268,7 +270,7 @@ fn test_archive_format_detection() {
 #[test]
 fn test_error_collection_on_missing_files() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("error_collection_missing");
     let existing = temp.path().join("exists.txt");
     fs::write(&existing, "content").unwrap();
     let nonexistent_path = temp.path().join("nonexistent.txt");
@@ -296,7 +298,7 @@ fn test_error_collection_on_missing_files() {
 #[test]
 fn test_extract_preserves_file_permissions() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("extract_preserve_perms");
     let zip_path = temp.path().join("perm_test.zip");
     let extract_dir = temp.path().join("extracted");
     fs::create_dir(&extract_dir).unwrap();
@@ -383,7 +385,7 @@ fn extract_archive(
 #[test]
 fn test_tar_format_compression_and_extraction() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("tar_format");
     let tar_path = temp.path().join("test.tar");
     let extract_dir = temp.path().join("extracted");
     fs::create_dir(&extract_dir).unwrap();
@@ -424,7 +426,7 @@ fn test_tar_format_compression_and_extraction() {
 #[test]
 fn test_targz_format_compression_and_extraction() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("targz_format");
     let tar_path = temp.path().join("test.tar.gz");
     let extract_dir = temp.path().join("extracted");
     fs::create_dir(&extract_dir).unwrap();
@@ -456,7 +458,7 @@ fn test_targz_format_compression_and_extraction() {
 #[test]
 fn test_targz_compression_reduces_size() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("targz_compression_size");
     let tar_path = temp.path().join("compressed.tar.gz");
     let tar_uncompressed = temp.path().join("uncompressed.tar");
     let repeat_content = std::iter::repeat(b'a' as u8)
@@ -497,7 +499,7 @@ fn test_targz_compression_reduces_size() {
 #[test]
 fn test_tarbz2_format_compression_and_extraction() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("tarbz2_format");
     let tar_path = temp.path().join("test.tar.bz2");
     let extract_dir = temp.path().join("extracted");
     fs::create_dir(&extract_dir).unwrap();
@@ -529,7 +531,7 @@ fn test_tarbz2_format_compression_and_extraction() {
 #[test]
 fn test_tarxz_format_compression_and_extraction() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("tarxz_format");
     let tar_path = temp.path().join("test.tar.xz");
     let extract_dir = temp.path().join("extracted");
     fs::create_dir(&extract_dir).unwrap();
@@ -561,7 +563,7 @@ fn test_tarxz_format_compression_and_extraction() {
 #[test]
 fn test_tarzst_format_compression_and_extraction() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("tarzst_format");
     let tar_path = temp.path().join("test.tar.zst");
     let extract_dir = temp.path().join("extracted");
     fs::create_dir(&extract_dir).unwrap();
@@ -593,7 +595,7 @@ fn test_tarzst_format_compression_and_extraction() {
 #[test]
 fn test_7z_format_compression_and_extraction() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("7z_format");
     let archive_path = temp.path().join("test.7z");
     let extract_dir = temp.path().join("extracted");
     fs::create_dir(&extract_dir).unwrap();
@@ -643,7 +645,7 @@ fn test_all_formats_support_ascii_filenames() {
     // このテストではASCIIファイル名が全フォーマットで動作することを確認します。
 
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("all_formats_ascii");
     let ascii_files: Vec<(&str, &[u8])> = vec![
         ("file1.txt", b"content1".as_slice()),
         ("file2.txt", b"content2".as_slice()),
@@ -705,7 +707,7 @@ fn test_all_formats_support_ascii_filenames() {
 #[test]
 fn test_all_formats_support_nested_directories() {
     // Arrange
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("all_formats_nested");
     let nested_files: Vec<(&str, &[u8])> = vec![
         ("root.txt", b"root content".as_slice()),
         ("dir1/nested.txt", b"nested content".as_slice()),
@@ -762,7 +764,7 @@ fn test_all_formats_support_nested_directories() {
 #[test]
 fn test_compression_ratio_comparison() {
     // Arrange - 圧縮可能なデータ（繰り返しパターン）
-    let temp = TempDir::new().unwrap();
+    let temp = ProjectTempDir::new("compression_ratio");
     let repeat_content = std::iter::repeat(b'x' as u8)
         .take(50_000)
         .collect::<Vec<_>>();
