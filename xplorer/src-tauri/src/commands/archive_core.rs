@@ -952,7 +952,7 @@ mod tests {
         let total_bytes = 1024 * 1024 * 10; // 10 MB
         let mut reporter = CompressionProgressReporter::new(5, total_bytes, channel);
 
-        // 全ファイル処理
+        // 全ファイル処理（合計10MB処理）
         for i in 0..5 {
             reporter.update(&format!("file{}.txt", i), 1024 * 1024 * 2);
         }
@@ -965,16 +965,19 @@ mod tests {
 
         let last_progress = sent.last().unwrap();
 
-        // finish()ではcomplete=trueとなり、bytes_processed_formattedは設定される
-        assert!(last_progress.bytes_processed_formatted.contains("MB") || last_progress.bytes_processed_formatted.contains("KB"),
-            "bytes_processed_formattedがMBまたはKBを含むべき: {}", last_progress.bytes_processed_formatted);
-        assert!(last_progress.total_bytes_formatted.contains("MB"),
-            "total_bytes_formattedがMBを含むべき: {}", last_progress.total_bytes_formatted);
-
-        // finish()ではspeed_formattedは空になる（完了時は速度0）
-        // パーセンテージの検証
-        assert!(last_progress.progress_percent >= 0.0, "パーセンテージが0以上であるべき");
+        // 厳密な比較でフォーマット済みフィールドを検証
+        assert_eq!(last_progress.bytes_processed_formatted, "10.0 MB",
+            "bytes_processed_formatted: expected '10.0 MB', got '{}'", last_progress.bytes_processed_formatted);
+        assert_eq!(last_progress.total_bytes_formatted, "10.0 MB",
+            "total_bytes_formatted: expected '10.0 MB', got '{}'", last_progress.total_bytes_formatted);
+        assert_eq!(last_progress.progress_percent, 100.0,
+            "progress_percent: expected 100.0, got {}", last_progress.progress_percent);
         assert!(last_progress.complete, "completeフラグがtrueであるべき");
+        // finish()ではspeed_formattedは空になる
+        assert_eq!(last_progress.speed_formatted, "",
+            "speed_formatted: expected empty, got '{}'", last_progress.speed_formatted);
+        assert_eq!(last_progress.eta_formatted, "",
+            "eta_formatted: expected empty, got '{}'", last_progress.eta_formatted);
     }
 
     #[test]
@@ -986,9 +989,9 @@ mod tests {
         let total_bytes = 1024 * 1024 * 50; // 50 MB
         let mut reporter = ExtractionProgressReporter::new(10, total_bytes, channel);
 
-        // 全ファイル処理
+        // 全ファイル処理（バイトも更新）
         for i in 0..10 {
-            reporter.increment_file(format!("extracted_file{}.txt", i));
+            reporter.update_bytes(1024 * 1024 * 5, format!("extracted_file{}.txt", i)); // 5MB per file
         }
 
         reporter.finish();
@@ -999,14 +1002,13 @@ mod tests {
 
         let last_progress = sent.last().unwrap();
 
-        // フォーマット済みフィールドの検証
-        assert!(last_progress.bytes_processed_formatted.contains("MB") || last_progress.bytes_processed_formatted.contains("KB") || last_progress.bytes_processed_formatted.contains("B"),
-            "bytes_processed_formattedがMB/KB/Bを含むべき: {}", last_progress.bytes_processed_formatted);
-        assert!(last_progress.total_bytes_formatted.contains("MB"),
-            "total_bytes_formattedがMBを含むべき: {}", last_progress.total_bytes_formatted);
-
-        // パーセンテージの検証
-        assert!(last_progress.progress_percent >= 0.0, "パーセンテージが0以上であるべき");
+        // 厳密な比較でフォーマット済みフィールドを検証
+        assert_eq!(last_progress.bytes_processed_formatted, "50.0 MB",
+            "bytes_processed_formatted: expected '50.0 MB', got '{}'", last_progress.bytes_processed_formatted);
+        assert_eq!(last_progress.total_bytes_formatted, "50.0 MB",
+            "total_bytes_formatted: expected '50.0 MB', got '{}'", last_progress.total_bytes_formatted);
+        assert_eq!(last_progress.progress_percent, 100.0,
+            "progress_percent: expected 100.0, got {}", last_progress.progress_percent);
         assert!(last_progress.complete, "completeフラグがtrueであるべき");
     }
 
@@ -1024,9 +1026,36 @@ mod tests {
         let sent = channel_ref.get_sent();
         let last_progress = sent.last().unwrap();
 
-        // 0バイトの場合のフォーマット検証
-        assert!(last_progress.bytes_processed_formatted.contains("B"),
-            "0バイトの場合はB単位で表示されるべき: {}", last_progress.bytes_processed_formatted);
+        // 0バイトの場合の厳密なフォーマット検証
+        assert_eq!(last_progress.bytes_processed_formatted, "0 B",
+            "bytes_processed_formatted: expected '0 B', got '{}'", last_progress.bytes_processed_formatted);
+        assert_eq!(last_progress.total_bytes_formatted, "0 B",
+            "total_bytes_formatted: expected '0 B', got '{}'", last_progress.total_bytes_formatted);
+        assert_eq!(last_progress.progress_percent, 100.0,
+            "0バイトの場合はパーセンテージは100%であるべき");
+    }
+
+    #[test]
+    fn test_compression_progress_partial() {
+        use std::sync::Arc;
+
+        let channel = Arc::new(MockChannel::<CompressionProgress>::new());
+        let channel_ref = Arc::clone(&channel);
+        let total_bytes = 1024 * 1024 * 100; // 100 MB
+        let mut reporter = CompressionProgressReporter::new(2, total_bytes, channel);
+
+        // 50MB処理
+        reporter.update("first.bin", 1024 * 1024 * 50);
+        reporter.finish();
+
+        let sent = channel_ref.get_sent();
+        let last_progress = sent.last().unwrap();
+
+        // 部分的な処理でもfinish()時は100%になる（bytes_processedベース）
+        assert_eq!(last_progress.bytes_processed_formatted, "50.0 MB",
+            "bytes_processed_formatted: expected '50.0 MB', got '{}'", last_progress.bytes_processed_formatted);
+        assert_eq!(last_progress.total_bytes_formatted, "100.0 MB",
+            "total_bytes_formatted: expected '100.0 MB', got '{}'", last_progress.total_bytes_formatted);
     }
 
     #[test]
@@ -1035,10 +1064,14 @@ mod tests {
         use super::format_size;
 
         assert_eq!(format_size(0), "0 B");
+        assert_eq!(format_size(1), "1 B");
         assert_eq!(format_size(512), "512 B");
-        assert!(format_size(1024).contains("KB"));
-        assert!(format_size(1024 * 1024).contains("MB"));
-        assert!(format_size(1024 * 1024 * 1024).contains("GB"));
+        assert_eq!(format_size(1023), "1023 B");
+        assert_eq!(format_size(1024), "1.0 KB");
+        assert_eq!(format_size(1536), "1.5 KB");
+        assert_eq!(format_size(1024 * 1024), "1.0 MB");
+        assert_eq!(format_size(1024 * 1024 * 512), "512.0 MB");
+        assert_eq!(format_size(1024 * 1024 * 1024), "1.0 GB");
     }
 
     #[test]
@@ -1046,8 +1079,12 @@ mod tests {
         use super::format_speed;
 
         assert_eq!(format_speed(0), "0 B/s");
-        assert!(format_speed(1024).contains("KB"));
-        assert!(format_speed(1024 * 1024).contains("MB"));
+        assert_eq!(format_speed(100), "100 B/s");
+        assert_eq!(format_speed(1023), "1023 B/s");
+        assert_eq!(format_speed(1024), "1.0 KB/s");
+        assert_eq!(format_speed(1024 * 512), "512.0 KB/s");
+        assert_eq!(format_speed(1024 * 1024), "1.0 MB/s");
+        assert_eq!(format_speed(1024 * 1024 * 50), "50.0 MB/s");
     }
 
     #[test]
@@ -1055,8 +1092,15 @@ mod tests {
         use super::format_eta;
 
         assert_eq!(format_eta(0), "計算中...");
-        assert!(format_eta(30).contains("秒"));
-        assert!(format_eta(90).contains("分"));
-        assert!(format_eta(3600).contains("時間"));
+        assert_eq!(format_eta(1), "1秒");
+        assert_eq!(format_eta(30), "30秒");
+        assert_eq!(format_eta(59), "59秒");
+        assert_eq!(format_eta(60), "1分0秒");
+        assert_eq!(format_eta(90), "1分30秒");
+        assert_eq!(format_eta(120), "2分0秒");
+        assert_eq!(format_eta(3599), "59分59秒");
+        assert_eq!(format_eta(3600), "1時間0分");
+        assert_eq!(format_eta(3661), "1時間1分");
+        assert_eq!(format_eta(3600 * 24), "24時間0分");
     }
 }
