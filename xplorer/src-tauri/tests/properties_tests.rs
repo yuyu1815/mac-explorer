@@ -470,7 +470,8 @@ mod edge_cases {
             .unwrap();
 
         // Assert
-        assert!(result.name.contains("file"));
+        assert_eq!(result.name, "file@#$%.txt",
+            "name: expected 'file@#$%.txt', got '{}'", result.name);
     }
 
     #[tokio::test]
@@ -489,7 +490,8 @@ mod edge_cases {
 
         // Assert
         assert_eq!(result.size_bytes, size);
-        assert!(result.size_formatted.contains("MB"));
+        assert_eq!(result.size_formatted, "10.0 MB",
+            "size_formatted: expected '10.0 MB', got '{}'", result.size_formatted);
     }
 
     #[tokio::test]
