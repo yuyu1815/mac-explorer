@@ -21,6 +21,36 @@ pub fn format_size(bytes: u64) -> String {
     }
 }
 
+/// 速度（バイト/秒）を人間が読みやすい形式にフォーマットします。
+///
+/// # Arguments
+/// * `bytes_per_sec` - 速度（バイト/秒）
+pub fn format_speed(bytes_per_sec: u64) -> String {
+    format!("{}{}", format_size(bytes_per_sec), "/s")
+}
+
+/// 残り時間（秒）を人間が読みやすい形式にフォーマットします。
+///
+/// # Arguments
+/// * `seconds` - 残り時間（秒）
+pub fn format_eta(seconds: u64) -> String {
+    if seconds == 0 {
+        return "計算中...".to_string();
+    }
+
+    let hours = seconds / 3600;
+    let minutes = (seconds % 3600) / 60;
+    let secs = seconds % 60;
+
+    if hours > 0 {
+        format!("{}時間{}分", hours, minutes)
+    } else if minutes > 0 {
+        format!("{}分{}秒", minutes, secs)
+    } else {
+        format!("{}秒", secs)
+    }
+}
+
 /// Unixタイムスタンプをローカル日時の文字列（YYYY/MM/DD HH:MM）に変換します。
 ///
 /// 0が渡された場合は空文字列を返します。

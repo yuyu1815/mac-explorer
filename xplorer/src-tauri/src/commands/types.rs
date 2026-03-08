@@ -65,15 +65,20 @@ pub struct VolumeInfo {
 }
 
 /// 圧縮進捗（ストリーミング用）
-#[derive(Serialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct CompressionProgress {
     pub current_file: String,
     pub files_processed: u32,
     pub total_files: u32,
     pub bytes_processed: u64,
+    pub bytes_processed_formatted: String,
     pub total_bytes: u64,
+    pub total_bytes_formatted: String,
     pub speed: u64,
+    pub speed_formatted: String,
     pub eta: u64,
+    pub eta_formatted: String,
+    pub progress_percent: f64,
     pub complete: bool,
 }
 
@@ -87,15 +92,20 @@ pub struct CompressionResult {
 }
 
 /// 解凍進捗（ストリーミング用）
-#[derive(Serialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ExtractionProgress {
     pub current_file: String,
     pub files_processed: u32,
     pub total_files: u32,
     pub bytes_processed: u64,
+    pub bytes_processed_formatted: String,
     pub total_bytes: u64,
+    pub total_bytes_formatted: String,
     pub speed: u64,
+    pub speed_formatted: String,
     pub eta: u64,
+    pub eta_formatted: String,
+    pub progress_percent: f64,
     pub complete: bool,
 }
 

@@ -15,6 +15,7 @@ use super::types::{
     CompressionError, CompressionProgress, CompressionResultWithErrors, ExtractionProgress,
     ExtractionResult,
 };
+use super::utils::{format_eta, format_size, format_speed};
 
 /// サポートされているアーカイブ拡張子の一覧
 pub const SUPPORTED_ARCHIVE_EXTENSIONS: &[&str] = &[
@@ -198,28 +199,50 @@ impl<C: ProgressChannel<CompressionProgress>> CompressionProgressReporter<C> {
                 0
             };
 
+            let progress_percent = if self.total_bytes > 0 {
+                (self.bytes_processed as f64 / self.total_bytes as f64) * 100.0
+            } else {
+                0.0
+            };
+
             let _ = self.channel.send(CompressionProgress {
                 current_file: current_file.to_string(),
                 files_processed: self.files_processed,
                 total_files: self.total_files,
                 bytes_processed: self.bytes_processed,
+                bytes_processed_formatted: format_size(self.bytes_processed),
                 total_bytes: self.total_bytes,
+                total_bytes_formatted: format_size(self.total_bytes),
                 speed: self.smoothed_speed as u64,
+                speed_formatted: format_speed(self.smoothed_speed as u64),
                 eta,
+                eta_formatted: format_eta(eta),
+                progress_percent,
                 complete: false,
             });
         }
     }
 
     pub fn finish(self) {
+        let progress_percent = if self.total_bytes > 0 {
+            (self.bytes_processed as f64 / self.total_bytes as f64) * 100.0
+        } else {
+            100.0
+        };
+
         let _ = self.channel.send(CompressionProgress {
             current_file: String::new(),
             files_processed: self.files_processed,
             total_files: self.total_files,
             bytes_processed: self.bytes_processed,
+            bytes_processed_formatted: format_size(self.bytes_processed),
             total_bytes: self.total_bytes,
+            total_bytes_formatted: format_size(self.total_bytes),
             speed: 0,
+            speed_formatted: String::new(),
             eta: 0,
+            eta_formatted: String::new(),
+            progress_percent,
             complete: true,
         });
     }
@@ -291,28 +314,50 @@ impl<C: ProgressChannel<ExtractionProgress>> ExtractionProgressReporter<C> {
                 0
             };
 
+            let progress_percent = if self.total_bytes > 0 {
+                (self.bytes_processed as f64 / self.total_bytes as f64) * 100.0
+            } else {
+                0.0
+            };
+
             let _ = self.channel.send(ExtractionProgress {
                 current_file,
                 files_processed: self.files_processed,
                 total_files: self.total_files,
                 bytes_processed: self.bytes_processed,
+                bytes_processed_formatted: format_size(self.bytes_processed),
                 total_bytes: self.total_bytes,
+                total_bytes_formatted: format_size(self.total_bytes),
                 speed: self.smoothed_speed as u64,
+                speed_formatted: format_speed(self.smoothed_speed as u64),
                 eta,
+                eta_formatted: format_eta(eta),
+                progress_percent,
                 complete: false,
             });
         }
     }
 
     pub fn finish(self) {
+        let progress_percent = if self.total_bytes > 0 {
+            (self.bytes_processed as f64 / self.total_bytes as f64) * 100.0
+        } else {
+            100.0
+        };
+
         let _ = self.channel.send(ExtractionProgress {
             current_file: String::new(),
             files_processed: self.files_processed,
             total_files: self.total_files,
             bytes_processed: self.bytes_processed,
+            bytes_processed_formatted: format_size(self.bytes_processed),
             total_bytes: self.total_bytes,
+            total_bytes_formatted: format_size(self.total_bytes),
             speed: 0,
+            speed_formatted: String::new(),
             eta: 0,
+            eta_formatted: String::new(),
+            progress_percent,
             complete: true,
         });
     }
