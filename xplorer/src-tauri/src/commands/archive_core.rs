@@ -592,7 +592,7 @@ fn validate_and_get_output_path(dest_dir: &Path, entry_path: &str) -> Result<Opt
 // =============================================================================
 
 /// アーカイブエントリ情報
-#[derive(serde::Serialize, Clone)]
+#[derive(Debug, serde::Serialize, Clone)]
 pub struct ArchiveEntry {
     pub path: String,
     pub size: u64,
@@ -763,5 +763,134 @@ mod tests {
         let result = collect_files_to_compress(&sources);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_collect_files_to_compress_directory() {
+        // 一時ディレクトリを作成
+        let temp_dir = std::env::temp_dir().join("xplorer_test_collect_dir");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        std::fs::write(temp_dir.join("file1.txt"), "content1").unwrap();
+        std::fs::write(temp_dir.join("file2.txt"), "content2").unwrap();
+
+        let sources = vec![temp_dir.to_string_lossy().to_string()];
+        let result = collect_files_to_compress(&sources);
+
+        assert!(result.is_ok());
+        let (files, errors) = result.unwrap();
+        assert_eq!(files.len(), 2);
+        assert!(errors.is_empty());
+
+        // クリーンアップ
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_collect_files_to_compress_mixed() {
+        // 存在するファイルと存在しないファイルが混在する場合
+        let temp_dir = std::env::temp_dir().join("xplorer_test_mixed");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let existing_file = temp_dir.join("exists.txt");
+        std::fs::write(&existing_file, "content").unwrap();
+
+        let sources = vec![
+            existing_file.to_string_lossy().to_string(),
+            "/nonexistent/file.txt".to_string(),
+        ];
+        let result = collect_files_to_compress(&sources);
+
+        assert!(result.is_ok());
+        let (files, errors) = result.unwrap();
+        assert_eq!(files.len(), 1); // 存在するファイルのみ
+        assert_eq!(errors.len(), 1); // 存在しないファイルはエラー
+
+        // クリーンアップ
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_compress_archive_core_with_mock() {
+        // テスト用ファイルを作成
+        let temp_dir = std::env::temp_dir().join("xplorer_test_compress_core");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("test.txt");
+        std::fs::write(&file_path, "test content for compression").unwrap();
+
+        let archive_path = temp_dir.join("test.zip");
+        let channel = MockChannel::<CompressionProgress>::new();
+        let control = MockOperationControl::new();
+
+        let sources = vec![file_path.to_string_lossy().to_string()];
+        let result = compress_archive_core(
+            sources,
+            archive_path.to_string_lossy().to_string(),
+            "zip".to_string(),
+            channel,
+            &control,
+        );
+
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.files_count, 1);
+        assert!(result.errors.is_empty());
+        assert!(archive_path.exists());
+
+        // クリーンアップ
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_compress_archive_core_cancelled() {
+        // キャンセルされた場合のテスト
+        let temp_dir = std::env::temp_dir().join("xplorer_test_compress_cancel");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("test.txt");
+        std::fs::write(&file_path, "test content").unwrap();
+
+        let archive_path = temp_dir.join("test.zip");
+        let channel = MockChannel::<CompressionProgress>::new();
+        let control = MockOperationControl::new();
+
+        // 事前にキャンセル
+        control.cancel();
+
+        let sources = vec![file_path.to_string_lossy().to_string()];
+        let result = compress_archive_core(
+            sources,
+            archive_path.to_string_lossy().to_string(),
+            "zip".to_string(),
+            channel,
+            &control,
+        );
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("キャンセル"));
+
+        // クリーンアップ
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_list_archive_entries_core() {
+        // 既存のアーカイブが存在しない場合のテスト
+        let result = list_archive_entries_core("/nonexistent/archive.zip".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("存在しません"));
+    }
+
+    #[test]
+    fn test_extract_archive_core_nonexistent() {
+        let channel = MockChannel::<ExtractionProgress>::new();
+        let control = MockOperationControl::new();
+
+        let result = extract_archive_core(
+            "/nonexistent/archive.zip".to_string(),
+            "/tmp/extract".to_string(),
+            channel,
+            &control,
+        );
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("存在しません"));
     }
 }

@@ -100,7 +100,7 @@ pub struct ExtractionProgress {
 }
 
 /// 解凍結果
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct ExtractionResult {
     pub extracted_count: u32,
     pub extracted_size: u64,
@@ -109,14 +109,14 @@ pub struct ExtractionResult {
 }
 
 /// 圧縮エラー情報
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct CompressionError {
     pub file_path: String,
     pub message: String,
 }
 
 /// 圧縮結果（エラー付き）
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct CompressionResultWithErrors {
     pub archive_path: String,
     pub files_count: u32,
