@@ -33,9 +33,9 @@ describe('StatusBar', () => {
         // Arrange
         useAppStore.setState(createTestState({
             files: [
-                { path: '/test/a.txt', name: 'a.txt', is_dir: false, size: 100, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' },
-                { path: '/test/b', name: 'b', is_dir: true, size: 0, modified: 0, created: 0, file_type: '', is_hidden: false, is_symlink: false, permissions: '' },
-                { path: '/test/c.txt', name: 'c.txt', is_dir: false, size: 200, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' }
+                { path: '/test/a.txt', name: 'a.txt', is_dir: false, size: 100, size_formatted: '100 B', modified: 0, modified_formatted: '', created: 0, created_formatted: '', file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '', icon_id: '' },
+                { path: '/test/b', name: 'b', is_dir: true, size: 0, size_formatted: '', modified: 0, modified_formatted: '', created: 0, created_formatted: '', file_type: '', is_hidden: false, is_symlink: false, permissions: '', icon_id: '' },
+                { path: '/test/c.txt', name: 'c.txt', is_dir: false, size: 200, size_formatted: '200 B', modified: 0, modified_formatted: '', created: 0, created_formatted: '', file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '', icon_id: '' }
             ]
         }));
 
@@ -60,8 +60,8 @@ describe('StatusBar', () => {
         // Arrange
         useAppStore.setState(createTestState({
             files: [
-                { path: '/test/a.txt', name: 'a.txt', is_dir: false, size: 1024, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' },
-                { path: '/test/b.txt', name: 'b.txt', is_dir: false, size: 2048, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' }
+                { path: '/test/a.txt', name: 'a.txt', is_dir: false, size: 1024, size_formatted: '1 KB', modified: 0, modified_formatted: '', created: 0, created_formatted: '', file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '', icon_id: '' },
+                { path: '/test/b.txt', name: 'b.txt', is_dir: false, size: 2048, size_formatted: '2 KB', modified: 0, modified_formatted: '', created: 0, created_formatted: '', file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '', icon_id: '' }
             ],
             selectedFiles: new Set(['/test/a.txt', '/test/b.txt'])
         }));
@@ -79,8 +79,8 @@ describe('StatusBar', () => {
         // Arrange
         useAppStore.setState(createTestState({
             files: [
-                { path: '/test/dir', name: 'dir', is_dir: true, size: 4096, modified: 0, created: 0, file_type: '', is_hidden: false, is_symlink: false, permissions: '' },
-                { path: '/test/file.txt', name: 'file.txt', is_dir: false, size: 512, modified: 0, created: 0, file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '' }
+                { path: '/test/dir', name: 'dir', is_dir: true, size: 4096, size_formatted: '4 KB', modified: 0, modified_formatted: '', created: 0, created_formatted: '', file_type: '', is_hidden: false, is_symlink: false, permissions: '', icon_id: '' },
+                { path: '/test/file.txt', name: 'file.txt', is_dir: false, size: 512, size_formatted: '512 B', modified: 0, modified_formatted: '', created: 0, created_formatted: '', file_type: 'txt', is_hidden: false, is_symlink: false, permissions: '', icon_id: '' }
             ],
             selectedFiles: new Set(['/test/dir', '/test/file.txt'])
         }));
@@ -98,7 +98,7 @@ describe('StatusBar', () => {
         // Arrange
         useAppStore.setState(createTestState({
             files: [
-                { path: '/test/dir', name: 'dir', is_dir: true, size: 4096, modified: 0, created: 0, file_type: '', is_hidden: false, is_symlink: false, permissions: '' }
+                { path: '/test/dir', name: 'dir', is_dir: true, size: 4096, size_formatted: '4 KB', modified: 0, modified_formatted: '', created: 0, created_formatted: '', file_type: '', is_hidden: false, is_symlink: false, permissions: '', icon_id: '' }
             ],
             selectedFiles: new Set(['/test/dir'])
         }));

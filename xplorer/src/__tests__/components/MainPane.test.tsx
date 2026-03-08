@@ -1,5 +1,5 @@
 /// <reference types="@testing-library/jest-dom" />
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MainPane } from '@/components/features/file-manager/MainPane';
 import { useAppStore } from '@/stores/appStore';
@@ -19,7 +19,7 @@ vi.mock('@/services/ipc', () => ({
 
 describe('MainPane', () => {
     const basePath = '/tmp/test-project';
-    const mockFiles = [
+    const mockFiles: any[] = [
         {
             path: `${basePath}/file1.txt`,
             name: 'file1.txt',
@@ -28,10 +28,13 @@ describe('MainPane', () => {
             size_formatted: '1 KB',
             modified: 1625097600,
             modified_formatted: '2021/07/01 00:00',
+            created: 1625097600,
+            created_formatted: '2021/07/01 00:00',
             file_type: 'txt',
             icon_id: 'file',
             is_hidden: false,
-            is_readonly: false,
+            is_symlink: false,
+            permissions: '-rw-r--r--',
         },
         {
             path: `${basePath}/src`,
@@ -41,10 +44,13 @@ describe('MainPane', () => {
             size_formatted: '',
             modified: 1625184000,
             modified_formatted: '2021/07/02 00:00',
+            created: 1625184000,
+            created_formatted: '2021/07/02 00:00',
             file_type: 'folder',
             icon_id: 'dir',
             is_hidden: false,
-            is_readonly: false,
+            is_symlink: false,
+            permissions: 'drwxr-xr-x',
         },
     ];
 
