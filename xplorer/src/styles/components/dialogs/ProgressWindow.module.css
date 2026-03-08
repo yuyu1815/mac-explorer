@@ -71,7 +71,7 @@
     padding: 16px 20px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 .subtitle {

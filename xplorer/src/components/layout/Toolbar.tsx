@@ -204,7 +204,7 @@ export const Toolbar = () => {
             const factor = await mainWindow.scaleFactor();
 
             const winWidth = 500;
-            const winHeight = 300;
+            const winHeight = 350;
             const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
             const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 
@@ -264,7 +264,7 @@ export const Toolbar = () => {
             const factor = await mainWindow.scaleFactor();
 
             const winWidth = 500;
-            const winHeight = 300;
+            const winHeight = 350;
             const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
             const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 

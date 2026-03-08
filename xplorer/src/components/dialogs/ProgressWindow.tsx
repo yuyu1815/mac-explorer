@@ -118,7 +118,7 @@ const IntegratedSpeedGraph: React.FC<{
     return (
         <canvas
             ref={canvasRef}
-            width={480}
+            width={460}
             height={70}
             className={styles.canvas}
         />
@@ -262,7 +262,7 @@ export const ProgressWindow: React.FC = () => {
     const updateWindowSize = useCallback(async (expanded: boolean) => {
         try {
             const win = getCurrentWebviewWindow();
-            const newHeight = expanded ? 300 : 160;
+            const newHeight = expanded ? 350 : 160;
             await win.setSize(new (await import('@tauri-apps/api/dpi')).LogicalSize(500, newHeight));
         } catch (e) {
             console.error('Failed to resize window:', e);
