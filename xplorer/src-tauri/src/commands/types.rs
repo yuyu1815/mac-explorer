@@ -53,6 +53,7 @@ pub struct DetailedProperties {
     pub is_readonly: bool,
     pub is_hidden: bool,
     pub default_application: Option<String>,
+    pub default_application_icon_id: Option<String>,
 }
 
 /// ボリューム情報

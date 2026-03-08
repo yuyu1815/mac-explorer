@@ -139,6 +139,14 @@
     word-break: break-all;
 }
 
+.valueWithIcon {
+    flex: 1;
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .attrs {
     display: flex;
     gap: 16px;
@@ -244,6 +252,10 @@
     }
 
     .value {
+        color: #eee;
+    }
+
+    .valueWithIcon {
         color: #eee;
     }
 

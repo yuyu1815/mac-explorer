@@ -631,4 +631,28 @@ mod default_application_tests {
                 "app name should not end with .app, got: {}", app_name);
         }
     }
+
+    #[tokio::test]
+    async fn test_default_application_includes_icon_id() {
+        // Arrange
+        let temp = ProjectTempDir::new("default_app_icon_id");
+        let file = temp.path().join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Act
+        let result = get_basic_properties(file.to_string_lossy().to_string())
+            .await
+            .unwrap();
+
+        // Assert - icon_id should start with "app:" and contain a path
+        if let Some(ref icon_id) = result.default_application_icon_id {
+            assert!(icon_id.starts_with("app:"),
+                "icon_id should start with 'app:', got: {}", icon_id);
+            assert!(icon_id.contains("/"),
+                "icon_id should contain path separator, got: {}", icon_id);
+        }
+        // icon_id should be present whenever default_application is present
+        assert_eq!(result.default_application.is_some(), result.default_application_icon_id.is_some(),
+            "icon_id should be present when default_application is present");
+    }
 }

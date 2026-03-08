@@ -36,6 +36,7 @@ interface DetailedProperties {
     is_readonly: boolean;
     is_hidden: boolean;
     default_application: string | null;
+    default_application_icon_id: string | null;
 }
 
 export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClose }) => {
@@ -144,8 +145,11 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
                                 {!isDir && (
                                     <div className={styles.row}>
                                         <div className={styles.label}>プログラム:</div>
-                                        <div className={styles.value}>
-                                            {props.default_application || '(不明)'}
+                                        <div className={styles.valueWithIcon}>
+                                            {props.default_application_icon_id && (
+                                                <FileIcon isDir={false} iconId={props.default_application_icon_id} size={16} />
+                                            )}
+                                            <span>{props.default_application || '(不明)'}</span>
                                             {' '}<button className={styles.btnSmall} disabled>変更(C)...</button>
                                         </div>
                                     </div>

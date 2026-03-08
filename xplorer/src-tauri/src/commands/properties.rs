@@ -10,9 +10,10 @@ use super::types::DetailedProperties;
 use super::types::PropertyProgress;
 use super::utils::{format_size, format_timestamp};
 
-/// ファイルを開くデフォルトアプリケーションのパスを取得
+/// ファイルを開くデフォルトアプリケーションの情報を取得
+/// 戻り値: (アプリ名, アイコンID)
 #[cfg(target_os = "macos")]
-fn get_default_application(path: &str) -> Option<String> {
+fn get_default_application(path: &str) -> Option<(String, String)> {
     use cocoa::base::{id as cocoa_id, nil};
     use cocoa::foundation::NSString;
     use objc::{msg_send, sel, sel_impl};
@@ -46,10 +47,14 @@ fn get_default_application(path: &str) -> Option<String> {
             let app_path_str = CStr::from_ptr(bytes).to_str().ok()?;
 
             // アプリ名を抽出（例: /Applications/Visual Studio Code.app -> Visual Studio Code）
-            Path::new(app_path_str)
+            let app_name = Path::new(app_path_str)
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .map(|s| s.to_string())
+                .map(|s| s.to_string())?;
+
+            // アイコンIDを生成 (app:プレフィックス + アプリケーションパス)
+            let icon_id = format!("app:{}", app_path_str);
+            Some((app_name, icon_id))
         };
 
         let _: () = msg_send![pool, drain];
@@ -58,7 +63,7 @@ fn get_default_application(path: &str) -> Option<String> {
 }
 
 #[cfg(not(target_os = "macos"))]
-fn get_default_application(_path: &str) -> Option<String> {
+fn get_default_application(_path: &str) -> Option<(String, String)> {
     None
 }
 
@@ -113,7 +118,8 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
         size_bytes.div_ceil(4096) * 4096
     };
 
-    let default_application = get_default_application(&path);
+    let (default_application, default_application_icon_id) =
+        get_default_application(&path).unzip();
 
     Ok(DetailedProperties {
         name,
@@ -146,6 +152,7 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
             .map(|n| n.to_string_lossy().starts_with('.'))
             .unwrap_or(false),
         default_application,
+        default_application_icon_id,
     })
 }
 
