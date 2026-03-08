@@ -48,3 +48,7 @@ npm run tauri build
 - **Windows 風 UI:** コンテキストメニュー、プロパティ画面、ナビゲーションバーを Windows エクスプローラー風に再現。
 - **macOS 最適化:** プロパティ計算（ディレクトリサイズ等）に macOS ネイティブの Cocoa API (NSFileManager) を使用し、高速かつ正確な情報を取得。
 - **高速なファイル操作:** Rust バックエンドによる高速なファイル I/O。
++
++## 参考・敬意 (Credits & Respect)
++
++- [duti](https://github.com/moretension/duti) - macOS のデフォルトアプリケーション設定機能を実装するにあたり、Launch Services API の利用方法を参考にさせていただきました。

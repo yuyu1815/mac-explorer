@@ -6,9 +6,10 @@
 #![allow(unexpected_cfgs)]
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 pub mod commands;
+pub mod utils;
 
 // Re-export for integration tests
-pub use commands::{archive, directory, file_ops, icons, properties, utils, volumes, watcher};
+pub use commands::{archive, directory, file_ops, icons, properties, utils as commands_utils, volumes, watcher};
 
 use tauri::Manager;
 

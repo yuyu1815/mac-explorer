@@ -173,20 +173,19 @@ fn get_bundle_identifier(app_path: &str) -> Option<String> {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn set_default_application(path: String, bundle_identifier: String) -> Result<(), String> {
+    use crate::utils::macos_ls::set_default_handler_for_uti;
     use cocoa::base::{id as cocoa_id, nil};
     use cocoa::foundation::NSString;
     use objc::{msg_send, sel, sel_impl};
-    use std::ffi::CString;
 
     unsafe {
         let pool: cocoa_id = msg_send![objc::class!(NSAutoreleasePool), new];
 
-        // ファイルのUTI (Uniform Type Identifier) を取得
+        // ファイルの UTI を取得
         let ns_path = NSString::alloc(nil).init_str(&path);
-        let url: cocoa_id = msg_send![objc::class!(NSURL), fileURLWithPath: ns_path];
-
         let workspace: cocoa_id = msg_send![objc::class!(NSWorkspace), sharedWorkspace];
-        let uti: cocoa_id = msg_send![workspace, typeOfFile: url error: std::ptr::null_mut::<objc::runtime::Object>()];
+        
+        let uti: cocoa_id = msg_send![workspace, typeOfFile: ns_path error: std::ptr::null_mut::<objc::runtime::Object>()];
 
         if uti == nil {
             let _: () = msg_send![pool, drain];
@@ -197,45 +196,11 @@ pub async fn set_default_application(path: String, bundle_identifier: String) ->
         let uti_bytes: *const i8 = msg_send![uti, UTF8String];
         let uti_str = std::ffi::CStr::from_ptr(uti_bytes).to_str().unwrap_or("");
 
-        // LSSetDefaultRoleHandlerForContentType を使用
-        // CoreServicesが必要
-
-        // LSDefaultHandlerを設定
-        let success: bool = {
-            // Launch Services APIを使用
-            let core_services = dlopen(
-                b"/System/Library/Frameworks/CoreServices.framework/CoreServices\0".as_ptr() as *const i8,
-                1, // RTLD_LAZY
-            );
-
-            if core_services.is_null() {
-                let _: () = msg_send![pool, drain];
-                return Err("Failed to load CoreServices".to_string());
-            }
-
-            let func_name = b"LSSetDefaultRoleHandlerForContentType\0";
-            let func: Option<unsafe extern "C" fn(*const i8, *const i8, i32) -> i32> =
-                std::mem::transmute(dlsym(core_services, func_name.as_ptr() as *const i8));
-
-            dlclose(core_services);
-
-            if let Some(set_handler) = func {
-                let uti_cstr = CString::new(uti_str).unwrap();
-                let bundle_cstr = CString::new(bundle_identifier.as_str()).unwrap();
-                // kLSRolesAll = 0xFFFFFFFF
-                set_handler(uti_cstr.as_ptr(), bundle_cstr.as_ptr(), 0xFFFFFFFFu32 as i32) == 0
-            } else {
-                false
-            }
-        };
+        // macos_ls を使用してデフォルトハンドラを設定
+        let result = set_default_handler_for_uti(uti_str, &bundle_identifier);
 
         let _: () = msg_send![pool, drain];
-
-        if success {
-            Ok(())
-        } else {
-            Err("Failed to set default application".to_string())
-        }
+        result
     }
 }
 
@@ -243,12 +208,6 @@ pub async fn set_default_application(path: String, bundle_identifier: String) ->
 #[tauri::command]
 pub async fn set_default_application(_path: String, _bundle_identifier: String) -> Result<(), String> {
     Err("Not supported on this platform".to_string())
-}
-
-extern "C" {
-    fn dlopen(filename: *const i8, flag: i32) -> *mut std::ffi::c_void;
-    fn dlsym(handle: *mut std::ffi::c_void, symbol: *const i8) -> *mut std::ffi::c_void;
-    fn dlclose(handle: *mut std::ffi::c_void) -> i32;
 }
 
 #[tauri::command]
