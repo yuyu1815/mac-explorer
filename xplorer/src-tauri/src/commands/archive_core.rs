@@ -938,4 +938,125 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("存在しません"));
     }
+
+    // =========================================================================
+    // フォーマット済みフィールドのテスト
+    // =========================================================================
+
+    #[test]
+    fn test_compression_progress_formatted_fields() {
+        use std::sync::Arc;
+
+        let channel = Arc::new(MockChannel::<CompressionProgress>::new());
+        let channel_ref = Arc::clone(&channel);
+        let total_bytes = 1024 * 1024 * 10; // 10 MB
+        let mut reporter = CompressionProgressReporter::new(5, total_bytes, channel);
+
+        // 全ファイル処理
+        for i in 0..5 {
+            reporter.update(&format!("file{}.txt", i), 1024 * 1024 * 2);
+        }
+
+        reporter.finish();
+
+        // Arc経由でデータにアクセス
+        let sent = channel_ref.get_sent();
+        assert!(!sent.is_empty(), "進捗が送信されているべき");
+
+        let last_progress = sent.last().unwrap();
+
+        // finish()ではcomplete=trueとなり、bytes_processed_formattedは設定される
+        assert!(last_progress.bytes_processed_formatted.contains("MB") || last_progress.bytes_processed_formatted.contains("KB"),
+            "bytes_processed_formattedがMBまたはKBを含むべき: {}", last_progress.bytes_processed_formatted);
+        assert!(last_progress.total_bytes_formatted.contains("MB"),
+            "total_bytes_formattedがMBを含むべき: {}", last_progress.total_bytes_formatted);
+
+        // finish()ではspeed_formattedは空になる（完了時は速度0）
+        // パーセンテージの検証
+        assert!(last_progress.progress_percent >= 0.0, "パーセンテージが0以上であるべき");
+        assert!(last_progress.complete, "completeフラグがtrueであるべき");
+    }
+
+    #[test]
+    fn test_extraction_progress_formatted_fields() {
+        use std::sync::Arc;
+
+        let channel = Arc::new(MockChannel::<ExtractionProgress>::new());
+        let channel_ref = Arc::clone(&channel);
+        let total_bytes = 1024 * 1024 * 50; // 50 MB
+        let mut reporter = ExtractionProgressReporter::new(10, total_bytes, channel);
+
+        // 全ファイル処理
+        for i in 0..10 {
+            reporter.increment_file(format!("extracted_file{}.txt", i));
+        }
+
+        reporter.finish();
+
+        // Arc経由でデータにアクセス
+        let sent = channel_ref.get_sent();
+        assert!(!sent.is_empty(), "進捗が送信されているべき");
+
+        let last_progress = sent.last().unwrap();
+
+        // フォーマット済みフィールドの検証
+        assert!(last_progress.bytes_processed_formatted.contains("MB") || last_progress.bytes_processed_formatted.contains("KB") || last_progress.bytes_processed_formatted.contains("B"),
+            "bytes_processed_formattedがMB/KB/Bを含むべき: {}", last_progress.bytes_processed_formatted);
+        assert!(last_progress.total_bytes_formatted.contains("MB"),
+            "total_bytes_formattedがMBを含むべき: {}", last_progress.total_bytes_formatted);
+
+        // パーセンテージの検証
+        assert!(last_progress.progress_percent >= 0.0, "パーセンテージが0以上であるべき");
+        assert!(last_progress.complete, "completeフラグがtrueであるべき");
+    }
+
+    #[test]
+    fn test_compression_progress_zero_bytes() {
+        use std::sync::Arc;
+
+        let channel = Arc::new(MockChannel::<CompressionProgress>::new());
+        let channel_ref = Arc::clone(&channel);
+        let mut reporter = CompressionProgressReporter::new(1, 0, channel);
+
+        reporter.update("empty.txt", 0);
+        reporter.finish();
+
+        let sent = channel_ref.get_sent();
+        let last_progress = sent.last().unwrap();
+
+        // 0バイトの場合のフォーマット検証
+        assert!(last_progress.bytes_processed_formatted.contains("B"),
+            "0バイトの場合はB単位で表示されるべき: {}", last_progress.bytes_processed_formatted);
+    }
+
+    #[test]
+    fn test_format_size_various_sizes() {
+        // format_size関数のテスト（utils.rsから再エクスポート）
+        use super::format_size;
+
+        assert_eq!(format_size(0), "0 B");
+        assert_eq!(format_size(512), "512 B");
+        assert!(format_size(1024).contains("KB"));
+        assert!(format_size(1024 * 1024).contains("MB"));
+        assert!(format_size(1024 * 1024 * 1024).contains("GB"));
+    }
+
+    #[test]
+    fn test_format_speed_various_speeds() {
+        use super::format_speed;
+
+        assert_eq!(format_speed(0), "0 B/s");
+        assert!(format_speed(1024).contains("KB"));
+        assert!(format_speed(1024 * 1024).contains("MB"));
+    }
+
+    #[test]
+    fn test_format_eta_various_times() {
+        use super::format_eta;
+
+        assert_eq!(format_eta(0), "計算中...");
+        assert!(format_eta(30).contains("秒"));
+        assert!(format_eta(90).contains("分"));
+        assert!(format_eta(3600).contains("時間"));
+    }
 }

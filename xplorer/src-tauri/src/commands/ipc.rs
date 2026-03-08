@@ -68,6 +68,13 @@ impl<T: Serialize + Clone + Send + 'static> ProgressChannel<T> for MockChannel<T
     }
 }
 
+impl<T: Serialize + Clone + Send + 'static> ProgressChannel<T> for std::sync::Arc<MockChannel<T>> {
+    fn send(&self, data: T) -> Result<(), String> {
+        self.sent.lock().unwrap().push(data);
+        Ok(())
+    }
+}
+
 // =============================================================================
 // EventEmitter トレイト
 // =============================================================================
