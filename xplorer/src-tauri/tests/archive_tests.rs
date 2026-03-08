@@ -857,3 +857,168 @@ fn test_format_detection_matches_actual_formats() {
         );
     }
 }
+
+// =============================================================================
+// is_archive_file のテスト
+// =============================================================================
+
+mod is_archive_file_tests {
+    use xplorer_lib::archive::is_archive_file;
+
+    #[test]
+    fn test_is_archive_file_supported_formats() {
+        let supported = [
+            "test.zip",
+            "test.7z",
+            "test.tar",
+            "test.tar.gz",
+            "test.tgz",
+            "test.tar.bz2",
+            "test.tar.xz",
+            "test.tar.zst",
+        ];
+
+        for path in &supported {
+            assert!(is_archive_file(path), "{} should be recognized as archive", path);
+        }
+    }
+
+    #[test]
+    fn test_is_archive_file_unsupported_formats() {
+        let unsupported = [
+            "test.txt",
+            "test.pdf",
+            "test.doc",
+            "test.rar",
+            "test.iso",
+            "test.exe",
+            "test.dmg",
+            "test.app",
+        ];
+
+        for path in &unsupported {
+            assert!(!is_archive_file(path), "{} should NOT be recognized as archive", path);
+        }
+    }
+
+    #[test]
+    fn test_is_archive_file_case_insensitive() {
+        assert!(is_archive_file("test.ZIP"));
+        assert!(is_archive_file("test.Zip"));
+        assert!(is_archive_file("test.zip"));
+        assert!(is_archive_file("TEST.TAR.GZ"));
+        assert!(is_archive_file("Test.7z"));
+    }
+
+    #[test]
+    fn test_is_archive_file_with_path() {
+        assert!(is_archive_file("/path/to/test.zip"));
+        assert!(is_archive_file("/path/to/archive.tar.gz"));
+        assert!(is_archive_file("~/Downloads/file.7z"));
+    }
+
+    #[test]
+    fn test_is_archive_file_empty_string() {
+        assert!(!is_archive_file(""));
+    }
+
+    #[test]
+    fn test_is_archive_file_no_extension() {
+        assert!(!is_archive_file("test"));
+        assert!(!is_archive_file("/path/to/test"));
+    }
+}
+
+// =============================================================================
+// OperationControl のテスト
+// =============================================================================
+
+mod operation_control_tests {
+    use std::sync::Arc;
+    use std::thread;
+    use std::time::Duration;
+
+    use xplorer_lib::archive::OperationControl;
+
+    #[test]
+    fn test_operation_control_new() {
+        let control = OperationControl::new();
+        assert!(!control.paused.load(std::sync::atomic::Ordering::Relaxed));
+        assert!(!control.cancelled.load(std::sync::atomic::Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_operation_control_default() {
+        let control = OperationControl::default();
+        assert!(!control.paused.load(std::sync::atomic::Ordering::Relaxed));
+        assert!(!control.cancelled.load(std::sync::atomic::Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_operation_control_check_normal() {
+        let control = OperationControl::new();
+        let result = control.check();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_operation_control_check_cancelled() {
+        let control = OperationControl::new();
+        control.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+        let result = control.check();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("キャンセル"));
+    }
+
+    #[test]
+    fn test_operation_control_reset() {
+        let control = OperationControl::new();
+        control.paused.store(true, std::sync::atomic::Ordering::Relaxed);
+        control.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+
+        control.reset();
+
+        assert!(!control.paused.load(std::sync::atomic::Ordering::Relaxed));
+        assert!(!control.cancelled.load(std::sync::atomic::Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_operation_control_pause_then_cancel() {
+        let control = Arc::new(OperationControl::new());
+        let control_clone = control.clone();
+
+        // Start paused
+        control.paused.store(true, std::sync::atomic::Ordering::Relaxed);
+
+        // Spawn thread that will cancel after short delay
+        let handle = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(150));
+            control_clone.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+        });
+
+        // check() should block until cancelled
+        let result = control.check();
+        assert!(result.is_err());
+
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_operation_control_concurrent_access() {
+        let control = Arc::new(OperationControl::new());
+        let mut handles = vec![];
+
+        // Spawn multiple threads that check concurrently
+        for _ in 0..10 {
+            let ctrl = control.clone();
+            handles.push(thread::spawn(move || {
+                ctrl.check()
+            }));
+        }
+
+        // All should succeed
+        for handle in handles {
+            assert!(handle.join().unwrap().is_ok());
+        }
+    }
+}
