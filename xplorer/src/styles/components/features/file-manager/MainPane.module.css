@@ -233,3 +233,34 @@
     pointer-events: none;
     z-index: 100;
 }
+
+.itemCheckbox {
+    cursor: pointer;
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.checkboxCell {
+    padding: 0 2px;
+    width: 16px;
+}
+
+.checkboxHeaderCell {
+    width: 16px;
+    padding: 0 2px;
+    text-align: center;
+}
+
+.headerCheckbox {
+    cursor: pointer;
+    width: 13px;
+    height: 13px;
+}
+
+.iconItemCheckbox {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    z-index: 5;
+}

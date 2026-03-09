@@ -128,7 +128,7 @@ export const FileIcon = memo(({ isDir, iconId, size = 16, isSymlink, isNoAccess 
 });
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
+    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions, showItemCheckBoxes, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
     const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -637,6 +637,7 @@ export const MainPane = () => {
     const renderDetailView = () => (
         <table className={styles.detailTable}>
             <colgroup>
+                {showItemCheckBoxes && <col style={{ width: '16px' }} />}
                 <col />
                 <col style={{ width: colWidths.modified }} />
                 <col style={{ width: colWidths.file_type }} />
@@ -644,6 +645,24 @@ export const MainPane = () => {
             </colgroup>
             <thead className={styles.detailHead}>
                 <tr className={styles.detailHeaderRow}>
+                    {showItemCheckBoxes && (
+                        <th className={styles.checkboxHeaderCell}>
+                            <input
+                                type="checkbox"
+                                checked={files.length > 0 && selectedPaths.size === files.length}
+                                onChange={(e) => {
+                                    e.stopPropagation();
+                                    if (e.target.checked) {
+                                        selectAll();
+                                    } else {
+                                        clearSelection();
+                                    }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className={styles.headerCheckbox}
+                            />
+                        </th>
+                    )}
                     <th className={styles.detailHeaderCell} onClick={() => setSortParams('name', sortBy === 'name' ? !sortDesc : false)}>
                         名前 <SortIndicator column="name" />
                     </th>
@@ -698,6 +717,20 @@ export const MainPane = () => {
                         className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${index % 2 === 1 ? ' zebra' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.fileRow}`}
                         data-filepath={file.path}
                     >
+                        {showItemCheckBoxes && (
+                            <td className={styles.checkboxCell}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedPaths.has(file.path)}
+                                    onChange={(e) => {
+                                        e.stopPropagation();
+                                        hookToggleSelection(file.path, true, false, index);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={styles.itemCheckbox}
+                                />
+                            </td>
+                        )}
                         <td className={styles.detailCellName}>
                             <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} isSymlink={file.is_symlink} isNoAccess={file.is_noaccess} /> {renderFileName(file)}
                         </td>
@@ -753,6 +786,18 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.listItem}`}
                     data-filepath={file.path}
                 >
+                    {showItemCheckBoxes && (
+                        <input
+                            type="checkbox"
+                            checked={selectedPaths.has(file.path)}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                hookToggleSelection(file.path, false, false, index);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={styles.itemCheckbox}
+                        />
+                    )}
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} isSymlink={file.is_symlink} isNoAccess={file.is_noaccess} />
                     <span className={styles.listItemText}>{renderFileName(file)}</span>
                 </div>
@@ -797,6 +842,18 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.iconItem}`}
                     data-filepath={file.path}
                 >
+                    {showItemCheckBoxes && (
+                        <input
+                            type="checkbox"
+                            checked={selectedPaths.has(file.path)}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                hookToggleSelection(file.path, false, false, index);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`${styles.itemCheckbox} ${styles.iconItemCheckbox}`}
+                        />
+                    )}
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={iconSize} isSymlink={file.is_symlink} isNoAccess={file.is_noaccess} />
                     <span className={styles.iconItemText} style={{ width: '100%' }}>{renderFileName(file)}</span>
                 </div>
@@ -841,6 +898,18 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.listItem}`}
                     data-filepath={file.path}
                 >
+                    {showItemCheckBoxes && (
+                        <input
+                            type="checkbox"
+                            checked={selectedPaths.has(file.path)}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                hookToggleSelection(file.path, false, false, index);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={styles.itemCheckbox}
+                        />
+                    )}
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={48} isSymlink={file.is_symlink} isNoAccess={file.is_noaccess} />
                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
                         <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); hookToggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, index); }}>{renderFileName(file)}</span>
@@ -899,6 +968,18 @@ export const MainPane = () => {
                         maxWidth: '800px'
                     }}
                 >
+                    {showItemCheckBoxes && (
+                        <input
+                            type="checkbox"
+                            checked={selectedPaths.has(file.path)}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                hookToggleSelection(file.path, false, false, index);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={styles.itemCheckbox}
+                        />
+                    )}
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={32} isSymlink={file.is_symlink} isNoAccess={file.is_noaccess} />
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
