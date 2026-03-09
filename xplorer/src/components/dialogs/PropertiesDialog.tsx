@@ -46,8 +46,21 @@ interface DetailedProperties {
     default_application_icon_id: string | null;
 }
 
+interface DiskProperties {
+    name: string;
+    path: string;
+    file_system: string;
+    total_bytes: number;
+    free_bytes: number;
+    used_bytes: number;
+    total_bytes_formatted: string;
+    free_bytes_formatted: string;
+    used_bytes_formatted: string;
+}
+
 export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
-    const [props, setProps] = useState<DetailedProperties | null>(null);
+    const [fileProps, setFileProps] = useState<DetailedProperties | null>(null);
+    const [diskProps, setDiskProps] = useState<DiskProperties | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -63,15 +76,15 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
     const [loadingApps, setLoadingApps] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const isDir = props?.file_type === 'ファイル フォルダー';
-    const iconId = props ? (isDir ? 'dir' : '') : '';
+    const isDir = fileProps?.file_type === 'ファイル フォルダー';
+    const iconId = fileProps ? (isDir ? 'dir' : '') : (diskProps ? 'disk' : '');
 
     // 変更があるかどうかを判定
-    const isDirty = props ? (
-        pendingName !== props.name ||
-        pendingReadonly !== props.is_readonly ||
-        pendingHidden !== props.is_hidden ||
-        (pendingApp !== null && pendingApp.bundle_identifier !== props.default_application)
+    const isDirty = fileProps ? (
+        pendingName !== fileProps.name ||
+        pendingReadonly !== fileProps.is_readonly ||
+        pendingHidden !== fileProps.is_hidden ||
+        (pendingApp !== null && pendingApp.bundle_identifier !== fileProps.default_application)
     ) : false;
 
     const handleClose = async () => {
@@ -79,43 +92,43 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
     };
 
     const handleApply = async () => {
-        if (!props || !isDirty || applying) return;
+        if (!fileProps || !isDirty || applying) return;
         setApplying(true);
         try {
             // アプリケーションの変更（最初に実行）
-            if (pendingApp !== null && pendingApp.bundle_identifier !== props.default_application) {
+            if (pendingApp !== null && pendingApp.bundle_identifier !== fileProps.default_application) {
                 await invoke('set_default_application', {
-                    path: props.path,
+                    path: fileProps.path,
                     bundleIdentifier: pendingApp.bundle_identifier
                 });
             }
 
             // 属性の変更
-            if (pendingReadonly !== props.is_readonly) {
-                await invoke('set_readonly', { path: props.path, readonly: pendingReadonly });
+            if (pendingReadonly !== fileProps.is_readonly) {
+                await invoke('set_readonly', { path: fileProps.path, readonly: pendingReadonly });
             }
-            if (pendingHidden !== props.is_hidden) {
-                await invoke('set_hidden', { path: props.path, hidden: pendingHidden });
+            if (pendingHidden !== fileProps.is_hidden) {
+                await invoke('set_hidden', { path: fileProps.path, hidden: pendingHidden });
             }
 
             // 名前の変更（最後に実行しないとパスが変わる可能性があるため）
-            let currentPath = props.path;
-            if (pendingName !== props.name) {
-                await invoke('rename_file', { path: props.path, newName: pendingName });
+            let currentPath = fileProps.path;
+            if (pendingName !== fileProps.name) {
+                await invoke('rename_file', { path: fileProps.path, newName: pendingName });
                 // リネーム後はパスが変わるので親ディレクトリから新しいパスを構築
-                const parent = props.location;
+                const parent = fileProps.location;
                 currentPath = `${parent}${parent.endsWith('/') ? '' : '/'}${pendingName}`;
             }
 
             // 成功したらpropsを更新してdirtyを解消
-            setProps({
-                ...props,
+            setFileProps({
+                ...fileProps,
                 path: currentPath,
                 name: pendingName,
                 is_readonly: pendingReadonly,
                 is_hidden: pendingHidden,
-                default_application: pendingApp?.name ?? props.default_application,
-                default_application_icon_id: pendingApp?.icon_id ?? props.default_application_icon_id,
+                default_application: pendingApp?.name ?? fileProps.default_application,
+                default_application_icon_id: pendingApp?.icon_id ?? fileProps.default_application_icon_id,
             });
             setPendingApp(null);
             return true;
@@ -170,10 +183,28 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
         const fetchProperties = async () => {
             try {
                 setLoading(true);
+
+                // ディスク情報かどうかを判定 (パスが / または /Volumes/ で始まる場合など)
+                // より確実に、まず get_disk_properties を試すか、パスで判断
+                const isDisk = path === '/' || path.startsWith('/Volumes/');
+
+                if (isDisk) {
+                    try {
+                        const data: DiskProperties = await invoke('get_disk_properties', { path });
+                        if (!mounted) return;
+                        setDiskProps(data);
+                        setPendingName(data.name);
+                        setLoading(false);
+                        return;
+                    } catch (err) {
+                        console.log('Not a disk path or failed to get disk props, fallback to basic props');
+                    }
+                }
+
                 // まず基本情報を取得
                 const data: DetailedProperties = await invoke('get_basic_properties', { path });
                 if (!mounted) return;
-                setProps(data);
+                setFileProps(data);
                 setPendingName(data.name);
                 setPendingReadonly(data.is_readonly);
                 setPendingHidden(data.is_hidden);
@@ -185,7 +216,7 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
                     const channel = new Channel<PropertyProgress>((progress) => {
                         if (!mounted) return;
                         // 進捗をリアルタイムに反映
-                        setProps(prev => prev ? {
+                        setFileProps(prev => prev ? {
                             ...prev,
                             size_bytes: progress.size_bytes,
                             size_formatted: progress.size_formatted,
@@ -221,7 +252,9 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
     return (
         <div data-tauri-drag-region className={styles.window}>
             <div data-tauri-drag-region className={styles.titlebar}>
-                <div data-tauri-drag-region className={styles.titlebarText}>{props ? `${props.name}のプロパティ` : 'プロパティ'}</div>
+                <div data-tauri-drag-region className={styles.titlebarText}>
+                    {diskProps ? `${diskProps.name}のプロパティ` : (fileProps ? `${fileProps.name}のプロパティ` : 'プロパティ')}
+                </div>
                 <div className={styles.titlebarClose} onClick={handleClose}>✕</div>
             </div>
 
@@ -230,7 +263,83 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
                     <div className={styles.loading}>読み込み中...</div>
                 ) : error ? (
                     <div className={styles.error}>エラー: {error}</div>
-                ) : props ? (
+                ) : diskProps ? (
+                    <div className={styles.tabsContainer}>
+                        <div className={styles.tabs}>
+                            <div className={`${styles.tab} ${styles.active}`}>全般</div>
+                            <div className={styles.tab}>ツール</div>
+                            <div className={styles.tab}>ハードウェア</div>
+                            <div className={styles.tab}>共有</div>
+                        </div>
+
+                        <div className={styles.tabContent}>
+                            <div className={`${styles.row} ${styles.headerRow}`}>
+                                <div className={styles.icon}>
+                                    <FileIcon isDir={false} iconId="disk" size={32} />
+                                </div>
+                                <input
+                                    type="text"
+                                    className={styles.nameInput}
+                                    value={pendingName}
+                                    onChange={e => setPendingName(e.target.value)}
+                                />
+                            </div>
+
+                            <div className={styles.divider}></div>
+
+                            <div className={styles.row}>
+                                <div className={styles.label}>種類:</div>
+                                <div className={styles.value}>ローカル ディスク</div>
+                            </div>
+                            <div className={styles.row}>
+                                <div className={styles.label}>ファイル システム:</div>
+                                <div className={styles.value}>{diskProps.file_system}</div>
+                            </div>
+
+                            <div className={styles.divider}></div>
+
+                            <div className={styles.row}>
+                                <div className={styles.diskUsageBlock}>
+                                    <div className={styles.usageRow}>
+                                        <div className={styles.usageLabel}>
+                                            <div className={styles.colorIndicator} style={{ backgroundColor: '#0078D7' }}></div>
+                                            使用領域:
+                                        </div>
+                                        <div className={styles.usageValue}>{diskProps.used_bytes.toLocaleString()} バイト</div>
+                                        <div className={styles.usageValueFormatted}>{diskProps.used_bytes_formatted}</div>
+                                    </div>
+                                    <div className={styles.usageRow}>
+                                        <div className={styles.usageLabel}>
+                                            <div className={styles.colorIndicator} style={{ backgroundColor: '#E1E1E1' }}></div>
+                                            空き領域:
+                                        </div>
+                                        <div className={styles.usageValue}>{diskProps.free_bytes.toLocaleString()} バイト</div>
+                                        <div className={styles.usageValueFormatted}>{diskProps.free_bytes_formatted}</div>
+                                    </div>
+                                    <div className={styles.usageRow} style={{ marginTop: '4px' }}>
+                                        <div className={styles.usageLabel}>容量:</div>
+                                        <div className={styles.usageValue}>{diskProps.total_bytes.toLocaleString()} バイト</div>
+                                        <div className={styles.usageValueFormatted}>{diskProps.total_bytes_formatted}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={styles.diskChartRow}>
+                                <div className={styles.diskChartContainer}>
+                                    <svg viewBox="0 0 100 100" className={styles.donutChart}>
+                                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#E1E1E1" strokeWidth="20" />
+                                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#0078D7" strokeWidth="20"
+                                            strokeDasharray={`${(diskProps.used_bytes / diskProps.total_bytes) * 251.32} 251.32`}
+                                            transform="rotate(-90 50 50)" />
+                                    </svg>
+                                    <div className={styles.chartLabel}>ドライブ {diskProps.path === '/' ? 'C' : diskProps.path.split('/').pop()}:</div>
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+                ) : fileProps ? (
                     <div className={styles.tabsContainer}>
                         <div className={styles.tabs}>
                             <div className={`${styles.tab} ${styles.active}`}>全般</div>
@@ -253,16 +362,16 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
 
                             <div className={styles.row}>
                                 <div className={styles.label}>ファイルの種類:</div>
-                                <div className={styles.value}>{props.file_type}</div>
+                                <div className={styles.value}>{fileProps.file_type}</div>
                             </div>
                             {!isDir && (
                                 <div className={styles.row}>
                                     <div className={styles.label}>プログラム:</div>
                                     <div className={styles.valueWithIcon} ref={dropdownRef}>
-                                        {(pendingApp?.icon_id ?? props.default_application_icon_id) && (
-                                            <FileIcon isDir={false} iconId={pendingApp?.icon_id ?? props.default_application_icon_id ?? ''} size={16} />
+                                        {(pendingApp?.icon_id ?? fileProps.default_application_icon_id) && (
+                                            <FileIcon isDir={false} iconId={pendingApp?.icon_id ?? fileProps.default_application_icon_id ?? ''} size={16} />
                                         )}
-                                        <span>{pendingApp?.name ?? props.default_application ?? '(不明)'}</span>
+                                        <span>{pendingApp?.name ?? fileProps.default_application ?? '(不明)'}</span>
                                         {' '}
                                         <div className={styles.appSelector}>
                                             <button
@@ -301,20 +410,20 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
 
                             <div className={styles.row}>
                                 <div className={styles.label}>場所:</div>
-                                <div className={styles.value}>{props.location}</div>
+                                <div className={styles.value}>{fileProps.location}</div>
                             </div>
                             <div className={styles.row}>
                                 <div className={styles.label}>サイズ:</div>
-                                <div className={styles.value}>{props.size_formatted} ({props.size_bytes.toLocaleString()} バイト)</div>
+                                <div className={styles.value}>{fileProps.size_formatted} ({fileProps.size_bytes.toLocaleString()} バイト)</div>
                             </div>
                             <div className={styles.row}>
                                 <div className={styles.label}>ディスク上のサイズ:</div>
-                                <div className={styles.value}>{props.size_on_disk_formatted} ({props.size_on_disk_bytes.toLocaleString()} バイト)</div>
+                                <div className={styles.value}>{fileProps.size_on_disk_formatted} ({fileProps.size_on_disk_bytes.toLocaleString()} バイト)</div>
                             </div>
                             {isDir && (
                                 <div className={styles.row}>
                                     <div className={styles.label}>内容:</div>
-                                    <div className={styles.value}>{props.contains_files} ファイル、{props.contains_folders} フォルダー</div>
+                                    <div className={styles.value}>{fileProps.contains_files} ファイル、{fileProps.contains_folders} フォルダー</div>
                                 </div>
                             )}
 
@@ -322,15 +431,15 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
 
                             <div className={styles.row}>
                                 <div className={styles.label}>作成日時:</div>
-                                <div className={styles.value}>{props.created_formatted}</div>
+                                <div className={styles.value}>{fileProps.created_formatted}</div>
                             </div>
                             <div className={styles.row}>
                                 <div className={styles.label}>更新日時:</div>
-                                <div className={styles.value}>{props.modified_formatted}</div>
+                                <div className={styles.value}>{fileProps.modified_formatted}</div>
                             </div>
                             <div className={styles.row}>
                                 <div className={styles.label}>アクセス日時:</div>
-                                <div className={styles.value}>{props.accessed_formatted}</div>
+                                <div className={styles.value}>{fileProps.accessed_formatted}</div>
                             </div>
 
                             <div className={styles.divider}></div>
@@ -350,7 +459,7 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
                                             type="checkbox"
                                             checked={pendingHidden}
                                             onChange={e => setPendingHidden(e.target.checked)}
-                                            disabled={!props.is_hidden_editable}
+                                            disabled={!fileProps.is_hidden_editable}
                                         /> 隠しファイル(H)
                                     </label>
                                 </div>

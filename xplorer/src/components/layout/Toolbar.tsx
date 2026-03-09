@@ -78,6 +78,9 @@ export const Toolbar = () => {
         }
     };
     const handlePaste = async () => {
+        // 'this-pc' は仮想フォルダであり、物理的なファイルの貼り付けはできないため
+        if (currentPath === 'this-pc') return;
+
         if (!clipboard || clipboard.files.length === 0) return;
         try {
             if (clipboard.operation === 'copy') {
@@ -93,6 +96,10 @@ export const Toolbar = () => {
     };
 
     const handleCopyTo = async () => {
+        // 'this-pc' 内のアイテム（ドライブ等）は別の場所へコピー可能だが、
+        // 整理グループ内の機能として currentPath === 'this-pc' でガードされている
+        if (currentPath === 'this-pc') return;
+
         if (selectedFiles.size === 0) return;
         try {
             const { open } = await import('@tauri-apps/plugin-dialog');
@@ -106,6 +113,9 @@ export const Toolbar = () => {
     };
 
     const handleMoveTo = async () => {
+        // 'this-pc' 内のドライブ等は移動不可
+        if (currentPath === 'this-pc') return;
+
         if (selectedFiles.size === 0) return;
         try {
             const { open } = await import('@tauri-apps/plugin-dialog');
@@ -142,6 +152,9 @@ export const Toolbar = () => {
     };
 
     const handleNewFile = async () => {
+        // 仮想フォルダ 'this-pc' では新規作成を禁止
+        if (currentPath === 'this-pc') return;
+
         try {
             let newPath = currentPath.endsWith('/') ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}/新しいテキスト ドキュメント.txt`;
             await invoke('create_file', { path: newPath });
@@ -162,6 +175,9 @@ export const Toolbar = () => {
     };
 
     const handleDelete = async () => {
+        // 'this-pc' 内のドライブ等は削除不可
+        if (currentPath === 'this-pc') return;
+
         if (selectedFiles.size === 0) return;
         try {
             const confirmed = await confirmTrash(selectedFiles.size, false);
@@ -304,6 +320,9 @@ export const Toolbar = () => {
     };
 
     const handleNewFolder = async () => {
+        // 仮想フォルダ 'this-pc' では新規フォルダ作成を禁止
+        if (currentPath === 'this-pc') return;
+
         try {
             let newPath = currentPath.endsWith('/') ? `${currentPath}新しいフォルダー` : `${currentPath}/新しいフォルダー`;
             await invoke('create_directory', { path: newPath });
@@ -317,7 +336,7 @@ export const Toolbar = () => {
         <div className={styles.content}>
             <div className={styles.group}>
                 <div className={styles.groupItems}>
-                    <LargeButton icon={<ClipboardPaste size={32} strokeWidth={1} color="#A0A0A0" fill="#F0F0F0" />} label="貼り付け" onClick={handlePaste} disabled={clipboard === null} />
+                    <LargeButton icon={<ClipboardPaste size={32} strokeWidth={1} color="#A0A0A0" fill="#F0F0F0" />} label="貼り付け" onClick={handlePaste} disabled={clipboard === null || currentPath === 'this-pc'} />
                     <div className={styles.smallButtonCol}>
                         <SmallButton icon={<Scissors size={16} color="#0078D7" />} label="切り取り" onClick={handleCut} disabled={selectedFiles.size === 0} />
                         <SmallButton icon={<Copy size={16} color="#0078D7" />} label="コピー" onClick={handleCopy} disabled={selectedFiles.size === 0} />
@@ -329,8 +348,8 @@ export const Toolbar = () => {
 
             <div className={styles.group}>
                 <div className={styles.groupItems}>
-                    <LargeButton icon={<ArrowRightSquare size={32} strokeWidth={1} color="#217346" />} label="移動先" onClick={handleMoveTo} disabled={selectedFiles.size === 0} />
-                    <LargeButton icon={<Copy size={32} strokeWidth={1} color="#0078D7" />} label="コピー先" onClick={handleCopyTo} disabled={selectedFiles.size === 0} />
+                    <LargeButton icon={<ArrowRightSquare size={32} strokeWidth={1} color="#217346" />} label="移動先" onClick={handleMoveTo} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
+                    <LargeButton icon={<Copy size={32} strokeWidth={1} color="#0078D7" />} label="コピー先" onClick={handleCopyTo} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
                     <LargeButton icon={<Trash2 size={32} strokeWidth={1} color="#E81123" />} label="削除" onClick={handleDelete} disabled={selectedFiles.size === 0} />
                     <LargeButton icon={<Edit2 size={32} strokeWidth={1} color="#0078D7" />} label="名前の変更" onClick={triggerRename} disabled={selectedFiles.size !== 1} />
                 </div>
@@ -339,8 +358,8 @@ export const Toolbar = () => {
 
             <div className={styles.group}>
                 <div className={styles.groupItems}>
-                    <LargeButton icon={<FolderPlus size={32} strokeWidth={1} color="#F2A000" fill="#FFB900" />} label="新しい\nフォルダー" onClick={handleNewFolder} />
-                    <LargeButton icon={<FilePlus size={32} strokeWidth={1} color="#0078D7" />} label="新しい\n項目" onClick={handleNewFile} />
+                    <LargeButton icon={<FolderPlus size={32} strokeWidth={1} color="#F2A000" fill="#FFB900" />} label="新しい\nフォルダー" onClick={handleNewFolder} disabled={currentPath === 'this-pc'} />
+                    <LargeButton icon={<FilePlus size={32} strokeWidth={1} color="#0078D7" />} label="新しい\n項目" onClick={handleNewFile} disabled={currentPath === 'this-pc'} />
                 </div>
                 <div className={styles.groupTitle}>新規作成</div>
             </div>

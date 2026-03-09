@@ -5,7 +5,7 @@
 
 use std::fs;
 
-use super::types::VolumeInfo;
+use super::types::{VolumeInfo, DiskProperties};
 use super::utils::format_size;
 
 #[tauri::command]
@@ -85,6 +85,58 @@ fn get_fs_id(path: &str) -> Option<u64> {
             Some(stat.f_fsid)
         } else {
             None
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn get_disk_properties(path: String) -> Result<DiskProperties, String> {
+    use std::ffi::CString;
+    use std::mem::MaybeUninit;
+    let c_path = CString::new(path.clone()).unwrap_or_default();
+    
+    unsafe {
+        let mut stat = MaybeUninit::<libc::statvfs>::uninit();
+        if libc::statvfs(c_path.as_ptr(), stat.as_mut_ptr()) == 0 {
+            let stat = stat.assume_init();
+            let total = u64::from(stat.f_blocks) * stat.f_frsize;
+            let free = u64::from(stat.f_bavail) * stat.f_frsize;
+            let used = total - free;
+
+            let mut sfs = MaybeUninit::<libc::statfs>::uninit();
+            let fs_type = if libc::statfs(c_path.as_ptr(), sfs.as_mut_ptr()) == 0 {
+                let sfs = sfs.assume_init();
+                let bytes = std::slice::from_raw_parts(sfs.f_fstypename.as_ptr() as *const u8, 16);
+                let name = std::str::from_utf8(bytes)
+                    .unwrap_or("Unknown")
+                    .trim_matches(char::from(0));
+                name.to_uppercase()
+            } else {
+                "APFS".to_string()
+            };
+
+            let name = if path == "/" {
+                "Macintosh HD".to_string()
+            } else {
+                std::path::Path::new(&path)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| path.clone())
+            };
+
+            Ok(DiskProperties {
+                name,
+                path,
+                file_system: fs_type,
+                total_bytes: total,
+                free_bytes: free,
+                used_bytes: used,
+                total_bytes_formatted: format_size(total),
+                free_bytes_formatted: format_size(free),
+                used_bytes_formatted: format_size(used),
+            })
+        } else {
+            Err("Failed to get disk properties".to_string())
         }
     }
 }

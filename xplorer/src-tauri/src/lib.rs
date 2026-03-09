@@ -148,6 +148,7 @@ pub fn run() {
             commands::file_ops::check_exists,
             commands::utils::get_home_dir,
             commands::volumes::list_volumes,
+            commands::volumes::get_disk_properties,
             commands::utils::get_parent_path,
             commands::directory::complete_path,
             commands::utils::open_terminal_at,

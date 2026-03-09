@@ -37,7 +37,7 @@
 }
 
 .content {
-    padding: 12px;
+    padding: 10px 12px 0 12px;
     background-color: #ffffff;
     flex: 1;
 }
@@ -320,5 +320,92 @@
 
     .appLoading {
         color: #aaa;
+    }
+}
+
+/* Disk Properties Styles - Compact Layout */
+.diskUsageBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    font-size: 11px;
+}
+
+.usageRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 18px;
+}
+
+.usageLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 80px;
+}
+
+.colorIndicator {
+    width: 10px;
+    height: 10px;
+    border: 1px solid #999;
+    flex-shrink: 0;
+}
+
+.usageValue {
+    flex: 1;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.usageValueFormatted {
+    width: 70px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.diskChartRow {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 0 0;
+}
+
+.diskChartContainer {
+    position: relative;
+    width: 140px;
+    height: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.donutChart {
+    width: 70px;
+    height: 70px;
+}
+
+.chartLabel {
+    margin-top: 4px;
+    font-size: 11px;
+}
+
+
+
+@media (prefers-color-scheme: dark) {
+    .usageLabel {
+        color: #ccc;
+    }
+
+    .usageValueFormatted {
+        color: #aaa;
+    }
+
+    .chartLabel {
+        color: #ccc;
+    }
+
+    .colorIndicator {
+        border-color: #555;
     }
 }

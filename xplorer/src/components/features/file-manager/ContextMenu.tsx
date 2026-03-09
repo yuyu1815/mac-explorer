@@ -74,6 +74,9 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
     };
 
     const handleNewFile = async () => {
+        // 'this-pc' は仮想フォルダであり、物理的なファイルの作成はできないため
+        if (currentPath === 'this-pc') return;
+
         try {
             let newPath = currentPath.endsWith('/') ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}/新しいテキスト ドキュメント.txt`;
             await ipc.createFile(newPath);
@@ -248,7 +251,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     <ContextMenuItem
                         icon={<Clipboard size={16} />}
                         label="貼り付け(P)"
-                        disabled={!clipboard}
+                        disabled={!clipboard || currentPath === 'this-pc'}
                         onClick={() => {
                             if (clipboard) {
                                 handleAction(async () => {
@@ -264,11 +267,16 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                         }}
                     />
                     <ContextMenuSeparator />
-                    <ContextSubMenuItem icon={<FolderPlus size={16} />} label="新規作成(W)">
-                        <ContextMenuItem icon={<FolderPlus size={16} />} label="フォルダー(F)" onClick={() => handleAction(onCreateFolder)} />
-                        <ContextMenuSeparator />
-                        <ContextMenuItem icon={<Edit2 size={16} />} label="テキスト ドキュメント" onClick={() => handleAction(handleNewFile)} />
-                    </ContextSubMenuItem>
+                    {currentPath !== 'this-pc' && (
+                        <>
+                            <ContextMenuSeparator />
+                            <ContextSubMenuItem icon={<FolderPlus size={16} />} label="新規作成(W)">
+                                <ContextMenuItem icon={<FolderPlus size={16} />} label="フォルダー(F)" onClick={() => handleAction(onCreateFolder)} />
+                                <ContextMenuSeparator />
+                                <ContextMenuItem icon={<Edit2 size={16} />} label="テキスト ドキュメント" onClick={() => handleAction(handleNewFile)} />
+                            </ContextSubMenuItem>
+                        </>
+                    )}
                     <ContextMenuSeparator />
                     <ContextMenuItem icon={<Settings size={16} />} label="プロパティ(R)" onClick={() => handleAction(async () => {
                         openPropertiesDialog(currentPath);
@@ -305,17 +313,27 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     })} />
                     <ContextMenuSeparator />
                     {!isMultiple && (
-                        <ContextMenuItem icon={<Edit2 size={16} />} label="名前の変更(M)" onClick={() => handleAction(() => {
-                            if (targetPath) onStartRename(targetPath);
-                        })} />
+                        <ContextMenuItem
+                            icon={<Edit2 size={16} />}
+                            label="名前の変更(M)"
+                            disabled={currentPath === 'this-pc'}
+                            onClick={() => handleAction(() => {
+                                if (targetPath) onStartRename(targetPath);
+                            })}
+                        />
                     )}
-                    <ContextMenuItem icon={<Trash2 size={16} />} label="削除(D)" onClick={() => handleAction(async () => {
-                        const confirmed = await confirmTrash(pathsToActOn.length, false);
-                        if (confirmed) {
-                            await ipc.deleteFiles(pathsToActOn);
-                            await refreshFiles();
-                        }
-                    })} />
+                    <ContextMenuItem
+                        icon={<Trash2 size={16} />}
+                        label="削除(D)"
+                        disabled={currentPath === 'this-pc'}
+                        onClick={() => handleAction(async () => {
+                            const confirmed = await confirmTrash(pathsToActOn.length, false);
+                            if (confirmed) {
+                                await ipc.deleteFiles(pathsToActOn);
+                                await refreshFiles();
+                            }
+                        })}
+                    />
                     <ContextMenuSeparator />
                     {/* アーカイブの場合は解凍メニューを表示 */}
                     {isArchive(targetPath) && (

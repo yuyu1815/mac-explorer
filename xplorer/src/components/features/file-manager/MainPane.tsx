@@ -323,6 +323,9 @@ export const MainPane = () => {
     }, [setRenamingPath]);
 
     const handleCreateFolder = useCallback(async () => {
+        // 'this-pc' は仮想ディレクトリであり、物理的なファイルの作成はできないため
+        if (currentPath === 'this-pc') return;
+
         const defaultName = '新しいフォルダー';
         const newPath = currentPath.endsWith('/') ? `${currentPath}${defaultName}` : `${currentPath}/${defaultName}`;
         handleCreateDirectory(newPath);
@@ -404,6 +407,9 @@ export const MainPane = () => {
     };
 
     const handleDropItem = async (e: React.DragEvent, file: { path: string; is_dir: boolean }) => {
+        // 'this-pc' 内のアイテム（ドライブ等）へのドロップによるコピー・移動を制限
+        if (currentPath === 'this-pc') return;
+
         if (!file.is_dir || selectedPaths.has(file.path)) return;
         e.preventDefault();
         e.stopPropagation();
@@ -474,6 +480,9 @@ export const MainPane = () => {
         }
 
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+            // 'this-pc' ビューでは新規作成を禁止
+            if (currentPath === 'this-pc') return;
+
             e.preventDefault();
             handleCreateFolder();
             return;
@@ -506,6 +515,9 @@ export const MainPane = () => {
 
         if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
             e.preventDefault();
+            // 仮想ディレクトリ 'this-pc' への貼り付けを禁止
+            if (currentPath === 'this-pc') return;
+
             if (clipboard) {
                 if (clipboard.operation === 'copy') {
                     await invoke('copy_files', { sources: clipboard.files, dest: currentPath });
@@ -558,6 +570,9 @@ export const MainPane = () => {
         }
 
         if ((e.key === 'Delete' || (e.key === 'Backspace' && (e.metaKey || e.ctrlKey))) && e.shiftKey && selectedPaths.size > 0) {
+            // 'this-pc' 内のドライブ等は削除不可
+            if (currentPath === 'this-pc') return;
+
             e.preventDefault();
             const confirmed = await confirmTrash(selectedPaths.size, true);
             if (confirmed) {
@@ -568,6 +583,9 @@ export const MainPane = () => {
         }
 
         if ((e.key === 'Delete' || (e.key === 'Backspace' && (e.metaKey || e.ctrlKey))) && selectedPaths.size > 0) {
+            // 'this-pc' 内のドライブ等は削除不可
+            if (currentPath === 'this-pc') return;
+
             e.preventDefault();
             const confirmed = await confirmTrash(selectedPaths.size, false);
             if (confirmed) {
@@ -579,6 +597,9 @@ export const MainPane = () => {
 
         if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
             if (selectedPaths.size > 0) {
+                // 'this-pc' 内のドライブ等は削除不可
+                if (currentPath === 'this-pc') return;
+
                 e.preventDefault();
                 const confirmed = await confirmTrash(selectedPaths.size, false);
                 if (confirmed) {
@@ -594,6 +615,9 @@ export const MainPane = () => {
         }
 
         if (e.key === 'F2' && selectedPaths.size === 1) {
+            // 'this-pc' 内のドライブ等は名前変更不可
+            if (currentPath === 'this-pc') return;
+
             const targetPath = Array.from(selectedPaths)[0];
             startRename(targetPath);
             return;

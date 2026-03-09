@@ -59,7 +59,7 @@ pub struct DetailedProperties {
 }
 
 /// ボリューム情報
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VolumeInfo {
     pub name: String,
     pub path: String,
@@ -67,6 +67,20 @@ pub struct VolumeInfo {
     pub free_bytes: u64,
     pub total_bytes_formatted: String,
     pub free_bytes_formatted: String,
+}
+
+/// ディスクの詳細プロパティ
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DiskProperties {
+    pub name: String,
+    pub path: String,
+    pub file_system: String,
+    pub total_bytes: u64,
+    pub free_bytes: u64,
+    pub used_bytes: u64,
+    pub total_bytes_formatted: String,
+    pub free_bytes_formatted: String,
+    pub used_bytes_formatted: String,
 }
 
 /// 圧縮進捗（ストリーミング用）

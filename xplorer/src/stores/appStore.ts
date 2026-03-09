@@ -215,8 +215,8 @@ export const useAppStore = create<AppState>((set) => ({
             mainWindow.scaleFactor()
         ]);
 
-        const winWidth = 420;
-        const winHeight = 550;
+        const winWidth = 360;
+        const winHeight = 460;
         const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
         const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 
