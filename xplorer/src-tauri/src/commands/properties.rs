@@ -273,6 +273,11 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
                 .file_name()
                 .map(|n| n.to_string_lossy().starts_with('.'))
                 .unwrap_or(false),
+        // ドットファイルはファイル名自体が隠し属性の原因なので、chflagsで変更できない
+        is_hidden_editable: !path_buf
+            .file_name()
+            .map(|n| n.to_string_lossy().starts_with('.'))
+            .unwrap_or(false),
         default_application,
         default_application_icon_id,
     })

@@ -52,6 +52,7 @@ pub struct DetailedProperties {
     pub accessed_formatted: String,
     pub is_readonly: bool,
     pub is_hidden: bool,
+    pub is_hidden_editable: bool,  // ドットファイルはchflagsで変更できないためfalse
     pub default_application: Option<String>,
     pub default_application_icon_id: Option<String>,
 }

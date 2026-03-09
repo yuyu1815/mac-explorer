@@ -41,6 +41,7 @@ interface DetailedProperties {
     accessed_formatted: string;
     is_readonly: boolean;
     is_hidden: boolean;
+    is_hidden_editable: boolean;  // ドットファイルはchflagsで変更できないためfalse
     default_application: string | null;
     default_application_icon_id: string | null;
 }
@@ -345,6 +346,7 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
                                             type="checkbox"
                                             checked={pendingHidden}
                                             onChange={e => setPendingHidden(e.target.checked)}
+                                            disabled={!props.is_hidden_editable}
                                         /> 隠しファイル(H)
                                     </label>
                                 </div>
