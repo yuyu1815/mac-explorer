@@ -4,7 +4,7 @@ import { useAppStore } from '@/stores/appStore';
 import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
-    FileAudio, FileImage, FileArchive, FileCode
+    FileAudio, FileImage, FileArchive, FileCode, Link2
 } from 'lucide-react';
 import { FileEntry } from '@/types';
 import { ipc } from '@/services/ipc';
@@ -13,14 +13,21 @@ import { useFileOperations } from '@/hooks/useFileOperations';
 import { useFileSelection } from '@/hooks/useFileSelection';
 import styles from '@/styles/components/features/file-manager/MainPane.module.css';
 
-const FolderIcon = ({ size = 16, color = '#FFB900', iconId }: { size?: number, color?: string, iconId?: string }) => {
+const SymlinkOverlay = ({ size }: { size: number }) => {
+    const overlaySize = Math.max(8, Math.floor(size * 0.5));
+    return (
+        <div className={styles.symlinkOverlay} style={{ width: overlaySize, height: overlaySize }}>
+            <Link2 size={overlaySize - 2} strokeWidth={2.5} color="#666" />
+        </div>
+    );
+};
+
+const FolderIcon = ({ size = 16, color = '#FFB900', iconId, isSymlink }: { size?: number, color?: string, iconId?: string, isSymlink?: boolean }) => {
     const [failed, setFailed] = useState(false);
 
-    if (failed || !iconId || iconId === 'dir') {
-        return <Folder size={size} fill={color} color={color} strokeWidth={1} />;
-    }
-
-    return (
+    const icon = failed || !iconId || iconId === 'dir' ? (
+        <Folder size={size} fill={color} color={color} strokeWidth={1} />
+    ) : (
         <img
             src={`icon://localhost/${iconId}`}
             alt=""
@@ -28,9 +35,19 @@ const FolderIcon = ({ size = 16, color = '#FFB900', iconId }: { size?: number, c
             style={{ width: size, height: size, objectFit: 'contain' }}
         />
     );
+
+    if (isSymlink) {
+        return (
+            <div className={styles.iconContainer} style={{ width: size, height: size }}>
+                {icon}
+                <SymlinkOverlay size={size} />
+            </div>
+        );
+    }
+    return icon;
 };
 
-const AppOverlayIcon = ({ size = 16, iconId }: { size?: number, iconId?: string }) => {
+const AppOverlayIcon = ({ size = 16, iconId, isSymlink }: { size?: number, iconId?: string, isSymlink?: boolean }) => {
     return (
         <div className={styles.iconContainer} style={{ width: size, height: size }}>
             <FolderIcon size={size} />
@@ -44,36 +61,49 @@ const AppOverlayIcon = ({ size = 16, iconId }: { size?: number, iconId?: string 
                     }}
                 />
             </div>
+            {isSymlink && <SymlinkOverlay size={size} />}
         </div>
     );
 };
 
-export const FileIcon = memo(({ isDir, iconId, size = 16 }: { isDir: boolean; iconId?: string; size?: number }) => {
+export const FileIcon = memo(({ isDir, iconId, size = 16, isSymlink }: { isDir: boolean; iconId?: string; size?: number; isSymlink?: boolean }) => {
     const [failed, setFailed] = useState(false);
+
+    const renderWithOverlay = (icon: React.ReactNode) => {
+        if (isSymlink) {
+            return (
+                <div className={styles.iconContainer} style={{ width: size, height: size }}>
+                    {icon}
+                    <SymlinkOverlay size={size} />
+                </div>
+            );
+        }
+        return icon;
+    };
 
     // .app package specialization: Folder with App Icon overlay
     if (isDir && iconId?.toLowerCase().endsWith('.app')) {
-        return <AppOverlayIcon size={size} iconId={iconId} />;
+        return <AppOverlayIcon size={size} iconId={iconId} isSymlink={isSymlink} />;
     }
 
     if (isDir && !iconId?.startsWith('app:')) {
-        return <FolderIcon size={size} iconId={iconId} />;
+        return <FolderIcon size={size} iconId={iconId} isSymlink={isSymlink} />;
     }
 
     if (failed || !iconId) {
         const id = (iconId || '').toLowerCase();
         // app:id support
-        if (['exe', 'app', 'lnk'].includes(id) || id.startsWith('app:')) return <AppWindow size={size} color="#888" />;
-        if (['jpg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(id)) return <FileImage size={size} color="#2196F3" />;
-        if (['mp4', 'mov', 'avi', 'mkv'].includes(id)) return <FileVideo size={size} color="#E91E63" />;
-        if (['mp3', 'wav', 'flac', 'm4a'].includes(id)) return <FileAudio size={size} color="#9C27B0" />;
-        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(id)) return <FileArchive size={size} color="#F44336" />;
-        if (['js', 'ts', 'tsx', 'jsx', 'html', 'css', 'json', 'py', 'rs', 'go', 'c', 'cpp'].includes(id)) return <FileCode size={size} color="#4CAF50" />;
-        if (['txt', 'md', 'doc', 'docx', 'pdf', 'csv', 'xls', 'xlsx'].includes(id)) return <FileText size={size} color="#607D8B" />;
-        return <File size={size} color="#888" />;
+        if (['exe', 'app', 'lnk'].includes(id) || id.startsWith('app:')) return renderWithOverlay(<AppWindow size={size} color="#888" />);
+        if (['jpg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(id)) return renderWithOverlay(<FileImage size={size} color="#2196F3" />);
+        if (['mp4', 'mov', 'avi', 'mkv'].includes(id)) return renderWithOverlay(<FileVideo size={size} color="#E91E63" />);
+        if (['mp3', 'wav', 'flac', 'm4a'].includes(id)) return renderWithOverlay(<FileAudio size={size} color="#9C27B0" />);
+        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(id)) return renderWithOverlay(<FileArchive size={size} color="#F44336" />);
+        if (['js', 'ts', 'tsx', 'jsx', 'html', 'css', 'json', 'py', 'rs', 'go', 'c', 'cpp'].includes(id)) return renderWithOverlay(<FileCode size={size} color="#4CAF50" />);
+        if (['txt', 'md', 'doc', 'docx', 'pdf', 'csv', 'xls', 'xlsx'].includes(id)) return renderWithOverlay(<FileText size={size} color="#607D8B" />);
+        return renderWithOverlay(<File size={size} color="#888" />);
     }
 
-    return (
+    const img = (
         <img
             src={`icon://localhost/${iconId}`}
             alt=""
@@ -81,6 +111,8 @@ export const FileIcon = memo(({ isDir, iconId, size = 16 }: { isDir: boolean; ic
             style={{ width: size, height: size, objectFit: 'contain' }}
         />
     );
+
+    return renderWithOverlay(img);
 });
 
 export const MainPane = () => {
@@ -647,7 +679,7 @@ export const MainPane = () => {
                         data-filepath={file.path}
                     >
                         <td className={styles.detailCellName}>
-                            <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} /> {renderFileName(file)}
+                            <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} isSymlink={file.is_symlink} /> {renderFileName(file)}
                         </td>
                         <td className={styles.detailCellText}>
                             {file.modified_formatted}
@@ -701,7 +733,7 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.listItem}`}
                     data-filepath={file.path}
                 >
-                    <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} />
+                    <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} isSymlink={file.is_symlink} />
                     <span className={styles.listItemText}>{renderFileName(file)}</span>
                 </div>
             ))}
@@ -745,7 +777,7 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.iconItem}`}
                     data-filepath={file.path}
                 >
-                    <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={iconSize} />
+                    <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={iconSize} isSymlink={file.is_symlink} />
                     <span className={styles.iconItemText} style={{ width: '100%' }}>{renderFileName(file)}</span>
                 </div>
             ))}
@@ -789,7 +821,7 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.listItem}`}
                     data-filepath={file.path}
                 >
-                    <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={48} />
+                    <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={48} isSymlink={file.is_symlink} />
                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
                         <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); hookToggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, index); }}>{renderFileName(file)}</span>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); hookToggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, index); }}>{file.file_type}</span>
@@ -847,7 +879,7 @@ export const MainPane = () => {
                         maxWidth: '800px'
                     }}
                 >
-                    <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={32} />
+                    <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={32} isSymlink={file.is_symlink} />
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 'bold' }}>{renderFileName(file)}</span>
