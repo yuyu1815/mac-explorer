@@ -23,7 +23,6 @@ pub struct ApplicationInfo {
 
 /// ファイルを開くデフォルトアプリケーションの情報を取得
 /// 戻り値: (アプリ名, アイコンID)
-#[cfg(target_os = "macos")]
 fn get_default_application(path: &str) -> Option<(String, String)> {
     use cocoa::base::{id as cocoa_id, nil};
     use cocoa::foundation::NSString;
@@ -73,13 +72,7 @@ fn get_default_application(path: &str) -> Option<(String, String)> {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
-fn get_default_application(_path: &str) -> Option<(String, String)> {
-    None
-}
-
 /// ファイルを開けるアプリケーション一覧を取得
-#[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn get_applications_for_file(path: String) -> Result<Vec<ApplicationInfo>, String> {
     use cocoa::base::{id as cocoa_id, nil};
@@ -137,14 +130,7 @@ pub async fn get_applications_for_file(path: String) -> Result<Vec<ApplicationIn
     }
 }
 
-#[cfg(not(target_os = "macos"))]
-#[tauri::command]
-pub async fn get_applications_for_file(_path: String) -> Result<Vec<ApplicationInfo>, String> {
-    Ok(Vec::new())
-}
-
 /// Bundle Identifierを取得
-#[cfg(target_os = "macos")]
 fn get_bundle_identifier(app_path: &str) -> Option<String> {
     use cocoa::base::{id as cocoa_id, nil};
     use cocoa::foundation::NSString;
@@ -170,7 +156,6 @@ fn get_bundle_identifier(app_path: &str) -> Option<String> {
 }
 
 /// デフォルトアプリケーションを変更
-#[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn set_default_application(path: String, bundle_identifier: String) -> Result<(), String> {
     use crate::utils::macos_ls::set_default_handler_for_uti;
@@ -202,12 +187,6 @@ pub async fn set_default_application(path: String, bundle_identifier: String) ->
         let _: () = msg_send![pool, drain];
         result
     }
-}
-
-#[cfg(not(target_os = "macos"))]
-#[tauri::command]
-pub async fn set_default_application(_path: String, _bundle_identifier: String) -> Result<(), String> {
-    Err("Not supported on this platform".to_string())
 }
 
 #[tauri::command]
