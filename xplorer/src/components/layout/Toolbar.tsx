@@ -64,9 +64,16 @@ export const Toolbar = () => {
         }
     };
 
-    const handleCopy = () => { if (selectedFiles.size > 0) setClipboard({ files: Array.from(selectedFiles), operation: 'copy' }); };
-    const handleCut = () => { if (selectedFiles.size > 0) setClipboard({ files: Array.from(selectedFiles), operation: 'cut' }); };
+    const handleCopy = () => {
+        if (currentPath === 'this-pc') return;
+        if (selectedFiles.size > 0) setClipboard({ files: Array.from(selectedFiles), operation: 'copy' });
+    };
+    const handleCut = () => {
+        if (currentPath === 'this-pc') return;
+        if (selectedFiles.size > 0) setClipboard({ files: Array.from(selectedFiles), operation: 'cut' });
+    };
     const handleCopyPath = async () => {
+        if (currentPath === 'this-pc') return;
         if (selectedFiles.size > 0) {
             try {
                 const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
@@ -191,6 +198,9 @@ export const Toolbar = () => {
     };
 
     const handleCompress = async () => {
+        // 'this-pc' 内での圧縮ファイル作成を制限
+        if (currentPath === 'this-pc') return;
+
         if (selectedFiles.size === 0) return;
         try {
             const firstPath = Array.from(selectedFiles)[0];
@@ -258,6 +268,9 @@ export const Toolbar = () => {
     };
 
     const handleExtract = async () => {
+        // 'this-pc' 内でのファイル展開を制限
+        if (currentPath === 'this-pc') return;
+
         if (selectedFiles.size !== 1) return;
         const targetPath = Array.from(selectedFiles)[0];
         if (!isArchive(targetPath)) return;
@@ -338,9 +351,9 @@ export const Toolbar = () => {
                 <div className={styles.groupItems}>
                     <LargeButton icon={<ClipboardPaste size={32} strokeWidth={1} color="#A0A0A0" fill="#F0F0F0" />} label="貼り付け" onClick={handlePaste} disabled={clipboard === null || currentPath === 'this-pc'} />
                     <div className={styles.smallButtonCol}>
-                        <SmallButton icon={<Scissors size={16} color="#0078D7" />} label="切り取り" onClick={handleCut} disabled={selectedFiles.size === 0} />
-                        <SmallButton icon={<Copy size={16} color="#0078D7" />} label="コピー" onClick={handleCopy} disabled={selectedFiles.size === 0} />
-                        <SmallButton icon={<LinkIcon size={16} color="#A0A0A0" />} label="パスのコピー" onClick={handleCopyPath} disabled={selectedFiles.size === 0} />
+                        <SmallButton icon={<Scissors size={16} color="#0078D7" />} label="切り取り" onClick={handleCut} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
+                        <SmallButton icon={<Copy size={16} color="#0078D7" />} label="コピー" onClick={handleCopy} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
+                        <SmallButton icon={<LinkIcon size={16} color="#A0A0A0" />} label="パスのコピー" onClick={handleCopyPath} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
                     </div>
                 </div>
                 <div className={styles.groupTitle}>クリップボード</div>
@@ -350,8 +363,8 @@ export const Toolbar = () => {
                 <div className={styles.groupItems}>
                     <LargeButton icon={<ArrowRightSquare size={32} strokeWidth={1} color="#217346" />} label="移動先" onClick={handleMoveTo} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
                     <LargeButton icon={<Copy size={32} strokeWidth={1} color="#0078D7" />} label="コピー先" onClick={handleCopyTo} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
-                    <LargeButton icon={<Trash2 size={32} strokeWidth={1} color="#E81123" />} label="削除" onClick={handleDelete} disabled={selectedFiles.size === 0} />
-                    <LargeButton icon={<Edit2 size={32} strokeWidth={1} color="#0078D7" />} label="名前の変更" onClick={triggerRename} disabled={selectedFiles.size !== 1} />
+                    <LargeButton icon={<Trash2 size={32} strokeWidth={1} color="#E81123" />} label="削除" onClick={handleDelete} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
+                    <LargeButton icon={<Edit2 size={32} strokeWidth={1} color="#0078D7" />} label="名前の変更" onClick={triggerRename} disabled={selectedFiles.size !== 1 || currentPath === 'this-pc'} />
                 </div>
                 <div className={styles.groupTitle}>整理</div>
             </div>
@@ -374,8 +387,18 @@ export const Toolbar = () => {
 
             <div className={styles.group}>
                 <div className={styles.groupItems}>
-                    <LargeButton icon={<Archive size={32} strokeWidth={1} color="#0078D7" />} label="圧縮" onClick={handleCompress} disabled={selectedFiles.size === 0} />
-                    <LargeButton icon={<FileArchive size={32} strokeWidth={1} color="#107C10" />} label="展開" onClick={handleExtract} disabled={selectedFiles.size !== 1 || !isArchive(Array.from(selectedFiles)[0])} />
+                    <LargeButton
+                        icon={<Archive size={32} strokeWidth={1} color="#0078D7" />}
+                        label="圧縮"
+                        onClick={handleCompress}
+                        disabled={selectedFiles.size === 0 || currentPath === 'this-pc'}
+                    />
+                    <LargeButton
+                        icon={<FileArchive size={32} strokeWidth={1} color="#107C10" />}
+                        label="展開"
+                        onClick={handleExtract}
+                        disabled={selectedFiles.size !== 1 || !isArchive(Array.from(selectedFiles)[0]) || currentPath === 'this-pc'}
+                    />
                 </div>
                 <div className={styles.groupTitle}>圧縮/展開</div>
             </div>

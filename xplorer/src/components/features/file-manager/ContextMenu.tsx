@@ -87,6 +87,9 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
     };
 
     const handleCompress = async () => {
+        // 'this-pc' は仮想フォルダであり、圧縮ファイルの作成はできないため
+        if (currentPath === 'this-pc') return;
+
         if (pathsToActOn.length === 0) return;
         try {
             const defaultName = pathsToActOn.length === 1
@@ -151,6 +154,9 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
     };
 
     const handleExtract = async () => {
+        // 'this-pc' は仮想フォルダであり、ファイルの展開はできないため
+        if (currentPath === 'this-pc') return;
+
         if (!targetPath) return;
         try {
             const baseDir = getFileNameWithoutExtension(targetPath);
@@ -278,9 +284,14 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                         </>
                     )}
                     <ContextMenuSeparator />
-                    <ContextMenuItem icon={<Settings size={16} />} label="プロパティ(R)" onClick={() => handleAction(async () => {
-                        openPropertiesDialog(currentPath);
-                    })} />
+                    <ContextMenuItem
+                        icon={<Settings size={16} />}
+                        label="プロパティ(R)"
+                        disabled={currentPath === 'this-pc'}
+                        onClick={() => handleAction(async () => {
+                            openPropertiesDialog(currentPath);
+                        })}
+                    />
                 </>
             ) : (
                 <>
@@ -301,14 +312,14 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                         })} />
                     )}
                     <ContextMenuSeparator />
-                    <ContextMenuItem icon={<Scissors size={16} />} label="切り取り(T)" onClick={() => handleAction(() => {
+                    <ContextMenuItem icon={<Scissors size={16} />} label="切り取り(T)" disabled={currentPath === 'this-pc'} onClick={() => handleAction(() => {
                         setClipboard({ files: pathsToActOn, operation: 'cut' });
                     })} />
-                    <ContextMenuItem icon={<Copy size={16} />} label="コピー(C)" onClick={() => handleAction(() => {
+                    <ContextMenuItem icon={<Copy size={16} />} label="コピー(C)" disabled={currentPath === 'this-pc'} onClick={() => handleAction(() => {
                         setClipboard({ files: pathsToActOn, operation: 'copy' });
                     })} />
                     {/* Copy Path */}
-                    <ContextMenuItem icon={<Clipboard size={16} />} label="パスのコピー(P)" onClick={() => handleAction(() => {
+                    <ContextMenuItem icon={<Clipboard size={16} />} label="パスのコピー(P)" disabled={currentPath === 'this-pc'} onClick={() => handleAction(() => {
                         navigator.clipboard.writeText(pathsToActOn.join('\n'));
                     })} />
                     <ContextMenuSeparator />
@@ -337,10 +348,20 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     <ContextMenuSeparator />
                     {/* アーカイブの場合は解凍メニューを表示 */}
                     {isArchive(targetPath) && (
-                        <ContextMenuItem icon={<FileArchive size={16} />} label="すべて展開(E)" onClick={() => handleAction(handleExtract)} />
+                        <ContextMenuItem
+                            icon={<FileArchive size={16} />}
+                            label="すべて展開(E)"
+                            disabled={currentPath === 'this-pc'}
+                            onClick={() => handleAction(handleExtract)}
+                        />
                     )}
                     {/* 圧縮メニュー */}
-                    <ContextMenuItem icon={<Archive size={16} />} label="圧縮(Z)" onClick={() => handleAction(handleCompress)} />
+                    <ContextMenuItem
+                        icon={<Archive size={16} />}
+                        label="圧縮(Z)"
+                        disabled={currentPath === 'this-pc'}
+                        onClick={() => handleAction(handleCompress)}
+                    />
                     <ContextMenuSeparator />
                     <ContextMenuItem icon={<Settings size={16} />} label="プロパティ(R)" onClick={() => handleAction(async () => {
                         if (targetPath) openPropertiesDialog(targetPath);

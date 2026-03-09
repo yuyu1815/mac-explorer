@@ -140,9 +140,10 @@ interface DriveCardProps {
     isSelected: boolean;
     onClick: (e: ReactMouseEvent) => void;
     onDoubleClick: () => void;
+    onContextMenu: (e: ReactMouseEvent) => void;
 }
 
-const DriveCard = ({ vol, isSelected, onClick, onDoubleClick }: DriveCardProps) => {
+const DriveCard = ({ vol, isSelected, onClick, onDoubleClick, onContextMenu }: DriveCardProps) => {
     const usedBytes = vol.total_bytes - vol.free_bytes;
     const usedPercent = vol.total_bytes > 0 ? (usedBytes / vol.total_bytes) * 100 : 0;
     const barColor = usedPercent > 90 ? '#E81123' : '#0078D7';
@@ -152,6 +153,7 @@ const DriveCard = ({ vol, isSelected, onClick, onDoubleClick }: DriveCardProps) 
             className={`${styles.driveCard} ${isSelected ? styles.selected : ''}`}
             onClick={onClick}
             onDoubleClick={onDoubleClick}
+            onContextMenu={onContextMenu}
         >
             <div className={styles.driveIconWrapper}>
                 <Monitor size={48} color="#555" />
@@ -172,11 +174,13 @@ const DriveCard = ({ vol, isSelected, onClick, onDoubleClick }: DriveCardProps) 
     );
 };
 
-const PCView = () => {
+const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
+    onContextMenu: (e: ReactMouseEvent, path: string) => void;
+    selectedPaths: Set<string>;
+    toggleSelection: (path: string, clearOthers: boolean, isRange: boolean, index: number) => void;
+}) => {
     const [volumes, setVolumes] = useState<any[]>([]);
-    const { setCurrentPath, toggleSelection, tabs, activeTabId } = useAppStore();
-    const activeTab = tabs.find(t => t.id === activeTabId);
-    const selectedPaths = activeTab?.selectedFiles || new Set();
+    const { setCurrentPath } = useAppStore();
 
     useEffect(() => {
         invoke('list_volumes').then((v: any) => setVolumes(v)).catch(console.error);
@@ -197,9 +201,13 @@ const PCView = () => {
                             isSelected={selectedPaths.has(vol.path)}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                toggleSelection(vol.path, !e.ctrlKey && !e.metaKey, e.shiftKey);
+                                toggleSelection(vol.path, !e.ctrlKey && !e.metaKey, e.shiftKey, -1);
                             }}
                             onDoubleClick={() => setCurrentPath(vol.path)}
+                            onContextMenu={(e) => {
+                                e.stopPropagation();
+                                onContextMenu(e, vol.path);
+                            }}
                         />
                     ))}
                 </div>
@@ -437,6 +445,7 @@ export const MainPane = () => {
 
     const handleContextMenu = (e: ReactMouseEvent, path: string | null) => {
         e.preventDefault();
+        e.stopPropagation();
         if (path && !selectedPaths.has(path)) {
             hookToggleSelection(path, true, false, -1);
         }
@@ -1139,7 +1148,11 @@ export const MainPane = () => {
             tabIndex={0}
         >
             {currentPath === 'this-pc' ? (
-                <PCView />
+                <PCView
+                    onContextMenu={handleContextMenu}
+                    selectedPaths={selectedPaths}
+                    toggleSelection={hookToggleSelection}
+                />
             ) : (
                 <>
                     {files.length === 0 && (
