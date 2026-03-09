@@ -3,7 +3,7 @@
 //! 基本情報（名前、パス、種類）に加えて、macOSのFinder風の情報ウィンドウ表示や、
 //! フォルダサイズの再帰的な計算（ストリーミング含む）をサポートします。
 
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
@@ -303,7 +303,7 @@ pub async fn get_detailed_properties(path: String) -> Result<DetailedProperties,
                 stack.push(entry.path());
             } else {
                 props.contains_files += 1;
-                props.size_bytes += meta.len();
+                props.size_bytes += meta.blocks() * 512;
             }
         }
     }
@@ -357,7 +357,7 @@ pub async fn get_detailed_properties_streaming(
                     stack.push(entry.path());
                 } else {
                     files += 1;
-                    size += m.len();
+                    size += m.blocks() * 512;
                 }
 
                 if (counter % 50) == 0 {
