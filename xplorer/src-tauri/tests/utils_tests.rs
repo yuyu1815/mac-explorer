@@ -3,7 +3,7 @@
 //! format_size, format_speed, format_eta などのフォーマット関数をテストします。
 
 mod format_size_tests {
-    use xplorer_lib::utils::format_size;
+    use xplorer_lib::commands_utils::format_size;
 
     #[test]
     fn test_format_size_bytes() {
@@ -41,7 +41,7 @@ mod format_size_tests {
 }
 
 mod format_speed_tests {
-    use xplorer_lib::utils::format_speed;
+    use xplorer_lib::commands_utils::format_speed;
 
     #[test]
     fn test_format_speed_zero() {
@@ -76,7 +76,7 @@ mod format_speed_tests {
 }
 
 mod format_eta_tests {
-    use xplorer_lib::utils::format_eta;
+    use xplorer_lib::commands_utils::format_eta;
 
     #[test]
     fn test_format_eta_zero() {
