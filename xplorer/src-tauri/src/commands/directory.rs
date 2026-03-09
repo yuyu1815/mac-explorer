@@ -4,6 +4,7 @@
 //! 仮想的なディレクトリとして扱うためのパス分割・探索ロジックを含みます。
 
 use std::fs;
+use std::os::darwin::fs::MetadataExt as DarwinMetadataExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
@@ -155,12 +156,12 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
         .map_err(|e| e.to_string())?
         .flatten()
         .filter_map(|entry| {
+            let meta = entry.metadata().ok()?;
             let name = entry.file_name().to_string_lossy().into_owned();
-            if !show_hidden && name.starts_with('.') {
+            let has_hidden_flag = DarwinMetadataExt::st_flags(&meta) & 0x8000 != 0;
+            if !show_hidden && (name.starts_with('.') || has_hidden_flag) {
                 return None;
             }
-
-            let meta = entry.metadata().ok()?;
             let path_buf = entry.path();
             let path_str = path_buf.to_string_lossy().into_owned();
             let is_dir = meta.is_dir();
@@ -179,6 +180,8 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs() as i64;
+
+            let is_hidden = has_hidden_flag || name.starts_with('.');
 
             Some(FileEntry {
                 name,
@@ -199,7 +202,7 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
                 } else {
                     ext.clone().unwrap_or_default()
                 },
-                is_hidden: entry.file_name().to_string_lossy().starts_with('.'),
+                is_hidden,
                 is_symlink: meta.file_type().is_symlink(),
                 is_archive: is_archive_file(&path_str),
                 permissions: format!("{:o}", meta.permissions().mode() & 0o777),
