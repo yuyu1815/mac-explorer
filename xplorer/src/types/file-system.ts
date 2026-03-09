@@ -14,6 +14,7 @@ export interface FileEntry {
     is_archive: boolean;
     permissions: string;
     icon_id: string;
+    is_noaccess: boolean;
 }
 
 export type ViewMode = 'extra_large_icon' | 'large_icon' | 'medium_icon' | 'small_icon' | 'list' | 'detail' | 'tiles' | 'content';

@@ -133,6 +133,7 @@ pub async fn list_archive_internal(
                 } else {
                     get_entry_icon_id(false, &entry.path, ext)
                 },
+                is_noaccess: false, // アーカイブ内部のエントリは常にアクセス可能
             })
         })
         .collect();
@@ -183,6 +184,13 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
 
             let is_hidden = has_hidden_flag || name.starts_with('.');
 
+            // ディレクトリの場合、実際にアクセスできるか確認
+            let is_noaccess = if is_dir {
+                fs::read_dir(&path_buf).is_err()
+            } else {
+                false
+            };
+
             Some(FileEntry {
                 name,
                 path: path_str.clone(),
@@ -207,6 +215,7 @@ pub async fn list_directory(path: String, show_hidden: bool) -> Result<Vec<FileE
                 is_archive: is_archive_file(&path_str),
                 permissions: format!("{:o}", meta.permissions().mode() & 0o777),
                 icon_id: get_entry_icon_id(is_dir, &path_str, ext),
+                is_noaccess,
             })
         })
         .collect())
@@ -302,4 +311,116 @@ pub async fn complete_path(
     entries.sort_unstable_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
     Ok(entries)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use tempfile::tempdir;
+
+    /// ディレクトリのアクセス権限チェックのテスト
+    /// 注: macOSでは所有者は権限ビットに関係なくアクセス可能
+    /// そのため、所有者が作成したディレクトリは常に is_noaccess=false になる
+    #[tokio::test]
+    async fn test_is_noaccess_owner_always_accessible() {
+        let dir = tempdir().expect("Failed to create temp dir");
+        let base_path = dir.path().to_string_lossy().to_string();
+
+        // 所有者として実行権限あり (rwx------)
+        let owner_exec = dir.path().join("owner_exec");
+        fs::create_dir(&owner_exec).expect("Failed to create dir");
+        fs::set_permissions(&owner_exec, fs::Permissions::from_mode(0o700)).ok();
+
+        // 所有者として実行権限なし (rw-------)
+        // macOSでは所有者は権限ビットに関係なくアクセス可能
+        let owner_no_exec = dir.path().join("owner_no_exec");
+        fs::create_dir(&owner_no_exec).expect("Failed to create dir");
+        fs::set_permissions(&owner_no_exec, fs::Permissions::from_mode(0o600)).ok();
+
+        // 通常ファイル (実行ビットなしでも読める)
+        let regular_file = dir.path().join("regular.txt");
+        fs::write(&regular_file, "test").expect("Failed to create file");
+
+        // list_directoryを実行
+        let entries = list_directory(base_path, true).await.expect("Failed to list directory");
+
+        // macOSでは所有者は常にアクセス可能
+        let exec_entry = entries.iter().find(|e| e.name == "owner_exec").expect("exec dir not found");
+        assert!(!exec_entry.is_noaccess, "owner_exec should have is_noaccess=false");
+
+        // macOSでは所有者は権限ビットに関係なくアクセス可能
+        let no_exec_entry = entries.iter().find(|e| e.name == "owner_no_exec").expect("no_exec dir not found");
+        assert!(!no_exec_entry.is_noaccess, "owner_no_exec should have is_noaccess=false on macOS (owner always has access)");
+
+        // ファイルは常にis_noaccess=false
+        let file_entry = entries.iter().find(|e| e.name == "regular.txt").expect("regular file not found");
+        assert!(!file_entry.is_noaccess, "regular file should have is_noaccess=false");
+    }
+
+    /// シンボリックリンクのテスト
+    /// 注: macOSでは所有者は権限ビットに関係なくアクセス可能
+    #[tokio::test]
+    async fn test_symlink_is_noaccess() {
+        let dir = tempdir().expect("Failed to create temp dir");
+        let base_path = dir.path().to_string_lossy().to_string();
+
+        // ディレクトリを作成（権限設定）
+        let target_dir = dir.path().join("target_dir");
+        fs::create_dir(&target_dir).expect("Failed to create dir");
+        fs::set_permissions(&target_dir, fs::Permissions::from_mode(0o600)).ok();
+
+        // そのディレクトリへのシンボリックリンクを作成
+        let symlink_path = dir.path().join("symlink_to_target");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target_dir, &symlink_path).expect("Failed to create symlink");
+
+        let entries = list_directory(base_path, true).await.expect("Failed to list directory");
+
+        // シンボリックリンク自体はアクセス可能（リンク先の権限とは無関係）
+        let symlink_entry = entries.iter().find(|e| e.name == "symlink_to_target").expect("symlink not found");
+        assert!(!symlink_entry.is_noaccess, "symlink itself should have is_noaccess=false");
+        assert!(symlink_entry.is_symlink, "symlink should have is_symlink=true");
+
+        // ターゲットディレクトリはmacOSでは所有者なのでアクセス可能
+        let target_entry = entries.iter().find(|e| e.name == "target_dir").expect("target not found");
+        assert!(!target_entry.is_noaccess, "target dir should have is_noaccess=false on macOS (owner always has access)");
+    }
+
+    /// システムディレクトリのアクセス権限テスト
+    /// root所有のディレクトリで現在のユーザーがアクセスできないケースをテスト
+    #[tokio::test]
+    async fn test_system_noaccess_directory() {
+        // /private/var/agentx は root 所有で drwx------ (700)
+        // 現在のユーザーが root でなければアクセス不可
+        let entries = list_directory("/private/var".to_string(), true).await;
+
+        if let Ok(entries) = entries {
+            if let Some(agentx_entry) = entries.iter().find(|e| e.name == "agentx") {
+                // root以外のユーザーならアクセス不可のはず
+                let can_access = fs::read_dir("/private/var/agentx").is_ok();
+                assert_eq!(
+                    agentx_entry.is_noaccess, !can_access,
+                    "agentx is_noaccess should match actual accessibility"
+                );
+            }
+        }
+    }
+
+    /// /var/root ディレクトリのテスト
+    #[tokio::test]
+    async fn test_var_root_noaccess() {
+        // /var/root は root のホームディレクトリ
+        let entries = list_directory("/var".to_string(), true).await;
+
+        if let Ok(entries) = entries {
+            if let Some(root_entry) = entries.iter().find(|e| e.name == "root") {
+                let can_access = fs::read_dir("/var/root").is_ok();
+                assert_eq!(
+                    root_entry.is_noaccess, !can_access,
+                    "root dir is_noaccess should match actual accessibility"
+                );
+            }
+        }
+    }
 }

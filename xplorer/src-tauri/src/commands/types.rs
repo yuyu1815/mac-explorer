@@ -20,6 +20,7 @@ pub struct FileEntry {
     pub is_archive: bool,
     pub permissions: String,
     pub icon_id: String,
+    pub is_noaccess: bool,
 }
 
 /// プロパティ進捗（ストリーミング用）
