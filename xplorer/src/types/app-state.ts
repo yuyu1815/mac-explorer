@@ -21,7 +21,6 @@ export interface AppState {
     renameTriggerId: number;
     showDetailsPane: boolean;
     loading: boolean;
-    propertiesDialogTarget: string | null;
     showHiddenFiles: boolean;
     showFileExtensions: boolean;
     showItemCheckBoxes: boolean;
@@ -58,7 +57,7 @@ export interface AppState {
     toggleDetailsPane: () => void;
     setSearchQuery: (query: string) => void;
     setLoading: (loading: boolean) => void;
-    openPropertiesDialog: (path: string | null) => void;
+    openPropertiesDialog: (path: string) => Promise<void>;
     setShowHiddenFiles: (show: boolean) => void;
     setShowFileExtensions: (show: boolean) => void;
     setShowItemCheckBoxes: (show: boolean) => void;

@@ -1,0 +1,23 @@
+.errorContainer {
+    padding: 20px;
+    font-family: "Segoe UI", sans-serif;
+    background-color: #212121;
+    color: #fff;
+    height: 100vh;
+    box-sizing: border-box;
+}
+
+.errorTitle {
+    color: #ff99a4;
+    margin-bottom: 12px;
+}
+
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #212121;
+    color: #fff;
+    font-family: "Segoe UI", sans-serif;
+}

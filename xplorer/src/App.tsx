@@ -7,6 +7,7 @@ import { StatusBar } from './components/layout/StatusBar';
 import { Toolbar } from './components/layout/Toolbar';
 import { DetailsPane } from './components/layout/DetailsPane';
 import { ProgressWindow } from './components/dialogs/ProgressWindow';
+import { PropertiesWindow } from './components/dialogs/PropertiesWindow';
 import { OverwriteConfirmDialog } from './components/dialogs/OverwriteConfirmDialog';
 import { ExtractPromptDialog } from './components/dialogs/ExtractPromptDialog';
 import { useAppStore } from './stores/appStore';
@@ -75,6 +76,9 @@ function App() {
   const searchParams = new URLSearchParams(window.location.search);
   if (searchParams.get('window') === 'progress') {
     return <ProgressWindow />;
+  }
+  if (searchParams.get('window') === 'properties') {
+    return <PropertiesWindow />;
   }
 
   return (

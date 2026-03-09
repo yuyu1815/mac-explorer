@@ -6,7 +6,6 @@ import {
     Folder, File, FileText, AppWindow, FileVideo,
     FileAudio, FileImage, FileArchive, FileCode
 } from 'lucide-react';
-import { PropertiesDialog } from '@/components/dialogs/PropertiesDialog';
 import { FileEntry } from '@/types';
 import { ipc } from '@/services/ipc';
 import { useFileSystem } from '@/hooks/useFileSystem';
@@ -85,7 +84,7 @@ export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean; iconId?
 };
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, propertiesDialogTarget, openPropertiesDialog, showHiddenFiles, showFileExtensions } = useAppStore();
+    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions } = useAppStore();
     const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -921,13 +920,6 @@ export const MainPane = () => {
                     onClose={() => setContextMenu(null)}
                     onStartRename={setRenamingPath}
                     onCreateFolder={handleCreateFolder}
-                />
-            )}
-
-            {propertiesDialogTarget && (
-                <PropertiesDialog
-                    path={propertiesDialogTarget}
-                    onClose={() => openPropertiesDialog(null)}
                 />
             )}
 
