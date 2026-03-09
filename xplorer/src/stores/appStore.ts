@@ -23,7 +23,6 @@ export const useAppStore = create<AppState>((set) => ({
     renameTriggerId: 0,
     showDetailsPane: false,
     loading: false,
-    propertiesDialogTarget: null,
     showHiddenFiles: false,
     showFileExtensions: true,
     showItemCheckBoxes: false,
@@ -180,7 +179,44 @@ export const useAppStore = create<AppState>((set) => ({
         tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, searchQuery: query } : tab)
     })),
     setLoading: (loading) => set({ loading }),
-    openPropertiesDialog: (path) => set({ propertiesDialogTarget: path }),
+
+    openPropertiesDialog: async (path) => {
+        if (!path) return;
+
+        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+
+        const label = `properties-${Date.now()}`;
+        const queryParams = new URLSearchParams({
+            window: 'properties',
+            path: path,
+        });
+
+        // メインウィンドウの中心に表示
+        const mainWindow = getCurrentWindow();
+        const pos = await mainWindow.innerPosition();
+        const size = await mainWindow.innerSize();
+        const factor = await mainWindow.scaleFactor();
+
+        const winWidth = 420;
+        const winHeight = 550;
+        const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
+        const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
+
+        new WebviewWindow(label, {
+            url: `/?${queryParams.toString()}`,
+            title: 'プロパティ',
+            width: winWidth,
+            height: winHeight,
+            x,
+            y,
+            resizable: false,
+            maximizable: false,
+            decorations: false,
+            transparent: true,
+        });
+    },
+
     setShowHiddenFiles: (show) => set({ showHiddenFiles: show }),
     setShowFileExtensions: (show) => set({ showFileExtensions: show }),
     setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { invoke, Channel } from '@tauri-apps/api/core';
-import { useAppStore } from '@/stores/appStore';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { FileIcon } from '@/components/features/file-manager/MainPane';
 import styles from '@/styles/components/dialogs/PropertiesDialog.module.css';
 
@@ -23,7 +23,6 @@ interface ApplicationInfo {
 
 interface PropertiesDialogProps {
     path: string;
-    onClose: () => void;
 }
 
 interface DetailedProperties {
@@ -46,7 +45,7 @@ interface DetailedProperties {
     default_application_icon_id: string | null;
 }
 
-export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClose }) => {
+export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
     const [props, setProps] = useState<DetailedProperties | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -56,11 +55,12 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
     const [loadingApps, setLoadingApps] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Need to get the entry to access icon_id
-    const activeTab = useAppStore(state => state.tabs.find(t => t.id === useAppStore.getState().activeTabId));
-    const entry = activeTab?.files.find(f => f.path === path);
     const isDir = props?.file_type === 'ファイル フォルダー';
-    const iconId = entry?.icon_id || (isDir ? 'dir' : '');
+    const iconId = props ? (isDir ? 'dir' : '') : '';
+
+    const handleClose = async () => {
+        await getCurrentWebviewWindow().close();
+    };
 
     // 外部クリックでドロップダウンを閉じる
     useEffect(() => {
@@ -153,12 +153,11 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
     }, [path]);
 
     return (
-        <div className={styles.overlay} onMouseDown={onClose}>
-            <div className={styles.window} onMouseDown={e => e.stopPropagation()}>
-                <div className={styles.titlebar}>
-                    <div className={styles.titlebarText}>{props ? `${props.name}のプロパティ` : 'プロパティ'}</div>
-                    <div className={styles.titlebarClose} onClick={onClose}>✕</div>
-                </div>
+        <div data-tauri-drag-region className={styles.window}>
+            <div data-tauri-drag-region className={styles.titlebar}>
+                <div data-tauri-drag-region className={styles.titlebarText}>{props ? `${props.name}のプロパティ` : 'プロパティ'}</div>
+                <div className={styles.titlebarClose} onClick={handleClose}>✕</div>
+            </div>
 
                 <div className={styles.content}>
                     {loading ? (
@@ -284,11 +283,10 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path, onClos
                     ) : null}
                 </div>
 
-                <div className={styles.footer}>
-                    <button className={styles.btn} onClick={onClose}>OK</button>
-                    <button className={styles.btn} onClick={onClose}>キャンセル</button>
-                    <button className={styles.btn} disabled>適用(A)</button>
-                </div>
+            <div className={styles.footer}>
+                <button className={styles.btn} onClick={handleClose}>OK</button>
+                <button className={styles.btn} onClick={handleClose}>キャンセル</button>
+                <button className={styles.btn} disabled>適用(A)</button>
             </div>
         </div>
     );
