@@ -1,15 +1,10 @@
 import { useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { FileEntry } from '@/types';
+import { FormattedSize } from '@/components/common/FormattedSize';
 import styles from '@/styles/components/layout/DetailsPane.module.css';
 
-const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 バイト';
-    const k = 1024;
-    const sizes = ['バイト', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-};
+
 
 const fileIcon = (entry: FileEntry): string =>
     entry.is_dir ? '📁' : '📄';
@@ -45,7 +40,7 @@ export const DetailsPane = () => {
                     <div className={styles.multiSelectIcon}>📋</div>
                     <div className={styles.detailsName}>{selectedEntries.length} 個の項目を選択</div>
                     <div className={styles.detailsProps}>
-                        <DetailRow label="合計サイズ" value={formatBytes(selectedEntries.reduce((s, f) => s + f.size, 0))} />
+                        <DetailRow label="合計サイズ" value={<FormattedSize bytes={selectedEntries.reduce((s, f) => s + f.size, 0)} />} />
                     </div>
                 </div>
             ) : (
@@ -58,7 +53,7 @@ export const DetailsPane = () => {
     );
 };
 
-const DetailRow = ({ label, value }: { label: string; value: string }) => (
+const DetailRow = ({ label, value }: { label: string; value: string | React.ReactNode }) => (
     <div className={styles.detailRow}>
         <span className={styles.detailRowLabel}>{label}</span>
         <span className={styles.detailRowValue}>{value}</span>

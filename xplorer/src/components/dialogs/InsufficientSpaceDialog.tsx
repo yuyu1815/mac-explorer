@@ -1,4 +1,5 @@
 import React from 'react';
+import { FormattedSize } from '@/components/common/FormattedSize';
 import styles from '@/styles/components/dialogs/InsufficientSpaceDialog.module.css';
 
 // Windows 10 の「ディスク容量不足」ダイアログ
@@ -11,13 +12,7 @@ interface InsufficientSpaceDialogProps {
     onCancel: () => void;
 }
 
-const formatBytes = (bytes: number): string => {
-    if (bytes <= 0) return '0 bytes';
-    if (bytes < 1024) return `${bytes} bytes`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-};
+
 
 export const InsufficientSpaceDialog: React.FC<InsufficientSpaceDialogProps> = ({
     driveName,
@@ -41,11 +36,11 @@ export const InsufficientSpaceDialog: React.FC<InsufficientSpaceDialogProps> = (
                             {driveName} に十分な空き領域がありません
                         </div>
                         <div className={styles.message}>
-                            この操作を完了するには、さらに <strong>{formatBytes(deficit)}</strong> の空き領域が必要です。
+                            この操作を完了するには、さらに <strong><FormattedSize bytes={deficit} /></strong> の空き領域が必要です。
                         </div>
                         <div className={styles.stats}>
-                            必要な空き領域: {formatBytes(requiredBytes)}<br />
-                            利用可能な空き領域: {formatBytes(availableBytes)}
+                            必要な空き領域: <FormattedSize bytes={requiredBytes} /><br />
+                            利用可能な空き領域: <FormattedSize bytes={availableBytes} />
                         </div>
                     </div>
                 </div>

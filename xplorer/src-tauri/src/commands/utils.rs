@@ -4,6 +4,7 @@ use std::time::SystemTime;
 ///
 /// # Arguments
 /// * `bytes` - フォーマット対象のサイズ（バイト）
+#[tauri::command]
 pub fn format_size(bytes: u64) -> String {
     let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"];
     let mut size = bytes as f64;

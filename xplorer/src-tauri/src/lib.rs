@@ -113,6 +113,7 @@ pub fn run() {
             commands::archive::pause_operation,
             commands::archive::resume_operation,
             commands::archive::cancel_operation,
+            commands::utils::format_size,
             commands::watcher::watch_path,
             commands::watcher::unwatch_path,
         ])
