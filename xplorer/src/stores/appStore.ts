@@ -26,6 +26,7 @@ export const useAppStore = create<AppState>((set) => ({
     showHiddenFiles: false,
     showFileExtensions: true,
     showItemCheckBoxes: false,
+    openPropertiesWindows: new Map<string, string>(),
     overwriteConfirm: null,
     extractPrompt: null,
 
@@ -186,6 +187,19 @@ export const useAppStore = create<AppState>((set) => ({
         const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
 
+        // 既に開いている場合はフォーカスを移動
+        const existingLabel = useAppStore.getState().openPropertiesWindows.get(path);
+        if (existingLabel) {
+            const existingWindow = await WebviewWindow.getByLabel(existingLabel);
+            if (existingWindow) {
+                await existingWindow.setFocus();
+                await existingWindow.unminimize();
+                return;
+            }
+            // ウィンドウが見つからない場合はマップから削除
+            useAppStore.getState().openPropertiesWindows.delete(path);
+        }
+
         const label = `properties-${Date.now()}`;
         const queryParams = new URLSearchParams({
             window: 'properties',
@@ -203,7 +217,7 @@ export const useAppStore = create<AppState>((set) => ({
         const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
         const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
 
-        new WebviewWindow(label, {
+        const win = new WebviewWindow(label, {
             url: `/?${queryParams.toString()}`,
             title: 'プロパティ',
             width: winWidth,
@@ -214,6 +228,14 @@ export const useAppStore = create<AppState>((set) => ({
             maximizable: false,
             decorations: false,
             transparent: true,
+        });
+
+        // ウィンドウを追跡に追加
+        useAppStore.getState().openPropertiesWindows.set(path, label);
+
+        // ウィンドウが閉じられたらマップから削除
+        win.once('tauri://closed', () => {
+            useAppStore.getState().openPropertiesWindows.delete(path);
         });
     },
 

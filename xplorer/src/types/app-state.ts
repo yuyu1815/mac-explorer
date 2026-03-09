@@ -24,6 +24,7 @@ export interface AppState {
     showHiddenFiles: boolean;
     showFileExtensions: boolean;
     showItemCheckBoxes: boolean;
+    openPropertiesWindows: Map<string, string>;  // path -> window label
     overwriteConfirm: {
         targetFile: string;
         resolve: (overwrite: boolean) => void;
