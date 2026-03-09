@@ -27,7 +27,7 @@ export const useFileSystem = ({ currentPath, showHidden, sortParams, searchQuery
     const sortDesc = sortParams.sortDesc;
 
     const refreshFiles = useCallback(async () => {
-        if (!currentPath) return;
+        if (!currentPath || currentPath === 'this-pc') return;
         setLoading(true);
         setError(null);
         try {
@@ -49,12 +49,17 @@ export const useFileSystem = ({ currentPath, showHidden, sortParams, searchQuery
     }, [currentPath, showHidden, sortBy, sortDesc, searchQuery, setFilesGlobal]);
 
     useEffect(() => {
+        if (currentPath === 'this-pc') {
+            setFilesLocal([]);
+            setFilesGlobal([]);
+            return;
+        }
         refreshFiles();
-    }, [refreshFiles]);
+    }, [refreshFiles, currentPath, setFilesGlobal]);
 
     // ファイルシステム監視のセットアップ
     useEffect(() => {
-        if (!currentPath) return;
+        if (!currentPath || currentPath === 'this-pc') return;
 
         // 監視対象を更新する
         invoke('watch_path', { path: currentPath }).catch(console.error);

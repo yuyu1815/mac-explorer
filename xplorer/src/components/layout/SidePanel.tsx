@@ -60,6 +60,10 @@ const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false, auto
 
     const handleSelect = async (e: React.MouseEvent) => {
         e.stopPropagation();
+        if (path === 'this-pc') {
+            setCurrentPath(path);
+            return;
+        }
         try {
             await invoke('list_directory', { path, showHidden: false });
             setCurrentPath(path);
@@ -171,9 +175,8 @@ export const SidePanel = () => {
 
             <div className={styles.divider} />
 
-            {/* PC */}
             <div className={styles.section}>
-                <FolderTreeItem path="/" name="PC" icon={<Monitor size={16} color="#555" />} level={0} defaultExpanded={true} autoExpand={false} />
+                <FolderTreeItem path="this-pc" name="PC" icon={<Monitor size={16} color="#555" />} level={0} defaultExpanded={true} autoExpand={false} />
                 {homeDir && (
                     <FolderTreeItem path={homeDir} name={homeDir.split('/').pop() || 'User'} icon={<FileText size={16} fill="#FFB900" color="#F2A000" strokeWidth={1} />} level={1} defaultExpanded={false} autoExpand={false} />
                 )}

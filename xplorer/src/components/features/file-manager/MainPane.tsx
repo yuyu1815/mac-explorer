@@ -4,7 +4,8 @@ import { useAppStore } from '@/stores/appStore';
 import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
-    FileAudio, FileImage, FileArchive, FileCode, Link2, Ban
+    FileAudio, FileImage, FileArchive, FileCode, Link2, Ban,
+    Monitor, ChevronDown
 } from 'lucide-react';
 import { FileEntry } from '@/types';
 import { ipc } from '@/services/ipc';
@@ -126,6 +127,86 @@ export const FileIcon = memo(({ isDir, iconId, size = 16, isSymlink, isNoAccess 
 
     return renderWithOverlay(img);
 });
+
+interface DriveCardProps {
+    vol: {
+        name: string;
+        path: string;
+        total_bytes: number;
+        free_bytes: number;
+        total_bytes_formatted: string;
+        free_bytes_formatted: string;
+    };
+    isSelected: boolean;
+    onClick: (e: ReactMouseEvent) => void;
+    onDoubleClick: () => void;
+}
+
+const DriveCard = ({ vol, isSelected, onClick, onDoubleClick }: DriveCardProps) => {
+    const usedBytes = vol.total_bytes - vol.free_bytes;
+    const usedPercent = vol.total_bytes > 0 ? (usedBytes / vol.total_bytes) * 100 : 0;
+    const barColor = usedPercent > 90 ? '#E81123' : '#0078D7';
+
+    return (
+        <div
+            className={`${styles.driveCard} ${isSelected ? styles.selected : ''}`}
+            onClick={onClick}
+            onDoubleClick={onDoubleClick}
+        >
+            <div className={styles.driveIconWrapper}>
+                <Monitor size={48} color="#555" />
+            </div>
+            <div className={styles.driveInfo}>
+                <div className={styles.driveName} title={vol.name}>{vol.name} ({vol.path === '/' ? 'C:' : vol.path.split('/').pop()})</div>
+                <div className={styles.driveBarContainer}>
+                    <div
+                        className={styles.driveBarFill}
+                        style={{ width: `${usedPercent}%`, backgroundColor: barColor }}
+                    />
+                </div>
+                <div className={styles.driveStats}>
+                    空き領域 {vol.free_bytes_formatted} / {vol.total_bytes_formatted}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const PCView = () => {
+    const [volumes, setVolumes] = useState<any[]>([]);
+    const { setCurrentPath, toggleSelection, tabs, activeTabId } = useAppStore();
+    const activeTab = tabs.find(t => t.id === activeTabId);
+    const selectedPaths = activeTab?.selectedFiles || new Set();
+
+    useEffect(() => {
+        invoke('list_volumes').then((v: any) => setVolumes(v)).catch(console.error);
+    }, []);
+
+    return (
+        <div className={styles.pcView}>
+            <div className={styles.driveSection}>
+                <div className={styles.driveSectionTitle}>
+                    <ChevronDown size={14} />
+                    ハード ディスク ドライブ ({volumes.length})
+                </div>
+                <div className={styles.driveList}>
+                    {volumes.map(vol => (
+                        <DriveCard
+                            key={vol.path}
+                            vol={vol}
+                            isSelected={selectedPaths.has(vol.path)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelection(vol.path, !e.ctrlKey && !e.metaKey, e.shiftKey);
+                            }}
+                            onDoubleClick={() => setCurrentPath(vol.path)}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const MainPane = () => {
     const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions, showItemCheckBoxes, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
@@ -1033,17 +1114,23 @@ export const MainPane = () => {
             }}
             tabIndex={0}
         >
-            {files.length === 0 && (
-                <div className={styles.detailCellText} style={{ padding: '32px', textAlign: 'center', width: '100%' }}>
-                    このフォルダーは空です。
-                </div>
-            )}
+            {currentPath === 'this-pc' ? (
+                <PCView />
+            ) : (
+                <>
+                    {files.length === 0 && (
+                        <div className={styles.detailCellText} style={{ padding: '32px', textAlign: 'center', width: '100%' }}>
+                            このフォルダーは空です。
+                        </div>
+                    )}
 
-            {files.length > 0 && viewMode === 'detail' && renderDetailView()}
-            {files.length > 0 && viewMode === 'list' && renderListView()}
-            {files.length > 0 && ['extra_large_icon', 'large_icon', 'medium_icon', 'small_icon', 'icon'].includes(viewMode as string) && renderIconView()}
-            {files.length > 0 && viewMode === 'tiles' && renderTilesView()}
-            {files.length > 0 && viewMode === 'content' && renderContentView()}
+                    {files.length > 0 && viewMode === 'detail' && renderDetailView()}
+                    {files.length > 0 && viewMode === 'list' && renderListView()}
+                    {files.length > 0 && ['extra_large_icon', 'large_icon', 'medium_icon', 'small_icon', 'icon'].includes(viewMode as string) && renderIconView()}
+                    {files.length > 0 && viewMode === 'tiles' && renderTilesView()}
+                    {files.length > 0 && viewMode === 'content' && renderContentView()}
+                </>
+            )}
 
             {contextMenu && (
                 <ContextMenu

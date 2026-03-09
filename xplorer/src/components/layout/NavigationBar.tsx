@@ -64,6 +64,12 @@ export const NavigationBar = () => {
                 finalPath = finalPath.slice(0, -1);
             }
 
+            if (finalPath === 'this-pc') {
+                setCurrentPath(finalPath);
+                setIsEditing(false);
+                return;
+            }
+
             // パスの存在チェック
             try {
                 await invoke('list_directory', { path: finalPath, showHidden: false });

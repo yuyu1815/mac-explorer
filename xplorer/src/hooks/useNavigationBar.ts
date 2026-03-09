@@ -31,11 +31,13 @@ export const useNavigationBar = (currentPath: string) => {
         }
     }, []);
 
-    const breadcrumbs = currentPath.split('/').filter(Boolean).reduce((acc, curr, idx, arr) => {
-        const path = '/' + arr.slice(0, idx + 1).join('/');
-        acc.push({ name: curr, path });
-        return acc;
-    }, [] as { name: string, path: string }[]);
+    const breadcrumbs = currentPath === 'this-pc'
+        ? [{ name: 'PC', path: 'this-pc' }]
+        : currentPath.split('/').filter(Boolean).reduce((acc, curr, idx, arr) => {
+            const path = '/' + arr.slice(0, idx + 1).join('/');
+            acc.push({ name: curr, path });
+            return acc;
+        }, [] as { name: string, path: string }[]);
 
     return {
         inputValue,

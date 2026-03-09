@@ -264,3 +264,93 @@
     left: 2px;
     z-index: 5;
 }
+
+/* PC View & Drive Cards */
+.pcView {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.driveSection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.driveSectionTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-main);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 4px;
+}
+
+.driveList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 8px 0;
+}
+
+.driveCard {
+    display: flex;
+    gap: 12px;
+    padding: 8px;
+    width: 260px;
+    border: 1px solid transparent;
+    cursor: default;
+    transition: background-color 0.1s;
+    user-select: none;
+}
+
+.driveCard:hover {
+    background-color: var(--hover-bg);
+}
+
+.driveCard.selected {
+    background-color: var(--selected-bg);
+    border: 1px dotted #999;
+}
+
+.driveIconWrapper {
+    flex-shrink: 0;
+}
+
+.driveInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.driveName {
+    font-size: 13px;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.driveBarContainer {
+    height: 14px;
+    background-color: #E1E1E1;
+    /* Light gray for dark theme compatibility if using CSS vars later */
+    border: 1px solid #BCBCBC;
+    overflow: hidden;
+    position: relative;
+}
+
+.driveBarFill {
+    height: 100%;
+}
+
+.driveStats {
+    font-size: 11px;
+    color: var(--text-muted);
+}
