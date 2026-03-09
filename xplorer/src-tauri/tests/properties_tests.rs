@@ -656,3 +656,77 @@ mod default_application_tests {
             "icon_id should be present when default_application is present");
     }
 }
+// =============================================================================
+// 属性設定のテスト
+// =============================================================================
+
+mod set_attribute_tests {
+    use super::*;
+    use xplorer_lib::properties::{set_readonly, set_hidden, get_basic_properties};
+
+    #[tokio::test]
+    async fn test_set_readonly() {
+        // Arrange
+        let temp = ProjectTempDir::new("set_readonly_test");
+        let file = temp.path().join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Act - Set readonly
+        set_readonly(file.to_string_lossy().to_string(), true).await.unwrap();
+        let props = get_basic_properties(file.to_string_lossy().to_string()).await.unwrap();
+        assert!(props.is_readonly);
+
+        // Act - Remove readonly
+        set_readonly(file.to_string_lossy().to_string(), false).await.unwrap();
+        let props = get_basic_properties(file.to_string_lossy().to_string()).await.unwrap();
+        assert!(!props.is_readonly);
+    }
+
+    #[tokio::test]
+    async fn test_set_hidden() {
+        // Arrange
+        let temp = ProjectTempDir::new("set_hidden_test");
+        let file = temp.path().join("visible.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Act - Set hidden
+        set_hidden(file.to_string_lossy().to_string(), true).await.unwrap();
+        
+        #[cfg(target_os = "macos")]
+        {
+            use std::process::Command;
+            let output = Command::new("ls")
+                .arg("-lO")
+                .arg(&file)
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            println!("LS OUTPUT (hidden=true): |{}|", stdout);
+            assert!(stdout.contains("hidden"), "ls output should contain 'hidden' after set_hidden(true)");
+        }
+
+        // Act - Set nohidden
+        set_hidden(file.to_string_lossy().to_string(), false).await.unwrap();
+        
+        #[cfg(target_os = "macos")]
+        {
+            use std::process::Command;
+            let output = Command::new("ls")
+                .arg("-lO")
+                .arg(&file)
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            println!("LS OUTPUT (hidden=false): |{}|", stdout);
+            // "hidden" という文字列が属性カラムから消えていることを確認
+            // 注意: ファイルパスに "hidden" が含まれている可能性があるため、属性カラム付近を見る必要があるが、
+            // ここではファイル名に "hidden" が含まれない visible.txt を使っているので単純な contains でも良いはず。
+            // ただし、ls output contains other strings.
+            // "-rw-r--r--  1 yuyu staff hidden 7 Mar  9 18:26 visible.txt"
+            // のような形式になるはず。
+            let parts: Vec<&str> = stdout.split_whitespace().collect();
+            // 5番目のカラム（macOSのls -lOでは flags）を確認
+            assert!(!parts.contains(&"hidden"), "ls output flags should not contain 'hidden' after set_hidden(false)");
+        }
+    }
+}

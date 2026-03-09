@@ -389,3 +389,39 @@ pub async fn get_detailed_properties_streaming(
     });
     Ok(props)
 }
+
+/// 指定されたファイルの読み取り専用属性を設定します。
+/// macOSではファイルパーミッションを変更します。
+#[tauri::command]
+pub async fn set_readonly(path: String, readonly: bool) -> Result<(), String> {
+    let metadata = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    let mut permissions = metadata.permissions();
+    
+    // 読み取り専用にする場合は、所有者、グループ、その他のすべての書き込み権限（0o222）を落とす
+    // 元に戻す場合は、所有者の書き込み権限（0o200）を戻す
+    if readonly {
+        permissions.set_mode(permissions.mode() & !0o222);
+    } else {
+        permissions.set_mode(permissions.mode() | 0o200);
+    }
+    
+    std::fs::set_permissions(&path, permissions).map_err(|e| e.to_string())
+}
+
+/// 指定されたファイルの隠し状態を設定します。
+/// macOSでは chflags コマンドを使用して hidden フラグを操作します。
+#[tauri::command]
+pub async fn set_hidden(path: String, hidden: bool) -> Result<(), String> {
+    let flag = if hidden { "hidden" } else { "nohidden" };
+    let status = std::process::Command::new("chflags")
+        .arg(flag)
+        .arg(&path)
+        .status()
+        .map_err(|e| format!("chflags実行エラー: {}", e))?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("chflags実行失敗: ステータスコード {:?}", status.code()))
+    }
+}
