@@ -98,8 +98,8 @@ pub async fn get_applications_for_file(path: String) -> Result<Vec<ApplicationIn
         // [workspace URLsForApplicationsToOpenURL:url]
         let app_urls: cocoa_id = msg_send![workspace, URLsForApplicationsToOpenURL: url];
 
-        let mut apps = Vec::new();
         let count = NSArray::count(app_urls);
+        let mut apps = Vec::with_capacity(count as usize);
 
         for i in 0..count {
             let app_url: cocoa_id = NSArray::objectAtIndex(app_urls, i);
@@ -112,14 +112,11 @@ pub async fn get_applications_for_file(path: String) -> Result<Vec<ApplicationIn
                     .and_then(|s| s.to_str())
                     .map(|s| s.to_string())
                 {
-                    // Bundle identifierを取得
-                    let bundle_id = get_bundle_identifier(app_path_str);
-
                     apps.push(ApplicationInfo {
                         name: app_name,
                         path: app_path_str.to_string(),
                         icon_id: format!("app:{}", app_path_str),
-                        bundle_identifier: bundle_id.unwrap_or_default(),
+                        bundle_identifier: get_bundle_identifier(app_path_str).unwrap_or_default(),
                     });
                 }
             }
