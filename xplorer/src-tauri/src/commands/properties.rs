@@ -3,6 +3,7 @@
 //! 基本情報（名前、パス、種類）に加えて、macOSのFinder風の情報ウィンドウ表示や、
 //! フォルダサイズの再帰的な計算（ストリーミング含む）をサポートします。
 
+use std::os::darwin::fs::MetadataExt as DarwinMetadataExt;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::time::UNIX_EPOCH;
 
@@ -266,10 +267,12 @@ pub async fn get_basic_properties(path: String) -> Result<DetailedProperties, St
         modified_formatted: format_timestamp(to_ts(metadata.modified())),
         accessed_formatted: format_timestamp(to_ts(metadata.accessed())),
         is_readonly: metadata.permissions().mode() & 0o222 == 0,
-        is_hidden: path_buf
-            .file_name()
-            .map(|n| n.to_string_lossy().starts_with('.'))
-            .unwrap_or(false),
+        // macOSのUF_HIDDENフラグ（0x8000）またはファイル名が.で始まる場合を隠しファイルと判定
+        is_hidden: (DarwinMetadataExt::st_flags(&metadata) & 0x8000 != 0) ||
+            path_buf
+                .file_name()
+                .map(|n| n.to_string_lossy().starts_with('.'))
+                .unwrap_or(false),
         default_application,
         default_application_icon_id,
     })
