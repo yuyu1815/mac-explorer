@@ -17,7 +17,7 @@
     position: absolute;
     bottom: -2px;
     right: -2px;
-    background-color: var(--bg-main, #ffffff);
+    background-color: transparent;
     border-radius: 2px;
     padding: 1px;
     display: flex;
@@ -36,7 +36,7 @@
     position: absolute;
     bottom: -2px;
     right: -2px;
-    background-color: var(--bg-main, #ffffff);
+    background-color: transparent;
     border-radius: 2px;
     padding: 1px;
     display: flex;

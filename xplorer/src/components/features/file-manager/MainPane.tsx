@@ -4,7 +4,7 @@ import { useAppStore } from '@/stores/appStore';
 import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
-    FileAudio, FileImage, FileArchive, FileCode, Link2, Minus
+    FileAudio, FileImage, FileArchive, FileCode, Link2, Ban
 } from 'lucide-react';
 import { FileEntry } from '@/types';
 import { ipc } from '@/services/ipc';
@@ -14,7 +14,7 @@ import { useFileSelection } from '@/hooks/useFileSelection';
 import styles from '@/styles/components/features/file-manager/MainPane.module.css';
 
 const SymlinkOverlay = ({ size }: { size: number }) => {
-    const overlaySize = Math.max(8, Math.floor(size * 0.5));
+    const overlaySize = Math.max(8, Math.floor(size * 0.65));
     return (
         <div className={styles.symlinkOverlay} style={{ width: overlaySize, height: overlaySize }}>
             <Link2 size={overlaySize - 2} strokeWidth={2.5} color="#666" />
@@ -23,10 +23,10 @@ const SymlinkOverlay = ({ size }: { size: number }) => {
 };
 
 const NoAccessOverlay = ({ size }: { size: number }) => {
-    const overlaySize = Math.max(8, Math.floor(size * 0.5));
+    const overlaySize = Math.max(8, Math.floor(size * 0.65));
     return (
         <div className={styles.symlinkOverlay} style={{ width: overlaySize, height: overlaySize }}>
-            <Minus size={overlaySize - 2} strokeWidth={2.5} color="#D32F2F" />
+            <Ban size={overlaySize - 2} strokeWidth={2.5} color="#D32F2F" />
         </div>
     );
 };
