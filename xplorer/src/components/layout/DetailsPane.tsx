@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { FileEntry } from '@/types';
 import styles from '@/styles/components/layout/DetailsPane.module.css';
@@ -19,7 +20,10 @@ export const DetailsPane = () => {
     const files = activeTab?.files || [];
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
 
-    const selectedEntries = files.filter(f => selectedFiles.has(f.path));
+    const selectedEntries = useMemo(
+        () => files.filter(f => selectedFiles.has(f.path)),
+        [files, selectedFiles]
+    );
     const entry = selectedEntries.length === 1 ? selectedEntries[0] : null;
 
     return (

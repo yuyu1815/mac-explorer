@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent, useCallback } from 'react';
+import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent, useCallback, memo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/stores/appStore';
 import { ContextMenu } from './ContextMenu';
@@ -48,7 +48,7 @@ const AppOverlayIcon = ({ size = 16, iconId }: { size?: number, iconId?: string 
     );
 };
 
-export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean; iconId?: string; size?: number }) => {
+export const FileIcon = memo(({ isDir, iconId, size = 16 }: { isDir: boolean; iconId?: string; size?: number }) => {
     const [failed, setFailed] = useState(false);
 
     // .app package specialization: Folder with App Icon overlay
@@ -81,7 +81,7 @@ export const FileIcon = ({ isDir, iconId, size = 16 }: { isDir: boolean; iconId?
             style={{ width: size, height: size, objectFit: 'contain' }}
         />
     );
-};
+});
 
 export const MainPane = () => {
     const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions } = useAppStore();

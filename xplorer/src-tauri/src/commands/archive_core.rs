@@ -84,8 +84,9 @@ pub fn find_common_path(a: &Path, b: &Path) -> Option<PathBuf> {
 pub fn collect_files_to_compress(
     sources: &[String],
 ) -> Result<(Vec<(String, String, u64)>, Vec<CompressionError>), String> {
-    let mut file_list = Vec::new();
-    let mut errors = Vec::new();
+    let estimated_count = sources.len().max(1);
+    let mut file_list = Vec::with_capacity(estimated_count * 10);
+    let mut errors = Vec::with_capacity(4);
     let common_parent = get_common_parent(sources);
 
     for src in sources {
@@ -490,7 +491,7 @@ pub fn extract_archive_core<C: ProgressChannel<ExtractionProgress>, O: Operation
     check_disk_space(dest_path, total_size)?;
 
     let mut reporter = ExtractionProgressReporter::new(total_files, total_size, channel);
-    let mut errors: Vec<String> = Vec::new();
+    let mut errors: Vec<String> = Vec::with_capacity(16);
     let mut archive =
         ReadArchive::open(src_path).map_err(|e| format!("アーカイブを開けません: {}", e))?;
 
@@ -656,7 +657,8 @@ pub fn list_archive_entries_core(archive_path: String) -> Result<Vec<ArchiveEntr
     let mut archive =
         ReadArchive::open(src_path).map_err(|e| format!("アーカイブを開けません: {}", e))?;
 
-    let mut entries = Vec::new();
+    // 最初のエントリカウント用に推定値を使用
+    let mut entries = Vec::with_capacity(64);
 
     while let Some(entry) = archive
         .next_entry()

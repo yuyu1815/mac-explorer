@@ -199,9 +199,11 @@ export const Toolbar = () => {
 
             // メインウィンドウの中心に表示するための座標計算
             const mainWindow = getCurrentWindow();
-            const pos = await mainWindow.innerPosition();
-            const size = await mainWindow.innerSize();
-            const factor = await mainWindow.scaleFactor();
+            const [pos, size, factor] = await Promise.all([
+                mainWindow.innerPosition(),
+                mainWindow.innerSize(),
+                mainWindow.scaleFactor()
+            ]);
 
             const winWidth = 500;
             const winHeight = 350;
@@ -259,9 +261,11 @@ export const Toolbar = () => {
 
             // メインウィンドウの中心に表示するための座標計算
             const mainWindow = getCurrentWindow();
-            const pos = await mainWindow.innerPosition();
-            const size = await mainWindow.innerSize();
-            const factor = await mainWindow.scaleFactor();
+            const [pos, size, factor] = await Promise.all([
+                mainWindow.innerPosition(),
+                mainWindow.innerSize(),
+                mainWindow.scaleFactor()
+            ]);
 
             const winWidth = 500;
             const winHeight = 350;

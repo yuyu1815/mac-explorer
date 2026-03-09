@@ -27,7 +27,7 @@ fn hash_id(id: &str) -> String {
 pub fn get_icon_binary(id: &str) -> Option<Vec<u8>> {
     // 1. メモリキャッシュ
     if let Some(data) = ICON_CACHE.get(id) {
-        return Some(data.clone());
+        return Some(data.value().clone());
     }
 
     // 2. ディスクキャッシュ

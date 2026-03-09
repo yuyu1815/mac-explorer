@@ -107,12 +107,9 @@ pub async fn compress_archive(
 ) -> Result<CompressionResultWithErrors, String> {
     state.reset();
     let control = state.inner().clone();
-    let sources = sources.clone();
-    let dest = dest_archive_path.clone();
-    let fmt = format.clone();
 
     tokio::task::spawn_blocking(move || {
-        compress_archive_core(sources, dest, fmt, channel, control.as_ref())
+        compress_archive_core(sources, dest_archive_path, format, channel, control.as_ref())
     })
     .await
     .map_err(|e| format!("圧縮タスクエラー: {}", e))?
@@ -130,11 +127,9 @@ pub async fn extract_archive(
 ) -> Result<ExtractionResult, String> {
     state.reset();
     let control = state.inner().clone();
-    let src = archive_path.clone();
-    let dest = dest_dir.clone();
 
     tokio::task::spawn_blocking(move || {
-        extract_archive_core(src, dest, channel, control.as_ref())
+        extract_archive_core(archive_path, dest_dir, channel, control.as_ref())
     })
     .await
     .map_err(|e| format!("展開タスクエラー: {}", e))?

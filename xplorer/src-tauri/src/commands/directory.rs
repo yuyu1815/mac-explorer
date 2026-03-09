@@ -57,7 +57,7 @@ pub async fn list_archive_internal(
     inner_path: &str,
 ) -> Result<Vec<FileEntry>, String> {
     let entries = list_archive_entries(archive_path.to_string()).await?;
-    let mut seen_dirs = std::collections::HashSet::new();
+    let mut seen_dirs = std::collections::HashSet::with_capacity(64);
     let prefix = if inner_path.is_empty() {
         String::new()
     } else {

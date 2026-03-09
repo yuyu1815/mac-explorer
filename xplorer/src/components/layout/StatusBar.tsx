@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { AlignJustify, LayoutGrid } from 'lucide-react';
 import styles from '@/styles/components/layout/StatusBar.module.css';
@@ -18,17 +19,20 @@ export const StatusBar = () => {
     const viewMode = activeTab?.viewMode || 'detail';
 
     const totalCount = files.length;
-    let selectedCount = 0;
-    let selectedSize = 0;
 
-    files.forEach(f => {
-        if (selectedFiles.has(f.path)) {
-            selectedCount++;
-            if (!f.is_dir) {
-                selectedSize += f.size;
+    const { selectedCount, selectedSize } = useMemo(() => {
+        let count = 0;
+        let size = 0;
+        files.forEach(f => {
+            if (selectedFiles.has(f.path)) {
+                count++;
+                if (!f.is_dir) {
+                    size += f.size;
+                }
             }
-        }
-    });
+        });
+        return { selectedCount: count, selectedSize: size };
+    }, [files, selectedFiles]);
 
     return (
         <div

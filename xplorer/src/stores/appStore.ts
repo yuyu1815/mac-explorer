@@ -208,9 +208,11 @@ export const useAppStore = create<AppState>((set) => ({
 
         // メインウィンドウの中心に表示
         const mainWindow = getCurrentWindow();
-        const pos = await mainWindow.innerPosition();
-        const size = await mainWindow.innerSize();
-        const factor = await mainWindow.scaleFactor();
+        const [pos, size, factor] = await Promise.all([
+            mainWindow.innerPosition(),
+            mainWindow.innerSize(),
+            mainWindow.scaleFactor()
+        ]);
 
         const winWidth = 420;
         const winHeight = 550;
