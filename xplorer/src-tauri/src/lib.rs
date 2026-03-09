@@ -11,7 +11,7 @@ pub mod utils;
 // Re-export for integration tests
 pub use commands::{archive, directory, file_ops, icons, properties, utils as commands_utils, volumes, watcher};
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// Tauriアプリケーションの実行を開始します。
@@ -24,6 +24,27 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // 2つ目のインスタンスからの引数を処理
+            if let Some(path_arg) = args.get(1) {
+                let path = if path_arg == "." {
+                    std::env::current_dir()
+                        .ok()
+                        .and_then(|p| p.to_str().map(String::from))
+                        .unwrap_or_else(|| String::from("/"))
+                } else {
+                    path_arg.clone()
+                };
+
+                // 既存インスタンスにイベント発行
+                let _ = app.emit("navigate_to_dir", serde_json::json!({ "path": path }));
+
+                // 既存ウィンドウをフォーカス
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_focus();
+                }
+            }
+        }))
         .setup(|app| {
             // アーカイブ操作の一時停止/キャンセル制御用のステートを登録
             app.manage(std::sync::Arc::new(
@@ -56,6 +77,27 @@ pub fn run() {
                     });
                 }
             });
+
+            // 初回起動時の引数を処理（start コマンド用）
+            let args: Vec<String> = std::env::args().collect();
+            if args.len() > 1 {
+                if let Some(path_arg) = args.get(1) {
+                    let path = if path_arg == "." {
+                        std::env::current_dir()
+                            .ok()
+                            .and_then(|p| p.to_str().map(String::from))
+                            .unwrap_or_else(|| String::from("/"))
+                    } else {
+                        path_arg.clone()
+                    };
+
+                    let handle = app.handle().clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        let _ = handle.emit("navigate_to_dir", serde_json::json!({ "path": path }));
+                    });
+                }
+            }
 
             Ok(())
         })
