@@ -14,7 +14,7 @@ import { FileEntry } from '@/types';
 import styles from '@/styles/components/layout/Toolbar.module.css';
 
 export const Toolbar = () => {
-    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes, confirmOverwrite, openLocationNotAvailableDialog } = useAppStore();
+    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes, confirmOverwrite, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -164,7 +164,8 @@ export const Toolbar = () => {
     const handleDelete = async () => {
         if (selectedFiles.size === 0) return;
         try {
-            if (confirm(`選択したアイテムをゴミ箱に移動しますか？`)) {
+            const confirmed = await confirmTrash(selectedFiles.size, false);
+            if (confirmed) {
                 await invoke('delete_files', { paths: Array.from(selectedFiles), toTrash: true });
                 refreshFiles();
             }

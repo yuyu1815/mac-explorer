@@ -29,6 +29,7 @@ export const useAppStore = create<AppState>((set) => ({
     openPropertiesWindows: new Map<string, string>(),
     overwriteConfirm: null,
     extractPrompt: null,
+    trashConfirm: null,
 
     addTab: (path) => set((state) => {
         const id = `tab-${Date.now()}`;
@@ -312,6 +313,19 @@ export const useAppStore = create<AppState>((set) => ({
             state.extractPrompt.resolve(result);
         }
         return { extractPrompt: null };
+    }),
+
+    confirmTrash: (itemCount, permanent) => {
+        return new Promise<boolean>((resolve) => {
+            set({ trashConfirm: { itemCount, permanent, resolve } });
+        });
+    },
+
+    resolveTrash: (confirmed) => set((state) => {
+        if (state.trashConfirm?.resolve) {
+            state.trashConfirm.resolve(confirmed);
+        }
+        return { trashConfirm: null };
     }),
 }));
 

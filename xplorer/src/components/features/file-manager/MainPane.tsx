@@ -128,7 +128,7 @@ export const FileIcon = memo(({ isDir, iconId, size = 16, isSymlink, isNoAccess 
 });
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions, openLocationNotAvailableDialog } = useAppStore();
+    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
     const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -478,7 +478,8 @@ export const MainPane = () => {
 
         if ((e.key === 'Delete' || (e.key === 'Backspace' && (e.metaKey || e.ctrlKey))) && e.shiftKey && selectedPaths.size > 0) {
             e.preventDefault();
-            if (confirm(`選択した${selectedPaths.size}項目を完全に削除しますか？（元に戻せません）`)) {
+            const confirmed = await confirmTrash(selectedPaths.size, true);
+            if (confirmed) {
                 handleDelete(Array.from(selectedPaths), false);
                 clearSelection();
             }
@@ -487,7 +488,8 @@ export const MainPane = () => {
 
         if ((e.key === 'Delete' || (e.key === 'Backspace' && (e.metaKey || e.ctrlKey))) && selectedPaths.size > 0) {
             e.preventDefault();
-            if (confirm(`選択した${selectedPaths.size}項目をゴミ箱に移動しますか？`)) {
+            const confirmed = await confirmTrash(selectedPaths.size, false);
+            if (confirmed) {
                 handleDelete(Array.from(selectedPaths), true);
                 clearSelection();
             }
@@ -497,7 +499,8 @@ export const MainPane = () => {
         if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
             if (selectedPaths.size > 0) {
                 e.preventDefault();
-                if (confirm(`選択した${selectedPaths.size}項目をゴミ箱に移動しますか？`)) {
+                const confirmed = await confirmTrash(selectedPaths.size, false);
+                if (confirmed) {
                     handleDelete(Array.from(selectedPaths), true);
                     clearSelection();
                 }

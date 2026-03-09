@@ -20,7 +20,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreateFolder }: ContextMenuProps) => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, confirmOverwrite, openLocationNotAvailableDialog } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, confirmOverwrite, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -310,7 +310,8 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                         })} />
                     )}
                     <ContextMenuItem icon={<Trash2 size={16} />} label="削除(D)" onClick={() => handleAction(async () => {
-                        if (confirm(`選択した${pathsToActOn.length} 項目をゴミ箱に移動しますか？`)) {
+                        const confirmed = await confirmTrash(pathsToActOn.length, false);
+                        if (confirmed) {
                             await ipc.deleteFiles(pathsToActOn);
                             await refreshFiles();
                         }

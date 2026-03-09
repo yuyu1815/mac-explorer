@@ -35,6 +35,11 @@ export interface AppState {
         showFiles: boolean;
         resolve: (result: { destPath: string; showFiles: boolean } | null) => void;
     } | null;
+    trashConfirm: {
+        itemCount: number;
+        permanent: boolean;
+        resolve: (confirmed: boolean) => void;
+    } | null;
 
     // Actions
     addTab: (path?: string) => void;
@@ -67,4 +72,6 @@ export interface AppState {
     promptExtract: (sourcePath: string, defaultDestPath: string) => Promise<{ destPath: string; showFiles: boolean } | null>;
     resolveExtract: (result: { destPath: string; showFiles: boolean } | null) => void;
     openLocationNotAvailableDialog: (path: string) => Promise<void>;
+    confirmTrash: (itemCount: number, permanent: boolean) => Promise<boolean>;
+    resolveTrash: (confirmed: boolean) => void;
 }

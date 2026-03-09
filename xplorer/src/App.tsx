@@ -10,6 +10,7 @@ import { ProgressWindow } from './components/dialogs/ProgressWindow';
 import { PropertiesWindow } from './components/dialogs/PropertiesWindow';
 import { OverwriteConfirmDialog } from './components/dialogs/OverwriteConfirmDialog';
 import { ExtractPromptDialog } from './components/dialogs/ExtractPromptDialog';
+import { TrashConfirmDialog } from './components/dialogs/TrashConfirmDialog';
 import { LocationNotAvailableWindow } from './components/dialogs/LocationNotAvailableWindow';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
@@ -113,6 +114,7 @@ function App() {
       <StatusBar />
       <OverwriteConfirmDialog />
       <ExtractPromptDialog />
+      <TrashConfirmDialog />
     </div>
   );
 }
