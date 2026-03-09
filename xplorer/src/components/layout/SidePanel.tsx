@@ -23,7 +23,7 @@ interface VolumeInfo {
 }
 
 const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false, autoExpand = true }: NodeProps) => {
-    const { tabs, activeTabId, setCurrentPath } = useAppStore();
+    const { tabs, activeTabId, setCurrentPath, openLocationNotAvailableDialog } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const isExactMatch = currentPath === path;
@@ -58,9 +58,14 @@ const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false, auto
         setIsExpanded(!isExpanded);
     };
 
-    const handleSelect = (e: React.MouseEvent) => {
+    const handleSelect = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        setCurrentPath(path);
+        try {
+            await invoke('list_directory', { path, showHidden: false });
+            setCurrentPath(path);
+        } catch {
+            openLocationNotAvailableDialog(path);
+        }
     };
 
     const indent = level * 16;
@@ -93,7 +98,7 @@ const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false, auto
 };
 
 const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
-    const { tabs, activeTabId, setCurrentPath } = useAppStore();
+    const { tabs, activeTabId, setCurrentPath, openLocationNotAvailableDialog } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const isExactMatch = currentPath === vol.path;
@@ -102,10 +107,19 @@ const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
     const usedPercent = vol.total_bytes > 0 ? (usedBytes / vol.total_bytes) * 100 : 0;
     const barColor = usedPercent > 90 ? '#E81123' : usedPercent > 70 ? '#FFB900' : '#0078D7';
 
+    const handleClick = async () => {
+        try {
+            await invoke('list_directory', { path: vol.path, showHidden: false });
+            setCurrentPath(vol.path);
+        } catch {
+            openLocationNotAvailableDialog(vol.path);
+        }
+    };
+
     return (
         <div
             className={`${styles.volumeItem} ${isExactMatch ? styles.selected : ''}`}
-            onClick={() => setCurrentPath(vol.path)}
+            onClick={handleClick}
         >
             <div className={styles.volumeHeader}>
                 <HardDrive size={16} color="#555" />

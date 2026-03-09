@@ -66,4 +66,5 @@ export interface AppState {
     resolveOverwrite: (overwrite: boolean) => void;
     promptExtract: (sourcePath: string, defaultDestPath: string) => Promise<{ destPath: string; showFiles: boolean } | null>;
     resolveExtract: (result: { destPath: string; showFiles: boolean } | null) => void;
+    openLocationNotAvailableDialog: (path: string) => Promise<void>;
 }

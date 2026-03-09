@@ -10,13 +10,14 @@ import { ProgressWindow } from './components/dialogs/ProgressWindow';
 import { PropertiesWindow } from './components/dialogs/PropertiesWindow';
 import { OverwriteConfirmDialog } from './components/dialogs/OverwriteConfirmDialog';
 import { ExtractPromptDialog } from './components/dialogs/ExtractPromptDialog';
+import { LocationNotAvailableWindow } from './components/dialogs/LocationNotAvailableWindow';
 import { useAppStore } from './stores/appStore';
 import './styles/global.css';
 import styles from './styles/App.module.css';
 
 function App() {
   const showDetailsPane = useAppStore(s => s.showDetailsPane);
-  const { goBack, goForward, goUp } = useAppStore();
+  const { goBack, goForward, goUp, openLocationNotAvailableDialog } = useAppStore();
   const [sideWidth, setSideWidth] = useState(200);
 
   useEffect(() => {
@@ -45,13 +46,20 @@ function App() {
     let unlistenFn: (() => void) | undefined;
     const setupListener = async () => {
       const { listen } = await import('@tauri-apps/api/event');
-      unlistenFn = await listen<{ path: string }>('navigate_to_dir', (event) => {
-        useAppStore.getState().setCurrentPath(event.payload.path);
+      const { invoke } = await import('@tauri-apps/api/core');
+      unlistenFn = await listen<{ path: string }>('navigate_to_dir', async (event) => {
+        const path = event.payload.path;
+        try {
+          await invoke('list_directory', { path, showHidden: false });
+          useAppStore.getState().setCurrentPath(path);
+        } catch {
+          openLocationNotAvailableDialog(path);
+        }
       });
     };
     setupListener();
     return () => { if (unlistenFn) unlistenFn(); };
-  }, []);
+  }, [openLocationNotAvailableDialog]);
 
   const handleSideResize = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -79,6 +87,9 @@ function App() {
   }
   if (searchParams.get('window') === 'properties') {
     return <PropertiesWindow />;
+  }
+  if (searchParams.get('window') === 'location-error') {
+    return <LocationNotAvailableWindow />;
   }
 
   return (

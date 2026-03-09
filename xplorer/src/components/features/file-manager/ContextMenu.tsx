@@ -20,7 +20,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreateFolder }: ContextMenuProps) => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, confirmOverwrite } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, confirmOverwrite, openLocationNotAvailableDialog } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -280,7 +280,12 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                         <ContextMenuItem icon={<ExternalLink size={16} />} label="開く(O)" onClick={() => handleAction(async () => {
                             if (targetPath) {
                                 if (isArchive(targetPath)) {
-                                    setCurrentPath(targetPath);
+                                    try {
+                                        await ipc.listFilesSorted(targetPath, false, 'name', false, '');
+                                        setCurrentPath(targetPath);
+                                    } catch {
+                                        openLocationNotAvailableDialog(targetPath);
+                                    }
                                 } else {
                                     await ipc.openFileDefault(targetPath);
                                 }

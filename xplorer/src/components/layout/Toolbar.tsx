@@ -14,7 +14,7 @@ import { FileEntry } from '@/types';
 import styles from '@/styles/components/layout/Toolbar.module.css';
 
 export const Toolbar = () => {
-    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes, confirmOverwrite } = useAppStore();
+    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes, confirmOverwrite, openLocationNotAvailableDialog } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -125,7 +125,12 @@ export const Toolbar = () => {
         const targetFile = activeTab?.files.find(f => f.path === targetPath);
         if (targetFile) {
             if (targetFile.is_dir) {
-                useAppStore.getState().setCurrentPath(targetFile.path); // Use global state action
+                try {
+                    await invoke('list_directory', { path: targetFile.path, showHidden: false });
+                    useAppStore.getState().setCurrentPath(targetFile.path);
+                } catch {
+                    openLocationNotAvailableDialog(targetFile.path);
+                }
             } else {
                 try {
                     await invoke('open_file_default', { path: targetFile.path });

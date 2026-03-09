@@ -241,6 +241,49 @@ export const useAppStore = create<AppState>((set) => ({
         });
     },
 
+    openLocationNotAvailableDialog: async (path) => {
+        if (!path) return;
+
+        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+
+        const label = `location-error-${Date.now()}`;
+        const queryParams = new URLSearchParams({
+            window: 'location-error',
+            path: path,
+        });
+
+        // メインウィンドウの中心に表示
+        const mainWindow = getCurrentWindow();
+        const [pos, size, factor] = await Promise.all([
+            mainWindow.innerPosition(),
+            mainWindow.innerSize(),
+            mainWindow.scaleFactor()
+        ]);
+
+        const winWidth = 500;
+        const winHeight = 320;
+        const x = Math.round((pos.x / factor) + ((size.width / factor) - winWidth) / 2);
+        const y = Math.round((pos.y / factor) + ((size.height / factor) - winHeight) / 2);
+
+        const win = new WebviewWindow(label, {
+            url: `/?${queryParams.toString()}`,
+            title: '場所が利用できません',
+            width: winWidth,
+            height: winHeight,
+            x,
+            y,
+            resizable: false,
+            maximizable: false,
+            decorations: false,
+            transparent: true,
+        });
+
+        await win.once('tauri://error', (e: any) => {
+            console.error('Failed to create location error window', e);
+        });
+    },
+
     setShowHiddenFiles: (show) => set({ showHiddenFiles: show }),
     setShowFileExtensions: (show) => set({ showFileExtensions: show }),
     setShowItemCheckBoxes: (show) => set({ showItemCheckBoxes: show }),

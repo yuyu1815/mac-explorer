@@ -128,7 +128,7 @@ export const FileIcon = memo(({ isDir, iconId, size = 16, isSymlink, isNoAccess 
 });
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions } = useAppStore();
+    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions, openLocationNotAvailableDialog } = useAppStore();
     const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -211,11 +211,16 @@ export const MainPane = () => {
 
     const handleDoubleClick = useCallback(async (file: FileEntry) => {
         if (file.is_dir || file.is_archive) {
-            setCurrentPath(file.path);
+            try {
+                await invoke('list_directory', { path: file.path, showHidden: false });
+                setCurrentPath(file.path);
+            } catch {
+                openLocationNotAvailableDialog(file.path);
+            }
         } else {
             ipc.openFileDefault(file.path);
         }
-    }, [setCurrentPath]);
+    }, [setCurrentPath, openLocationNotAvailableDialog]);
 
     const refreshFilesLocal = useCallback(async () => {
         refreshFiles();

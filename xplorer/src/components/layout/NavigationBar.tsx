@@ -6,7 +6,7 @@ import { useNavigationBar } from '@/hooks/useNavigationBar';
 import styles from '@/styles/components/layout/NavigationBar.module.css';
 
 export const NavigationBar = () => {
-    const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery, toggleSelection } = useAppStore();
+    const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery, toggleSelection, openLocationNotAvailableDialog } = useAppStore();
     const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const canGoBack = activeTab ? activeTab.historyIndex > 0 : false;
@@ -63,7 +63,16 @@ export const NavigationBar = () => {
             if (finalPath.length > 1 && finalPath.endsWith('/')) {
                 finalPath = finalPath.slice(0, -1);
             }
-            setCurrentPath(finalPath);
+
+            // パスの存在チェック
+            try {
+                await invoke('list_directory', { path: finalPath, showHidden: false });
+                setCurrentPath(finalPath);
+            } catch {
+                // パスが存在しない場合、エラーダイアログを表示
+                openLocationNotAvailableDialog(finalPath);
+                setInputValue(currentPath);
+            }
         }
         setIsEditing(false);
     };
