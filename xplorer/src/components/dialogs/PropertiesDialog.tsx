@@ -55,6 +55,7 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
     const [pendingName, setPendingName] = useState("");
     const [pendingReadonly, setPendingReadonly] = useState(false);
     const [pendingHidden, setPendingHidden] = useState(false);
+    const [pendingApp, setPendingApp] = useState<ApplicationInfo | null>(null);
     const [applying, setApplying] = useState(false);
 
     const [showAppMenu, setShowAppMenu] = useState(false);
@@ -69,7 +70,8 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
     const isDirty = props ? (
         pendingName !== props.name ||
         pendingReadonly !== props.is_readonly ||
-        pendingHidden !== props.is_hidden
+        pendingHidden !== props.is_hidden ||
+        (pendingApp !== null && pendingApp.bundle_identifier !== props.default_application)
     ) : false;
 
     const handleClose = async () => {
@@ -80,6 +82,14 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
         if (!props || !isDirty || applying) return;
         setApplying(true);
         try {
+            // アプリケーションの変更（最初に実行）
+            if (pendingApp !== null && pendingApp.bundle_identifier !== props.default_application) {
+                await invoke('set_default_application', {
+                    path: props.path,
+                    bundleIdentifier: pendingApp.bundle_identifier
+                });
+            }
+
             // 属性の変更
             if (pendingReadonly !== props.is_readonly) {
                 await invoke('set_readonly', { path: props.path, readonly: pendingReadonly });
@@ -104,7 +114,10 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
                 name: pendingName,
                 is_readonly: pendingReadonly,
                 is_hidden: pendingHidden,
+                default_application: pendingApp?.name ?? props.default_application,
+                default_application_icon_id: pendingApp?.icon_id ?? props.default_application_icon_id,
             });
+            setPendingApp(null);
             return true;
         } catch (err: any) {
             setError(err.toString());
@@ -146,18 +159,9 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
         }
     };
 
-    const handleAppSelect = async (app: ApplicationInfo) => {
-        try {
-            await invoke('set_default_application', { path, bundleIdentifier: app.bundle_identifier });
-            setProps(prev => prev ? {
-                ...prev,
-                default_application: app.name,
-                default_application_icon_id: app.icon_id,
-            } : null);
-            setShowAppMenu(false);
-        } catch (err) {
-            console.error('Failed to set default application:', err);
-        }
+    const handleAppSelect = (app: ApplicationInfo) => {
+        setPendingApp(app);
+        setShowAppMenu(false);
     };
 
     useEffect(() => {
@@ -255,10 +259,10 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
                                 <div className={styles.row}>
                                     <div className={styles.label}>プログラム:</div>
                                     <div className={styles.valueWithIcon} ref={dropdownRef}>
-                                        {props.default_application_icon_id && (
-                                            <FileIcon isDir={false} iconId={props.default_application_icon_id} size={16} />
+                                        {(pendingApp?.icon_id ?? props.default_application_icon_id) && (
+                                            <FileIcon isDir={false} iconId={pendingApp?.icon_id ?? props.default_application_icon_id ?? ''} size={16} />
                                         )}
-                                        <span>{props.default_application || '(不明)'}</span>
+                                        <span>{pendingApp?.name ?? props.default_application ?? '(不明)'}</span>
                                         {' '}
                                         <div className={styles.appSelector}>
                                             <button
