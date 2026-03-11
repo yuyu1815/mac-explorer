@@ -5,9 +5,9 @@ import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
     FileAudio, FileImage, FileArchive, FileCode, Link2, Ban,
-    Monitor, ChevronDown
+    Monitor, ChevronDown, Cloud, CloudDrizzle
 } from 'lucide-react';
-import { FileEntry } from '@/types';
+import { FileEntry, VolumeInfo } from '@/types';
 import { ipc } from '@/services/ipc';
 import { useFileSystem } from '@/hooks/useFileSystem';
 import { useFileOperations } from '@/hooks/useFileOperations';
@@ -129,14 +129,7 @@ export const FileIcon = memo(({ isDir, iconId, size = 16, isSymlink, isNoAccess 
 });
 
 interface DriveCardProps {
-    vol: {
-        name: string;
-        path: string;
-        total_bytes: number;
-        free_bytes: number;
-        total_bytes_formatted: string;
-        free_bytes_formatted: string;
-    };
+    vol: VolumeInfo;
     isSelected: boolean;
     onClick: (e: ReactMouseEvent) => void;
     onDoubleClick: () => void;
@@ -148,6 +141,10 @@ const DriveCard = ({ vol, isSelected, onClick, onDoubleClick, onContextMenu }: D
     const usedPercent = vol.total_bytes > 0 ? (usedBytes / vol.total_bytes) * 100 : 0;
     const barColor = usedPercent > 90 ? '#E81123' : '#0078D7';
 
+    const DriveIcon = vol.is_cloud
+        ? (vol.cloud_provider === 'Google Drive' ? CloudDrizzle : Cloud)
+        : Monitor;
+
     return (
         <div
             className={`${styles.driveCard} ${isSelected ? styles.selected : ''}`}
@@ -156,7 +153,7 @@ const DriveCard = ({ vol, isSelected, onClick, onDoubleClick, onContextMenu }: D
             onContextMenu={onContextMenu}
         >
             <div className={styles.driveIconWrapper}>
-                <Monitor size={48} color="#555" />
+                <DriveIcon size={48} color={vol.is_cloud ? "#0078D7" : "#555"} />
             </div>
             <div className={styles.driveInfo}>
                 <div className={styles.driveName} title={vol.name}>{vol.name} ({vol.path === '/' ? 'C:' : vol.path.split('/').pop()})</div>
@@ -179,22 +176,27 @@ const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
     selectedPaths: Set<string>;
     toggleSelection: (path: string, clearOthers: boolean, isRange: boolean, index: number) => void;
 }) => {
-    const [volumes, setVolumes] = useState<any[]>([]);
+    const [volumes, setVolumes] = useState<VolumeInfo[]>([]);
     const { setCurrentPath } = useAppStore();
 
     useEffect(() => {
-        invoke('list_volumes').then((v: any) => setVolumes(v)).catch(console.error);
+        invoke<VolumeInfo[]>('list_volumes').then(setVolumes).catch(console.error);
     }, []);
+
+    // Classify volumes
+    const localVolumes = volumes.filter(v => !v.is_cloud && !v.is_network);
+    const cloudVolumes = volumes.filter(v => v.is_cloud);
+    const networkVolumes = volumes.filter(v => v.is_network);
 
     return (
         <div className={styles.pcView}>
             <div className={styles.driveSection}>
                 <div className={styles.driveSectionTitle}>
                     <ChevronDown size={14} />
-                    ハード ディスク ドライブ ({volumes.length})
+                    ハード ディスク ドライブ ({localVolumes.length})
                 </div>
                 <div className={styles.driveList}>
-                    {volumes.map(vol => (
+                    {localVolumes.map(vol => (
                         <DriveCard
                             key={vol.path}
                             vol={vol}
@@ -212,6 +214,60 @@ const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
                     ))}
                 </div>
             </div>
+
+            {cloudVolumes.length > 0 && (
+                <div className={styles.driveSection}>
+                    <div className={styles.driveSectionTitle}>
+                        <ChevronDown size={14} />
+                        クラウド ストレージ ({cloudVolumes.length})
+                    </div>
+                    <div className={styles.driveList}>
+                        {cloudVolumes.map(vol => (
+                            <DriveCard
+                                key={vol.path}
+                                vol={vol}
+                                isSelected={selectedPaths.has(vol.path)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleSelection(vol.path, !e.ctrlKey && !e.metaKey, e.shiftKey, -1);
+                                }}
+                                onDoubleClick={() => setCurrentPath(vol.path)}
+                                onContextMenu={(e) => {
+                                    e.stopPropagation();
+                                    onContextMenu(e, vol.path);
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {networkVolumes.length > 0 && (
+                <div className={styles.driveSection}>
+                    <div className={styles.driveSectionTitle}>
+                        <ChevronDown size={14} />
+                        ネットワーク ({networkVolumes.length})
+                    </div>
+                    <div className={styles.driveList}>
+                        {networkVolumes.map(vol => (
+                            <DriveCard
+                                key={vol.path}
+                                vol={vol}
+                                isSelected={selectedPaths.has(vol.path)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleSelection(vol.path, !e.ctrlKey && !e.metaKey, e.shiftKey, -1);
+                                }}
+                                onDoubleClick={() => setCurrentPath(vol.path)}
+                                onContextMenu={(e) => {
+                                    e.stopPropagation();
+                                    onContextMenu(e, vol.path);
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

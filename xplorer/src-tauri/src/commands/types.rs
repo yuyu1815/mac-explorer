@@ -71,6 +71,10 @@ pub struct VolumeInfo {
     pub is_network: bool,
     #[serde(default = "default_fs_type")]
     pub file_system: String,
+    #[serde(default)]
+    pub is_cloud: bool,
+    #[serde(default)]
+    pub cloud_provider: String,
 }
 
 fn default_fs_type() -> String {

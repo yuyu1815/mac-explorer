@@ -2,6 +2,7 @@
 //!
 //! `getfsstat` システムコールを使用して、すべてのマウント済みファイルシステムを列挙します。
 //! ローカルボリュームおよびNFS/SMB等のネットワークボリュームを含みます。
+//! Google DriveやiCloud Drive等のクラウドストレージも検出します。
 
 use std::ffi::CString;
 use std::mem::MaybeUninit;
@@ -172,14 +173,66 @@ mod mount_utils {
     }
 }
 
+mod cloud_utils {
+    use std::fs;
+    use std::path::PathBuf;
+
+    #[derive(Clone, Copy)]
+    pub enum CloudProvider {
+        GoogleDrive,
+        ICloudDrive,
+    }
+
+    impl CloudProvider {
+        pub fn name(&self) -> &'static str {
+            match self {
+                CloudProvider::GoogleDrive => "Google Drive",
+                CloudProvider::ICloudDrive => "iCloud Drive",
+            }
+        }
+
+        pub fn detect_paths(&self) -> Vec<PathBuf> {
+            let home = std::env::var("HOME").unwrap_or_default();
+            let home_path = PathBuf::from(home);
+
+            match self {
+                CloudProvider::GoogleDrive => {
+                    let base = home_path.join("Library/CloudStorage");
+                    fs::read_dir(base.as_path())
+                        .ok()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.file_name().to_string_lossy().starts_with("GoogleDrive-"))
+                        .map(|e| e.path())
+                        .collect()
+                }
+                CloudProvider::ICloudDrive => {
+                    let path = home_path.join("Library/Mobile Documents/com~apple~CloudDocs");
+                    if path.exists() { vec![path] } else { vec![] }
+                }
+            }
+        }
+    }
+
+    pub fn get_cloud_drives() -> Vec<(PathBuf, CloudProvider)> {
+        [CloudProvider::GoogleDrive, CloudProvider::ICloudDrive]
+            .iter()
+            .flat_map(|p| p.detect_paths().into_iter().map(move |path| (path, *p)))
+            .collect()
+    }
+}
+
 #[tauri::command]
 pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
     use mount_utils::*;
 
     let mounts = get_all_mounts()?;
+    let cloud_drives = cloud_utils::get_cloud_drives();
 
     let mut volumes: Vec<VolumeInfo> = Vec::new();
     let mut root_volume: Option<VolumeInfo> = None;
+    let mut cloud_volumes: Vec<VolumeInfo> = Vec::new();
 
     for mount in mounts {
         if !should_include_mount(&mount.mount_on, &mount.fs_type, mount.flags) {
@@ -211,6 +264,8 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
             free_bytes_formatted: format_size(free),
             is_network: mount.is_network,
             file_system: mount.fs_type.to_uppercase(),
+            is_cloud: false,
+            cloud_provider: String::new(),
         };
 
         if mount.mount_on == "/" {
@@ -220,7 +275,26 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
         }
     }
 
-    // Sort: local volumes first, then network volumes (each group alphabetically)
+    // Process cloud drives
+    for (path, provider) in cloud_drives {
+        let path_str = path.to_string_lossy().to_string();
+        let (total, free) = get_statvfs_info(&path_str);
+
+        cloud_volumes.push(VolumeInfo {
+            name: provider.name().to_string(),
+            path: path_str,
+            total_bytes: total,
+            free_bytes: free,
+            total_bytes_formatted: format_size(total),
+            free_bytes_formatted: format_size(free),
+            is_network: false,
+            file_system: "CloudStorage".into(),
+            is_cloud: true,
+            cloud_provider: provider.name().to_string(),
+        });
+    }
+
+    // Sort local volumes alphabetically
     volumes.sort_by(|a, b| {
         match (a.is_network, b.is_network) {
             (false, true) => std::cmp::Ordering::Less,
@@ -228,6 +302,22 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
             _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
         }
     });
+
+    // Sort cloud volumes alphabetically
+    cloud_volumes.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+
+    // Insert cloud volumes between local and network volumes
+    let network_start = volumes.iter().position(|v| v.is_network);
+    match network_start {
+        Some(idx) => {
+            for (i, cv) in cloud_volumes.into_iter().enumerate() {
+                volumes.insert(idx + i, cv);
+            }
+        }
+        None => {
+            volumes.extend(cloud_volumes);
+        }
+    }
 
     // Insert root volume at the beginning
     if let Some(root) = root_volume {
