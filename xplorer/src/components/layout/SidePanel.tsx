@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive } from 'lucide-react';
+import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive, Network } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import styles from '@/styles/components/layout/SidePanel.module.css';
 
@@ -20,6 +20,8 @@ interface VolumeInfo {
     free_bytes: number;
     total_bytes_formatted: string;
     free_bytes_formatted: string;
+    is_network?: boolean;
+    file_system?: string;
 }
 
 const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false, autoExpand = true }: NodeProps) => {
@@ -120,13 +122,17 @@ const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
         }
     };
 
+    const volumeIcon = vol.is_network
+        ? <Network size={16} color="#0078D7" />
+        : <HardDrive size={16} color="#555" />;
+
     return (
         <div
             className={`${styles.volumeItem} ${isExactMatch ? styles.selected : ''}`}
             onClick={handleClick}
         >
             <div className={styles.volumeHeader}>
-                <HardDrive size={16} color="#555" />
+                {volumeIcon}
                 <span className={styles.volumeName}>{vol.name}</span>
             </div>
             {vol.total_bytes > 0 && (

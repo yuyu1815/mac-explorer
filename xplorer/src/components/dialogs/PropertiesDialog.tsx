@@ -56,6 +56,7 @@ interface DiskProperties {
     total_bytes_formatted: string;
     free_bytes_formatted: string;
     used_bytes_formatted: string;
+    is_network?: boolean;
 }
 
 export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
@@ -289,7 +290,7 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
 
                             <div className={styles.row}>
                                 <div className={styles.label}>種類:</div>
-                                <div className={styles.value}>ローカル ディスク</div>
+                                <div className={styles.value}>{diskProps.is_network ? 'ネットワーク ディスク' : 'ローカル ディスク'}</div>
                             </div>
                             <div className={styles.row}>
                                 <div className={styles.label}>ファイル システム:</div>

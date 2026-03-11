@@ -67,6 +67,14 @@ pub struct VolumeInfo {
     pub free_bytes: u64,
     pub total_bytes_formatted: String,
     pub free_bytes_formatted: String,
+    #[serde(default)]
+    pub is_network: bool,
+    #[serde(default = "default_fs_type")]
+    pub file_system: String,
+}
+
+fn default_fs_type() -> String {
+    "APFS".to_string()
 }
 
 /// ディスクの詳細プロパティ
@@ -81,6 +89,8 @@ pub struct DiskProperties {
     pub total_bytes_formatted: String,
     pub free_bytes_formatted: String,
     pub used_bytes_formatted: String,
+    #[serde(default)]
+    pub is_network: bool,
 }
 
 /// 圧縮進捗（ストリーミング用）
