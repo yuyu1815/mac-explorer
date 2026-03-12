@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive, Network } from 'lucide-react';
+import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive, Network, Cloud, CloudDrizzle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import styles from '@/styles/components/layout/SidePanel.module.css';
 
@@ -22,6 +22,8 @@ interface VolumeInfo {
     free_bytes_formatted: string;
     is_network?: boolean;
     file_system?: string;
+    is_cloud?: boolean;
+    cloud_provider?: string;
 }
 
 const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false, autoExpand = true }: NodeProps) => {
@@ -122,9 +124,12 @@ const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
         }
     };
 
-    const volumeIcon = vol.is_network
-        ? <Network size={16} color="#0078D7" />
-        : <HardDrive size={16} color="#555" />;
+    const isCloudDrive = vol.is_cloud || false;
+    const volumeIcon = isCloudDrive
+        ? (vol.cloud_provider === 'Google Drive' ? <CloudDrizzle size={16} color="#0078D7" /> : <Cloud size={16} color="#0078D7" />)
+        : vol.is_network
+            ? <Network size={16} color="#0078D7" />
+            : <HardDrive size={16} color="#555" />;
 
     return (
         <div
@@ -135,7 +140,7 @@ const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
                 {volumeIcon}
                 <span className={styles.volumeName}>{vol.name}</span>
             </div>
-            {vol.total_bytes > 0 && (
+            {!isCloudDrive && vol.total_bytes > 0 && (
                 <div className={styles.volumeBarContainer}>
                     <div className={styles.progressBarBack}>
                         <div className={styles.progressBarFill} style={{ width: `${usedPercent}%`, backgroundColor: barColor }} />
@@ -143,6 +148,11 @@ const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
                     <div className={styles.volumeStats}>
                         {vol.free_bytes_formatted} 空き / {vol.total_bytes_formatted}
                     </div>
+                </div>
+            )}
+            {isCloudDrive && (
+                <div className={styles.volumeStats} style={{ paddingLeft: '24px', fontSize: '11px', color: '#666' }}>
+                    クラウドストレージ
                 </div>
             )}
         </div>
