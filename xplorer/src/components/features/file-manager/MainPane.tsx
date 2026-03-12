@@ -5,13 +5,14 @@ import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
     FileAudio, FileImage, FileArchive, FileCode, Link2, Ban,
-    Monitor, ChevronDown, Cloud, CloudDrizzle
+    Monitor, ChevronDown, Cloud
 } from 'lucide-react';
 import { FileEntry, VolumeInfo } from '@/types';
 import { ipc } from '@/services/ipc';
 import { useFileSystem } from '@/hooks/useFileSystem';
 import { useFileOperations } from '@/hooks/useFileOperations';
 import { useFileSelection } from '@/hooks/useFileSelection';
+import { GoogleDriveIcon, ICloudDriveIcon } from '@/components/icons/CloudDriveIcons';
 import styles from '@/styles/components/features/file-manager/MainPane.module.css';
 
 const SymlinkOverlay = ({ size }: { size: number }) => {
@@ -142,7 +143,9 @@ const DriveCard = ({ vol, isSelected, onClick, onDoubleClick, onContextMenu }: D
     const barColor = usedPercent > 90 ? '#E81123' : '#0078D7';
 
     const DriveIcon = vol.is_cloud
-        ? (vol.cloud_provider === 'Google Drive' ? CloudDrizzle : Cloud)
+        ? (vol.cloud_provider === 'Google Drive' ? GoogleDriveIcon
+            : vol.cloud_provider === 'iCloud Drive' ? ICloudDriveIcon
+            : Cloud)
         : Monitor;
 
     // クラウドドライブは容量を表示しない

@@ -262,7 +262,7 @@ pub async fn list_volumes() -> Result<Vec<VolumeInfo>, String> {
             free_bytes: free,
             total_bytes_formatted: format_size(total),
             free_bytes_formatted: format_size(free),
-            is_network: mount.is_network,
+            is_network: if mount.mount_on == "/" { false } else { mount.is_network },
             file_system: mount.fs_type.to_uppercase(),
             is_cloud: false,
             cloud_provider: String::new(),

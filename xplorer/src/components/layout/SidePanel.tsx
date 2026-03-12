@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive, Network, Cloud, CloudDrizzle } from 'lucide-react';
+import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive, Network, Cloud } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { GoogleDriveIcon, ICloudDriveIcon } from '@/components/icons/CloudDriveIcons';
 import styles from '@/styles/components/layout/SidePanel.module.css';
 
 interface NodeProps {
@@ -126,7 +127,9 @@ const VolumeItem = ({ vol }: { vol: VolumeInfo }) => {
 
     const isCloudDrive = vol.is_cloud || false;
     const volumeIcon = isCloudDrive
-        ? (vol.cloud_provider === 'Google Drive' ? <CloudDrizzle size={16} color="#0078D7" /> : <Cloud size={16} color="#0078D7" />)
+        ? (vol.cloud_provider === 'Google Drive' ? <GoogleDriveIcon size={16} color="#555" />
+            : vol.cloud_provider === 'iCloud Drive' ? <ICloudDriveIcon size={16} color="#555" />
+            : <Cloud size={16} color="#0078D7" />)
         : vol.is_network
             ? <Network size={16} color="#0078D7" />
             : <HardDrive size={16} color="#555" />;
