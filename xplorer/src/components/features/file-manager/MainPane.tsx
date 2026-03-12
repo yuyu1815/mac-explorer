@@ -145,6 +145,9 @@ const DriveCard = ({ vol, isSelected, onClick, onDoubleClick, onContextMenu }: D
         ? (vol.cloud_provider === 'Google Drive' ? CloudDrizzle : Cloud)
         : Monitor;
 
+    // クラウドドライブは容量を表示しない
+    const isCloudDrive = vol.is_cloud || false;
+
     return (
         <div
             className={`${styles.driveCard} ${isSelected ? styles.selected : ''}`}
@@ -157,15 +160,24 @@ const DriveCard = ({ vol, isSelected, onClick, onDoubleClick, onContextMenu }: D
             </div>
             <div className={styles.driveInfo}>
                 <div className={styles.driveName} title={vol.name}>{vol.name} ({vol.path === '/' ? 'C:' : vol.path.split('/').pop()})</div>
-                <div className={styles.driveBarContainer}>
-                    <div
-                        className={styles.driveBarFill}
-                        style={{ width: `${usedPercent}%`, backgroundColor: barColor }}
-                    />
-                </div>
-                <div className={styles.driveStats}>
-                    空き領域 {vol.free_bytes_formatted} / {vol.total_bytes_formatted}
-                </div>
+                {!isCloudDrive && (
+                    <>
+                        <div className={styles.driveBarContainer}>
+                            <div
+                                className={styles.driveBarFill}
+                                style={{ width: `${usedPercent}%`, backgroundColor: barColor }}
+                            />
+                        </div>
+                        <div className={styles.driveStats}>
+                            空き領域 {vol.free_bytes_formatted} / {vol.total_bytes_formatted}
+                        </div>
+                    </>
+                )}
+                {isCloudDrive && (
+                    <div className={styles.driveStats}>
+                        クラウドストレージ
+                    </div>
+                )}
             </div>
         </div>
     );
