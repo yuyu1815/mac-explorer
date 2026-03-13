@@ -12,14 +12,27 @@ import { OverwriteConfirmDialog } from './components/dialogs/OverwriteConfirmDia
 import { ExtractPromptDialog } from './components/dialogs/ExtractPromptDialog';
 import { TrashConfirmDialog } from './components/dialogs/TrashConfirmDialog';
 import { LocationNotAvailableWindow } from './components/dialogs/LocationNotAvailableWindow';
+import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { useAppStore } from './stores/appStore';
+import { useSettingsStore } from './stores/settingsStore';
 import './styles/global.css';
 import styles from './styles/App.module.css';
 
 function App() {
-  const showDetailsPane = useAppStore(s => s.showDetailsPane);
   const { goBack, goForward, goUp, openLocationNotAvailableDialog } = useAppStore();
-  const [sideWidth, setSideWidth] = useState(200);
+  const { settings, loaded, loadSettings, setSidebarWidth } = useSettingsStore();
+  const { showDetailsPane, sidebarWidth: savedSidebarWidth } = settings.display;
+  const [sideWidth, setSideWidth] = useState(savedSidebarWidth);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
+  useEffect(() => {
+    if (loaded) {
+      setSideWidth(settings.display.sidebarWidth);
+    }
+  }, [loaded, settings.display.sidebarWidth]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,6 +50,12 @@ function App() {
           e.preventDefault();
           goUp();
         }
+      }
+
+      // Cmd/Ctrl + , で設定を開く
+      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+        e.preventDefault();
+        useSettingsStore.getState().openSettings();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -67,7 +86,8 @@ function App() {
     const startX = e.clientX;
     const startWidth = sideWidth;
     const onMove = (ev: MouseEvent) => {
-      setSideWidth(Math.max(100, Math.min(500, startWidth + (ev.clientX - startX))));
+      const newWidth = Math.max(100, Math.min(500, startWidth + (ev.clientX - startX)));
+      setSideWidth(newWidth);
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
@@ -80,6 +100,16 @@ function App() {
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
+
+  // サイドバー幅の変更を保存
+  useEffect(() => {
+    if (loaded) {
+      const timer = setTimeout(() => {
+        setSidebarWidth(sideWidth);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [sideWidth, loaded, setSidebarWidth]);
 
   // 別ウィンドウ呼び出し用のルーティング
   const searchParams = new URLSearchParams(window.location.search);
@@ -115,6 +145,7 @@ function App() {
       <OverwriteConfirmDialog />
       <ExtractPromptDialog />
       <TrashConfirmDialog />
+      <SettingsDialog />
     </div>
   );
 }

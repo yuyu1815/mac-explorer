@@ -1,4 +1,3 @@
-import { SVGProps } from 'react';
 import { Cloud } from 'lucide-react';
 import { SiGoogledrive, SiIcloud } from 'react-icons/si';
 

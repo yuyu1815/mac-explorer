@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent, useCallback, memo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/stores/appStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
@@ -288,7 +289,9 @@ const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
 };
 
 export const MainPane = () => {
-    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, showHiddenFiles, showFileExtensions, showItemCheckBoxes, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
+    const { tabs, activeTabId, setCurrentPath, selectAll, setFocusedIndex, goBack, goUp, addTab, setSortParams, renameTriggerId, clipboard, setClipboard, openPropertiesDialog, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
+    const { settings } = useSettingsStore();
+    const { showHiddenFiles, showFileExtensions, showItemCheckboxes } = settings.display;
     const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const currentPath = activeTab?.currentPath || '';
@@ -822,7 +825,7 @@ export const MainPane = () => {
     const renderDetailView = () => (
         <table className={styles.detailTable}>
             <colgroup>
-                {showItemCheckBoxes && <col style={{ width: '16px' }} />}
+                {showItemCheckboxes && <col style={{ width: '16px' }} />}
                 <col />
                 <col style={{ width: colWidths.modified }} />
                 <col style={{ width: colWidths.file_type }} />
@@ -830,7 +833,7 @@ export const MainPane = () => {
             </colgroup>
             <thead className={styles.detailHead}>
                 <tr className={styles.detailHeaderRow}>
-                    {showItemCheckBoxes && (
+                    {showItemCheckboxes && (
                         <th className={styles.checkboxHeaderCell}>
                             <input
                                 type="checkbox"
@@ -902,7 +905,7 @@ export const MainPane = () => {
                         className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${index % 2 === 1 ? ' zebra' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.fileRow}`}
                         data-filepath={file.path}
                     >
-                        {showItemCheckBoxes && (
+                        {showItemCheckboxes && (
                             <td className={styles.checkboxCell}>
                                 <input
                                     type="checkbox"
@@ -971,7 +974,7 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.listItem}`}
                     data-filepath={file.path}
                 >
-                    {showItemCheckBoxes && (
+                    {showItemCheckboxes && (
                         <input
                             type="checkbox"
                             checked={selectedPaths.has(file.path)}
@@ -1027,7 +1030,7 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.iconItem}`}
                     data-filepath={file.path}
                 >
-                    {showItemCheckBoxes && (
+                    {showItemCheckboxes && (
                         <input
                             type="checkbox"
                             checked={selectedPaths.has(file.path)}
@@ -1083,7 +1086,7 @@ export const MainPane = () => {
                     className={`file-item${selectedPaths.has(file.path) ? ' selected' : ''}${file.is_hidden ? ' hidden' : ''}${dragTarget === file.path ? ' drag-target' : ''} ${styles.listItem}`}
                     data-filepath={file.path}
                 >
-                    {showItemCheckBoxes && (
+                    {showItemCheckboxes && (
                         <input
                             type="checkbox"
                             checked={selectedPaths.has(file.path)}
@@ -1153,7 +1156,7 @@ export const MainPane = () => {
                         maxWidth: '800px'
                     }}
                 >
-                    {showItemCheckBoxes && (
+                    {showItemCheckboxes && (
                         <input
                             type="checkbox"
                             checked={selectedPaths.has(file.path)}

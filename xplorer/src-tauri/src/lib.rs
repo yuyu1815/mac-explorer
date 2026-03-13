@@ -9,7 +9,7 @@ pub mod commands;
 pub mod utils;
 
 // Re-export for integration tests
-pub use commands::{archive, directory, file_ops, icons, properties, utils as commands_utils, volumes, watcher};
+pub use commands::{archive, directory, file_ops, icons, properties, settings, utils as commands_utils, volumes, watcher};
 
 use tauri::{Emitter, Manager};
 
@@ -161,6 +161,9 @@ pub fn run() {
             commands::utils::format_size,
             commands::watcher::watch_path,
             commands::watcher::unwatch_path,
+            commands::settings::load_settings,
+            commands::settings::save_settings,
+            commands::settings::update_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

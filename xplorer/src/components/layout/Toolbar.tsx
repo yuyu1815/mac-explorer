@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -14,7 +15,9 @@ import { FileEntry } from '@/types';
 import styles from '@/styles/components/layout/Toolbar.module.css';
 
 export const Toolbar = () => {
-    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, showDetailsPane, toggleDetailsPane, openPropertiesDialog, showHiddenFiles, setShowHiddenFiles, showFileExtensions, setShowFileExtensions, showItemCheckBoxes, setShowItemCheckBoxes, confirmOverwrite, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
+    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, openPropertiesDialog, confirmOverwrite, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
+    const { settings, updateDisplaySettings } = useSettingsStore();
+    const { showHiddenFiles, showFileExtensions, showItemCheckboxes, showDetailsPane } = settings.display;
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -423,7 +426,7 @@ export const Toolbar = () => {
                     <LargeButton icon={<Monitor size={32} strokeWidth={1} color="#5D5D5D" />} label="ナビゲーション\nウィンドウ" onClick={() => { }} />
                     <div className={styles.smallButtonCol}>
                         <SmallButton icon={<PanelRight size={16} color="#5D5D5D" />} label="プレビュー ウィンドウ" onClick={() => { }} disabled />
-                        <SmallButton icon={<PanelRight size={16} color={showDetailsPane ? '#0078D7' : '#5D5D5D'} />} label="詳細ウィンドウ" onClick={toggleDetailsPane} active={showDetailsPane} />
+                        <SmallButton icon={<PanelRight size={16} color={showDetailsPane ? '#0078D7' : '#5D5D5D'} />} label="詳細ウィンドウ" onClick={() => updateDisplaySettings({ showDetailsPane: !showDetailsPane })} active={showDetailsPane} />
                     </div>
                 </div>
                 <div className={styles.groupTitle}>ペイン</div>
@@ -461,13 +464,13 @@ export const Toolbar = () => {
                 <div className={styles.groupItems}>
                     <div className={styles.checkboxCol}>
                         <label className={styles.checkboxLabel}>
-                            <input type="checkbox" checked={showItemCheckBoxes} onChange={e => setShowItemCheckBoxes(e.target.checked)} /> 項目チェック ボックス
+                            <input type="checkbox" checked={showItemCheckboxes} onChange={e => updateDisplaySettings({ showItemCheckboxes: e.target.checked })} /> 項目チェック ボックス
                         </label>
                         <label className={styles.checkboxLabel}>
-                            <input type="checkbox" checked={showFileExtensions} onChange={e => setShowFileExtensions(e.target.checked)} /> ファイル名拡張子
+                            <input type="checkbox" checked={showFileExtensions} onChange={e => updateDisplaySettings({ showFileExtensions: e.target.checked })} /> ファイル名拡張子
                         </label>
                         <label className={styles.checkboxLabel}>
-                            <input type="checkbox" checked={showHiddenFiles} onChange={e => setShowHiddenFiles(e.target.checked)} /> 隠しファイル
+                            <input type="checkbox" checked={showHiddenFiles} onChange={e => updateDisplaySettings({ showHiddenFiles: e.target.checked })} /> 隠しファイル
                         </label>
                     </div>
                     <div className={styles.verticalSeparator}></div>
@@ -478,7 +481,7 @@ export const Toolbar = () => {
 
             <div className={styles.group} style={{ borderRight: 'none' }}>
                 <div className={styles.groupItems}>
-                    <LargeButton icon={<Settings size={32} strokeWidth={1} color="#5D5D5D" />} label="オプション" onClick={() => { }} disabled />
+                    <LargeButton icon={<Settings size={32} strokeWidth={1} color="#5D5D5D" />} label="オプション" onClick={() => useSettingsStore.getState().openSettings()} />
                 </div>
                 <div className={styles.groupTitle}>オプション</div>
             </div>

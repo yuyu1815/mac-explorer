@@ -5,6 +5,7 @@ pub mod file_ops;
 pub mod icons;
 pub mod ipc;
 pub mod properties;
+pub mod settings;
 pub mod types;
 pub mod utils;
 pub mod volumes;
