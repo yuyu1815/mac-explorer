@@ -2,7 +2,17 @@ import React, { useEffect, useState, useRef } from 'react';
 import { invoke, Channel } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { FileIcon } from '@/components/features/file-manager/MainPane';
+import { ipc } from '@/services/ipc';
+import { useNotificationStore } from '@/stores/notificationStore';
+import type { FileHashes, XattrInfo } from '@/types';
 import styles from '@/styles/components/dialogs/PropertiesDialog.module.css';
+
+const QUARANTINE_XATTR = 'com.apple.quarantine';
+
+const formatXattrSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} バイト`;
+    return `${(bytes / 1024).toFixed(1)} KB`;
+};
 
 interface PropertyProgress {
     size_bytes: number;
@@ -76,6 +86,12 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
     const [applications, setApplications] = useState<ApplicationInfo[]>([]);
     const [loadingApps, setLoadingApps] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
+    // ハッシュ計算の状態
+    const [hashes, setHashes] = useState<FileHashes | null>(null);
+    const [hashing, setHashing] = useState(false);
 
     const isDir = fileProps?.file_type === 'ファイル フォルダー';
     const iconId = fileProps ? (isDir ? 'dir' : '') : (diskProps ? 'disk' : '');
@@ -176,6 +192,23 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
     const handleAppSelect = (app: ApplicationInfo) => {
         setPendingApp(app);
         setShowAppMenu(false);
+    };
+
+    const handleCalculateHash = async () => {
+        if (!fileProps || hashing) return;
+        setHashing(true);
+        try {
+            const result = await ipc.calculateFileHash(fileProps.path);
+            setHashes(result);
+        } catch (err: any) {
+            useNotificationStore.getState().notifyError(`ハッシュ計算に失敗: ${err.toString()}`);
+        } finally {
+            setHashing(false);
+        }
+    };
+
+    const handleCopy = (value: string) => {
+        navigator.clipboard.writeText(value);
     };
 
     useEffect(() => {
@@ -464,12 +497,49 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
                                         /> 隠しファイル(H)
                                     </label>
                                 </div>
-                                <div className={styles.btnAdvanced}><button className={styles.btnSmall} disabled>詳細設定(D)...</button></div>
+                                <div className={styles.btnAdvanced}>
+                                    <button className={styles.btnSmall} onClick={() => setShowAdvanced(true)}>詳細設定(D)...</button>
+                                </div>
                             </div>
+
+                            {!isDir && (
+                                <>
+                                    <div className={styles.divider}></div>
+                                    <div className={styles.row}>
+                                        <div className={styles.label}>ハッシュ:</div>
+                                        <div className={styles.hashBlock}>
+                                            {hashes ? (
+                                                <>
+                                                    <HashRow label="MD5" value={hashes.md5} onCopy={handleCopy} />
+                                                    <HashRow label="SHA-1" value={hashes.sha1} onCopy={handleCopy} />
+                                                    <HashRow label="SHA-256" value={hashes.sha256} onCopy={handleCopy} />
+                                                </>
+                                            ) : (
+                                                <button
+                                                    className={styles.btnSmall}
+                                                    onClick={handleCalculateHash}
+                                                    disabled={hashing}
+                                                >
+                                                    {hashing ? '計算中...' : '計算'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 ) : null}
             </div>
+
+            {showAdvanced && fileProps && (
+                <AdvancedAttributesDialog
+                    path={fileProps.path}
+                    isReadonly={fileProps.is_readonly}
+                    isHidden={fileProps.is_hidden}
+                    onClose={() => setShowAdvanced(false)}
+                />
+            )}
 
             <div className={styles.footer}>
                 <button className={styles.btn} onClick={handleOK}>OK</button>
@@ -477,6 +547,101 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
                 <button className={styles.btn} onClick={handleApply} disabled={!isDirty || applying}>
                     {applying ? '適用中...' : '適用(A)'}
                 </button>
+            </div>
+        </div>
+    );
+};
+
+interface HashRowProps {
+    label: string;
+    value: string;
+    onCopy: (value: string) => void;
+}
+
+const HashRow: React.FC<HashRowProps> = ({ label, value, onCopy }) => (
+    <div className={styles.hashRow}>
+        <span className={styles.hashLabel}>{label}</span>
+        <code className={styles.hashValue}>{value}</code>
+        <button className={styles.btnSmall} onClick={() => onCopy(value)}>コピー</button>
+    </div>
+);
+
+interface AdvancedAttributesDialogProps {
+    path: string;
+    isReadonly: boolean;
+    isHidden: boolean;
+    onClose: () => void;
+}
+
+const AdvancedAttributesDialog: React.FC<AdvancedAttributesDialogProps> = ({ path, isReadonly, isHidden, onClose }) => {
+    const [xattrs, setXattrs] = useState<XattrInfo[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const loadXattrs = async () => {
+        try {
+            const result = await ipc.listXattrs(path);
+            setXattrs(result);
+        } catch (err: any) {
+            useNotificationStore.getState().notifyError(`拡張属性の取得に失敗: ${err.toString()}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadXattrs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [path]);
+
+    const handleRemoveQuarantine = async () => {
+        try {
+            await ipc.removeXattr(path, QUARANTINE_XATTR);
+            setXattrs(prev => prev.filter(x => x.name !== QUARANTINE_XATTR));
+        } catch (err: any) {
+            useNotificationStore.getState().notifyError(`隔離属性の削除に失敗: ${err.toString()}`);
+        }
+    };
+
+    const hasQuarantine = xattrs.some(x => x.name === QUARANTINE_XATTR);
+
+    return (
+        <div className={styles.modalOverlay} onMouseDown={onClose}>
+            <div className={styles.modalDialog} onMouseDown={e => e.stopPropagation()}>
+                <div className={styles.modalTitle}>詳細属性</div>
+
+                <div className={styles.modalSection}>
+                    <div className={styles.modalSectionTitle}>ファイルフラグ</div>
+                    <div className={styles.modalAttrLine}>ロック (読み取り専用): {isReadonly ? 'オン' : 'オフ'}</div>
+                    <div className={styles.modalAttrLine}>隠し属性: {isHidden ? 'オン' : 'オフ'}</div>
+                    <div className={styles.modalHint}>※ 変更は「全般」タブのチェックボックスから行ってください</div>
+                </div>
+
+                <div className={styles.modalSection}>
+                    <div className={styles.modalSectionTitle}>拡張属性 (xattr)</div>
+                    {loading ? (
+                        <div className={styles.modalHint}>読み込み中...</div>
+                    ) : xattrs.length === 0 ? (
+                        <div className={styles.modalHint}>拡張属性はありません</div>
+                    ) : (
+                        <div className={styles.xattrList}>
+                            {xattrs.map(x => (
+                                <div key={x.name} className={styles.xattrRow}>
+                                    <code className={styles.xattrName}>{x.name}</code>
+                                    <span className={styles.xattrSize}>{formatXattrSize(x.size)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {hasQuarantine && (
+                        <button className={styles.btnSmall} onClick={handleRemoveQuarantine} style={{ marginTop: '8px' }}>
+                            隔離属性を削除
+                        </button>
+                    )}
+                </div>
+
+                <div className={styles.modalFooter}>
+                    <button className={styles.btn} onClick={onClose}>閉じる</button>
+                </div>
             </div>
         </div>
     );

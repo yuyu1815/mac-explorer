@@ -1,4 +1,4 @@
-import { FileEntry, ViewMode, SortColumn } from './file-system';
+import { FileEntry, ViewMode, SortColumn, GroupBy } from './file-system';
 
 export interface Tab {
     id: string;
@@ -11,6 +11,7 @@ export interface Tab {
     viewMode: ViewMode;
     sortBy: SortColumn;
     sortDesc: boolean;
+    groupBy: GroupBy;
     searchQuery: string;
 }
 
@@ -59,6 +60,7 @@ export interface AppState {
     triggerRename: () => void;
     setViewMode: (mode: ViewMode) => void;
     setSortParams: (column: SortColumn, desc: boolean) => void;
+    setGroupBy: (groupBy: GroupBy) => void;
     setSelectedFiles: (paths: Set<string>) => void;
     toggleDetailsPane: () => void;
     setSearchQuery: (query: string) => void;

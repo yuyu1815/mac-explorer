@@ -4,11 +4,23 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useAppStore } from '@/stores/appStore';
 import {
     ExternalLink, Scissors, Copy, Edit2, Trash2, FolderPlus, Clipboard,
-    LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive
+    LayoutGrid, ArrowDownAZ, RefreshCw, Settings, Archive, FileArchive, Check
 } from 'lucide-react';
+import { GroupBy } from '@/types';
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '@/utils/archive';
 import { ipc } from '@/services/ipc';
+import { useUndoStore } from '@/stores/undoStore';
 import styles from '@/styles/components/features/file-manager/ContextMenu.module.css';
+
+const baseName = (path: string) => path.slice(path.lastIndexOf('/') + 1);
+
+const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
+    { label: '(なし)', value: 'none' },
+    { label: '名前', value: 'name' },
+    { label: '種類', value: 'type' },
+    { label: 'サイズ', value: 'size' },
+    { label: '更新日時', value: 'dateModified' },
+];
 
 interface ContextMenuProps {
     x: number;
@@ -20,7 +32,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreateFolder }: ContextMenuProps) => {
-    const { tabs, activeTabId, setFiles, setCurrentPath, setClipboard, clipboard, setViewMode, setSortParams, openPropertiesDialog, confirmOverwrite, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
+    const { tabs, activeTabId, setFiles, setCurrentPath, setClipboard, clipboard, setViewMode, setSortParams, setGroupBy, openPropertiesDialog, confirmOverwrite, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
     const activeTab = tabs.find(t => t.id === activeTabId);
     const currentPath = activeTab?.currentPath || '';
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
@@ -80,6 +92,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
         try {
             let newPath = currentPath.endsWith('/') ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}/新しいテキスト ドキュメント.txt`;
             await ipc.createFile(newPath);
+            useUndoStore.getState().record({ type: 'create', path: newPath });
             refreshFiles();
         } catch (err) {
             console.error('Context menu action failed:', err);
@@ -238,18 +251,25 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                     <ContextMenuSeparator />
                     {/* Sort Menu */}
                     <ContextSubMenuItem icon={<ArrowDownAZ size={16} />} label="並べ替え(O)">
-                        <ContextMenuItem label="名前" onClick={() => handleAction(() => setSortParams('name', activeTab?.sortBy === 'name' ? !activeTab.sortDesc : false))} />
-                        <ContextMenuItem label="更新日時" onClick={() => handleAction(() => setSortParams('modified', activeTab?.sortBy === 'modified' ? !activeTab.sortDesc : false))} />
-                        <ContextMenuItem label="種類" onClick={() => handleAction(() => setSortParams('file_type', activeTab?.sortBy === 'file_type' ? !activeTab.sortDesc : false))} />
-                        <ContextMenuItem label="サイズ" onClick={() => handleAction(() => setSortParams('size', activeTab?.sortBy === 'size' ? !activeTab.sortDesc : false))} />
+                        <ContextMenuItem icon={activeTab?.sortBy === 'name' ? <Check size={16} color="#0078D7" /> : undefined} label="名前" onClick={() => handleAction(() => setSortParams('name', activeTab?.sortBy === 'name' ? !activeTab.sortDesc : false))} />
+                        <ContextMenuItem icon={activeTab?.sortBy === 'modified' ? <Check size={16} color="#0078D7" /> : undefined} label="更新日時" onClick={() => handleAction(() => setSortParams('modified', activeTab?.sortBy === 'modified' ? !activeTab.sortDesc : false))} />
+                        <ContextMenuItem icon={activeTab?.sortBy === 'file_type' ? <Check size={16} color="#0078D7" /> : undefined} label="種類" onClick={() => handleAction(() => setSortParams('file_type', activeTab?.sortBy === 'file_type' ? !activeTab.sortDesc : false))} />
+                        <ContextMenuItem icon={activeTab?.sortBy === 'size' ? <Check size={16} color="#0078D7" /> : undefined} label="サイズ" onClick={() => handleAction(() => setSortParams('size', activeTab?.sortBy === 'size' ? !activeTab.sortDesc : false))} />
                         <ContextMenuSeparator />
-                        <ContextMenuItem label="昇順(A)" onClick={() => handleAction(() => setSortParams(activeTab?.sortBy || 'name', false))} />
-                        <ContextMenuItem label="降順(D)" onClick={() => handleAction(() => setSortParams(activeTab?.sortBy || 'name', true))} />
+                        <ContextMenuItem icon={!activeTab?.sortDesc ? <Check size={16} color="#0078D7" /> : undefined} label="昇順(A)" onClick={() => handleAction(() => setSortParams(activeTab?.sortBy || 'name', false))} />
+                        <ContextMenuItem icon={activeTab?.sortDesc ? <Check size={16} color="#0078D7" /> : undefined} label="降順(D)" onClick={() => handleAction(() => setSortParams(activeTab?.sortBy || 'name', true))} />
                     </ContextSubMenuItem>
                     <ContextMenuSeparator />
-                    {/* Group By Mock */}
-                    <ContextSubMenuItem label="グループで表示(P)">
-                        <ContextMenuItem label="(なし)(N)" onClick={() => handleAction(() => { })} />
+                    {/* Group By */}
+                    <ContextSubMenuItem icon={<LayoutGrid size={16} />} label="グループで表示(P)">
+                        {GROUP_OPTIONS.map(opt => (
+                            <ContextMenuItem
+                                key={opt.value}
+                                icon={(activeTab?.groupBy || 'none') === opt.value ? <Check size={16} color="#0078D7" /> : undefined}
+                                label={opt.label}
+                                onClick={() => handleAction(() => setGroupBy(opt.value))}
+                            />
+                        ))}
                     </ContextSubMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem icon={<RefreshCw size={16} />} label="最新の情報に更新(E)" onClick={() => handleAction(refreshFiles)} />
@@ -261,10 +281,14 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                         onClick={() => {
                             if (clipboard) {
                                 handleAction(async () => {
+                                    const resultPaths = clipboard.files.map(f => `${currentPath}/${baseName(f)}`);
                                     if (clipboard.operation === 'copy') {
                                         await ipc.copyFiles(clipboard.files, currentPath);
+                                        useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths: resultPaths });
                                     } else {
+                                        const originalDir = clipboard.files[0].slice(0, clipboard.files[0].lastIndexOf('/')) || '/';
                                         await ipc.moveFiles(clipboard.files, currentPath);
+                                        useUndoStore.getState().record({ type: 'move', sources: resultPaths, originalDir });
                                         setClipboard(null);
                                     }
                                     await refreshFiles();

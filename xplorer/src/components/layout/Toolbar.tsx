@@ -8,21 +8,44 @@ import {
     ClipboardPaste, Scissors, Copy, Link as LinkIcon, Edit2, Trash2, FolderPlus,
     FilePlus, List, AlignJustify, LayoutGrid, CheckSquare, XSquare, ArrowRightSquare,
     FolderOpen, Settings, ChevronUp, ChevronDown, Monitor, PanelRight, ArrowDownAZ, EyeOff,
-    Archive, FileArchive
+    Archive, FileArchive, Check, Mail, Search
 } from 'lucide-react';
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '@/utils/archive';
-import { FileEntry } from '@/types';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { useUndoStore } from '@/stores/undoStore';
+import { FileEntry, SortColumn, GroupBy } from '@/types';
 import styles from '@/styles/components/layout/Toolbar.module.css';
 
+const baseName = (path: string) => path.slice(path.lastIndexOf('/') + 1);
+const joinPath = (dir: string, name: string) => (dir.endsWith('/') ? `${dir}${name}` : `${dir}/${name}`);
+
+const SORT_OPTIONS: { label: string; column: SortColumn }[] = [
+    { label: '名前', column: 'name' },
+    { label: '更新日時', column: 'modified' },
+    { label: '種類', column: 'file_type' },
+    { label: 'サイズ', column: 'size' },
+];
+
+const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
+    { label: '(なし)', value: 'none' },
+    { label: '名前', value: 'name' },
+    { label: '種類', value: 'type' },
+    { label: 'サイズ', value: 'size' },
+    { label: '更新日時', value: 'dateModified' },
+];
+
 export const Toolbar = () => {
-    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, selectAll, clearSelection, invertSelection, triggerRename, openPropertiesDialog, confirmOverwrite, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
+    const { tabs, activeTabId, clipboard, setClipboard, setFiles, setViewMode, setSortParams, setGroupBy, selectAll, clearSelection, invertSelection, triggerRename, openPropertiesDialog, confirmOverwrite, openLocationNotAvailableDialog, confirmTrash } = useAppStore();
     const { settings, updateDisplaySettings } = useSettingsStore();
-    const { showHiddenFiles, showFileExtensions, showItemCheckboxes, showDetailsPane } = settings.display;
+    const { showHiddenFiles, showFileExtensions, showItemCheckboxes, showDetailsPane, showPreviewPane, showNavigationPane } = settings.display;
     const activeTab = tabs.find(t => t.id === activeTabId);
 
     const selectedFiles = activeTab?.selectedFiles || new Set<string>();
     const currentPath = activeTab?.currentPath || '';
     const viewMode = activeTab?.viewMode || 'detail';
+    const sortBy = activeTab?.sortBy || 'name';
+    const sortDesc = activeTab?.sortDesc || false;
+    const groupBy = activeTab?.groupBy || 'none';
 
     const [isPinned, setIsPinned] = useState(true);
     const [activeRibbonTab, setActiveRibbonTab] = useState<'home' | 'share' | 'view'>('home');
@@ -95,8 +118,13 @@ export const Toolbar = () => {
         try {
             if (clipboard.operation === 'copy') {
                 await invoke('copy_files', { sources: clipboard.files, dest: currentPath });
+                const createdPaths = clipboard.files.map(f => joinPath(currentPath, baseName(f)));
+                useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths });
             } else {
+                const originalDir = clipboard.files.length > 0 ? clipboard.files[0].slice(0, clipboard.files[0].lastIndexOf('/')) || '/' : currentPath;
                 await invoke('move_files', { sources: clipboard.files, dest: currentPath });
+                const movedPaths = clipboard.files.map(f => joinPath(currentPath, baseName(f)));
+                useUndoStore.getState().record({ type: 'move', sources: movedPaths, originalDir });
                 setClipboard(null);
             }
             refreshFiles();
@@ -115,7 +143,10 @@ export const Toolbar = () => {
             const { open } = await import('@tauri-apps/plugin-dialog');
             const destDir = await open({ directory: true, multiple: false });
             if (destDir && typeof destDir === 'string') {
-                await invoke('copy_files', { sources: Array.from(selectedFiles), dest: destDir });
+                const sources = Array.from(selectedFiles);
+                await invoke('copy_files', { sources, dest: destDir });
+                const createdPaths = sources.map(f => joinPath(destDir, baseName(f)));
+                useUndoStore.getState().record({ type: 'copy', sources, createdPaths });
             }
         } catch (err) {
             console.error('Failed to copy to', err);
@@ -131,7 +162,11 @@ export const Toolbar = () => {
             const { open } = await import('@tauri-apps/plugin-dialog');
             const destDir = await open({ directory: true, multiple: false });
             if (destDir && typeof destDir === 'string') {
-                await invoke('move_files', { sources: Array.from(selectedFiles), dest: destDir });
+                const sources = Array.from(selectedFiles);
+                const originalDir = currentPath;
+                await invoke('move_files', { sources, dest: destDir });
+                const movedPaths = sources.map(f => joinPath(destDir, baseName(f)));
+                useUndoStore.getState().record({ type: 'move', sources: movedPaths, originalDir });
                 refreshFiles();
             }
         } catch (err) {
@@ -168,6 +203,7 @@ export const Toolbar = () => {
         try {
             let newPath = currentPath.endsWith('/') ? `${currentPath}新しいテキスト ドキュメント.txt` : `${currentPath}/新しいテキスト ドキュメント.txt`;
             await invoke('create_file', { path: newPath });
+            useUndoStore.getState().record({ type: 'create', path: newPath });
             refreshFiles();
         } catch (err) {
             console.error('Toolbar action failed:', err);
@@ -342,9 +378,39 @@ export const Toolbar = () => {
         try {
             let newPath = currentPath.endsWith('/') ? `${currentPath}新しいフォルダー` : `${currentPath}/新しいフォルダー`;
             await invoke('create_directory', { path: newPath });
+            useUndoStore.getState().record({ type: 'create', path: newPath });
             refreshFiles();
         } catch (err) {
             console.error('Toolbar action failed:', err);
+        }
+    };
+
+    const handleHideSelected = async () => {
+        if (currentPath === 'this-pc') return;
+        if (selectedFiles.size === 0) return;
+        try {
+            await Promise.all(Array.from(selectedFiles).map(path => invoke('set_hidden', { path, hidden: true })));
+            refreshFiles();
+        } catch (err) {
+            useNotificationStore.getState().notifyError(`項目を非表示にできませんでした: ${err}`);
+        }
+    };
+
+    const handleShareViaMail = async () => {
+        if (selectedFiles.size === 0) return;
+        try {
+            await invoke('share_via_mail', { paths: Array.from(selectedFiles) });
+        } catch (err) {
+            useNotificationStore.getState().notifyError(`メールで送信できませんでした: ${err}`);
+        }
+    };
+
+    const handleRevealInFinder = async () => {
+        if (selectedFiles.size === 0) return;
+        try {
+            await invoke('reveal_in_finder', { paths: Array.from(selectedFiles) });
+        } catch (err) {
+            useNotificationStore.getState().notifyError(`Finderで表示できませんでした: ${err}`);
         }
     };
 
@@ -423,10 +489,10 @@ export const Toolbar = () => {
         <div className={styles.content}>
             <div className={styles.group}>
                 <div className={styles.groupItems}>
-                    <LargeButton icon={<Monitor size={32} strokeWidth={1} color="#5D5D5D" />} label="ナビゲーション\nウィンドウ" onClick={() => { }} />
+                    <LargeButton icon={<Monitor size={32} strokeWidth={1} color={showNavigationPane ? '#0078D7' : '#5D5D5D'} />} label="ナビゲーション\nウィンドウ" onClick={() => updateDisplaySettings({ showNavigationPane: !showNavigationPane })} active={showNavigationPane} />
                     <div className={styles.smallButtonCol}>
-                        <SmallButton icon={<PanelRight size={16} color="#5D5D5D" />} label="プレビュー ウィンドウ" onClick={() => { }} disabled />
-                        <SmallButton icon={<PanelRight size={16} color={showDetailsPane ? '#0078D7' : '#5D5D5D'} />} label="詳細ウィンドウ" onClick={() => updateDisplaySettings({ showDetailsPane: !showDetailsPane })} active={showDetailsPane} />
+                        <SmallButton icon={<PanelRight size={16} color={showPreviewPane ? '#0078D7' : '#5D5D5D'} />} label="プレビュー ウィンドウ" onClick={() => updateDisplaySettings({ showPreviewPane: !showPreviewPane, showDetailsPane: false })} active={showPreviewPane} />
+                        <SmallButton icon={<PanelRight size={16} color={showDetailsPane ? '#0078D7' : '#5D5D5D'} />} label="詳細ウィンドウ" onClick={() => updateDisplaySettings({ showDetailsPane: !showDetailsPane, showPreviewPane: false })} active={showDetailsPane} />
                     </div>
                 </div>
                 <div className={styles.groupTitle}>ペイン</div>
@@ -450,8 +516,29 @@ export const Toolbar = () => {
 
             <div className={styles.group}>
                 <div className={styles.groupItems}>
-                    <LargeButton icon={<ArrowDownAZ size={32} strokeWidth={1} color="#5D5D5D" />} label="並べ替え" onClick={() => { }} />
-                    <LargeButton icon={<List size={32} strokeWidth={1} color="#5D5D5D" />} label="グループ化" onClick={() => { }} disabled />
+                    <RibbonDropdown
+                        icon={<ArrowDownAZ size={32} strokeWidth={1} color="#5D5D5D" />}
+                        label="並べ替え"
+                        items={[
+                            ...SORT_OPTIONS.map(opt => ({
+                                label: opt.label,
+                                checked: sortBy === opt.column,
+                                onSelect: () => setSortParams(opt.column, sortBy === opt.column ? !sortDesc : false),
+                            })),
+                            { separator: true },
+                            { label: '昇順', checked: !sortDesc, onSelect: () => setSortParams(sortBy, false) },
+                            { label: '降順', checked: sortDesc, onSelect: () => setSortParams(sortBy, true) },
+                        ]}
+                    />
+                    <RibbonDropdown
+                        icon={<List size={32} strokeWidth={1} color="#5D5D5D" />}
+                        label="グループ化"
+                        items={GROUP_OPTIONS.map(opt => ({
+                            label: opt.label,
+                            checked: groupBy === opt.value,
+                            onSelect: () => setGroupBy(opt.value),
+                        }))}
+                    />
                     <div className={styles.smallButtonCol} style={{ width: '150px' }}>
                         <SmallButton icon={<CheckSquare size={16} color="#5D5D5D" />} label="列の追加" onClick={() => { }} disabled />
                         <SmallButton icon={<AlignJustify size={16} color="#5D5D5D" />} label="すべての列のサイズ..." onClick={() => { }} disabled />
@@ -474,7 +561,7 @@ export const Toolbar = () => {
                         </label>
                     </div>
                     <div className={styles.verticalSeparator}></div>
-                    <LargeButton icon={<EyeOff size={32} strokeWidth={1} color="#5D5D5D" />} label="選択した項目を\n表示しない" onClick={() => { }} disabled />
+                    <LargeButton icon={<EyeOff size={32} strokeWidth={1} color="#5D5D5D" />} label="選択した項目を\n表示しない" onClick={handleHideSelected} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
                 </div>
                 <div className={styles.groupTitle}>表示/非表示</div>
             </div>
@@ -490,8 +577,19 @@ export const Toolbar = () => {
 
     const renderShareTab = () => (
         <div className={styles.content}>
+            <div className={styles.group}>
+                <div className={styles.groupItems}>
+                    <LargeButton icon={<Archive size={32} strokeWidth={1} color="#0078D7" />} label="Zip" onClick={handleCompress} disabled={selectedFiles.size === 0 || currentPath === 'this-pc'} />
+                    <LargeButton icon={<Mail size={32} strokeWidth={1} color="#0078D7" />} label="メールで\n送信" onClick={handleShareViaMail} disabled={selectedFiles.size === 0} />
+                </div>
+                <div className={styles.groupTitle}>送信</div>
+            </div>
+
             <div className={styles.group} style={{ borderRight: 'none' }}>
-                <div className={styles.groupTitle} style={{ marginTop: '54px' }}>共有機能は現在使用できません</div>
+                <div className={styles.groupItems}>
+                    <LargeButton icon={<Search size={32} strokeWidth={1} color="#5D5D5D" />} label="Finderで\n表示" onClick={handleRevealInFinder} disabled={selectedFiles.size === 0} title="Finderから AirDrop や他の共有方法を利用できます" />
+                </div>
+                <div className={styles.groupTitle}>共有</div>
             </div>
         </div>
     );
@@ -530,9 +628,57 @@ export const Toolbar = () => {
     );
 };
 
-const LargeButton = ({ icon, label, onClick, disabled }: any) => {
+type DropdownItem = { separator: true } | { separator?: false; label: string; checked: boolean; onSelect: () => void };
+
+const RibbonDropdown = ({ icon, label, items }: { icon: React.ReactNode; label: string; items: DropdownItem[] }) => {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [open]);
+
     return (
-        <div className={`${styles.btnLarge} ${disabled ? styles.disabled : ''}`} onClick={!disabled ? onClick : undefined}>
+        <div ref={ref} style={{ position: 'relative' }}>
+            <div className={styles.btnLarge} onClick={() => setOpen(o => !o)}>
+                <div className={styles.largeIconContainer}>{icon}</div>
+                <div className={styles.largeLabelContainer} dangerouslySetInnerHTML={{ __html: label.replace('\\n', '<br/>') }} />
+            </div>
+            {open && (
+                <div style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 1000,
+                    minWidth: '160px', background: 'var(--bg-main, #fff)',
+                    border: '1px solid var(--border-color, #ccc)', boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                    padding: '4px 0', fontSize: '12px'
+                }}>
+                    {items.map((item, i) => item.separator ? (
+                        <div key={i} style={{ height: 1, background: 'var(--border-color, #ddd)', margin: '4px 0' }} />
+                    ) : (
+                        <div
+                            key={i}
+                            onClick={() => { item.onSelect(); setOpen(false); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 12px', cursor: 'default', whiteSpace: 'nowrap' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg, #e5f1fb)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                            <span style={{ width: 14, display: 'inline-flex' }}>{item.checked && <Check size={14} color="#0078D7" />}</span>
+                            {item.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const LargeButton = ({ icon, label, onClick, disabled, title }: any) => {
+    return (
+        <div className={`${styles.btnLarge} ${disabled ? styles.disabled : ''}`} onClick={!disabled ? onClick : undefined} title={title}>
             <div className={styles.largeIconContainer}>{icon}</div>
             <div className={styles.largeLabelContainer} dangerouslySetInnerHTML={{ __html: label.replace('\\n', '<br/>') }} />
         </div>

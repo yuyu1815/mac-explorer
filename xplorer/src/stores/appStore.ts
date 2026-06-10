@@ -13,6 +13,7 @@ const createNewTab = (id: string, path: string = ''): Tab => ({
     viewMode: 'detail',
     sortBy: 'name',
     sortDesc: false,
+    groupBy: 'none',
     searchQuery: '',
 });
 
@@ -174,6 +175,10 @@ export const useAppStore = create<AppState>((set) => ({
             const sortDesc = desc ?? (tab.sortBy === column ? !tab.sortDesc : false);
             return { ...tab, sortBy: column, sortDesc };
         })
+    })),
+
+    setGroupBy: (groupBy) => set((state) => ({
+        tabs: state.tabs.map(tab => tab.id === state.activeTabId ? { ...tab, groupBy } : tab)
     })),
 
     toggleDetailsPane: () => set(state => ({ showDetailsPane: !state.showDetailsPane })),

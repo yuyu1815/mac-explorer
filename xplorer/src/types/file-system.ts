@@ -32,3 +32,37 @@ export interface VolumeInfo {
 
 export type ViewMode = 'extra_large_icon' | 'large_icon' | 'medium_icon' | 'small_icon' | 'list' | 'detail' | 'tiles' | 'content';
 export type SortColumn = 'name' | 'modified' | 'file_type' | 'size';
+export type GroupBy = 'none' | 'name' | 'type' | 'size' | 'dateModified';
+
+export interface ContentMatch {
+    path: string;
+    line_number: number;
+    snippet: string;
+}
+
+export interface ContentSearchResult {
+    matches: ContentMatch[];
+    truncated: boolean;
+}
+
+export interface FileHashes {
+    md5: string;
+    sha1: string;
+    sha256: string;
+}
+
+export interface XattrInfo {
+    name: string;
+    size: number;
+}
+
+export type PreviewKind = 'text' | 'image' | 'pdf' | 'video' | 'audio' | 'binary';
+
+export interface FilePreview {
+    kind: PreviewKind;
+    path: string;
+    size: number;
+    size_formatted: string;
+    content: string | null;
+    truncated: boolean;
+}

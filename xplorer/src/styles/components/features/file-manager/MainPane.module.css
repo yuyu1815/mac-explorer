@@ -279,6 +279,34 @@
     gap: 12px;
 }
 
+/* グループ化のヘッダー。詳細ビュー（table）用 */
+.groupHeaderRow td {
+    padding: 6px 4px 2px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.groupCount {
+    color: var(--text-muted);
+    font-weight: normal;
+    margin-left: 6px;
+}
+
+/* グループ化のヘッダー。flex / grid ビュー用に行全体を占有させる */
+.groupHeaderBlock {
+    flex-basis: 100%;
+    grid-column: 1 / -1;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 6px 2px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-color);
+}
+
 .driveSectionTitle {
     display: flex;
     align-items: center;

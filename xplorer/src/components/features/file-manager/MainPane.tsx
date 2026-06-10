@@ -1,7 +1,9 @@
-import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent, useCallback, memo } from 'react';
+import { useEffect, useState, useRef, KeyboardEvent, MouseEvent as ReactMouseEvent, useCallback, memo, Fragment } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/stores/appStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { useUndoStore } from '@/stores/undoStore';
 import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
@@ -9,6 +11,7 @@ import {
     Monitor, ChevronDown, Cloud
 } from 'lucide-react';
 import { FileEntry, VolumeInfo } from '@/types';
+import { groupFiles } from '@/utils/grouping';
 import { ipc } from '@/services/ipc';
 import { useFileSystem } from '@/hooks/useFileSystem';
 import { useFileOperations } from '@/hooks/useFileOperations';
@@ -196,7 +199,10 @@ const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
     const { setCurrentPath } = useAppStore();
 
     useEffect(() => {
-        invoke<VolumeInfo[]>('list_volumes').then(setVolumes).catch(console.error);
+        invoke<VolumeInfo[]>('list_volumes').then(setVolumes).catch(err => {
+            console.error('Failed to list volumes', err);
+            useNotificationStore.getState().notifyError(`ドライブ情報の取得に失敗しました: ${err}`);
+        });
     }, []);
 
     // Classify volumes
@@ -299,6 +305,7 @@ export const MainPane = () => {
     const viewMode = activeTab?.viewMode || 'detail';
     const sortBy = activeTab?.sortBy || 'name';
     const sortDesc = activeTab?.sortDesc || false;
+    const groupBy = activeTab?.groupBy || 'none';
 
     // Use hooks
     const { files, refreshFiles } = useFileSystem({
@@ -317,6 +324,10 @@ export const MainPane = () => {
         selectedPaths, toggleSelection: hookToggleSelection, clearSelection,
         marquee, containerRef, onMouseDown: hookOnMouseDown, onMouseMove, onMouseUp: hookOnMouseUp
     } = useFileSelection(files);
+
+    // グループ化の計算。flat index（選択範囲・フォーカスで使用）を保つため path → index を引けるようにする
+    const indexByPath = new Map(files.map((f, i) => [f.path, i]));
+    const groups = groupFiles(files, groupBy);
 
     const marqueeJustEnded = useRef(false);
 
@@ -505,10 +516,15 @@ export const MainPane = () => {
                 const invalidDrop = sourcePaths.some((p: string) => file.path === p || file.path.startsWith(p + '/'));
                 if (invalidDrop) return;
 
+                const baseName = (p: string) => p.slice(p.lastIndexOf('/') + 1);
+                const resultPaths = sourcePaths.map((p: string) => `${file.path}/${baseName(p)}`);
                 if (isCopy) {
                     await invoke('copy_files', { sources: sourcePaths, dest: file.path });
+                    useUndoStore.getState().record({ type: 'copy', sources: sourcePaths, createdPaths: resultPaths });
                 } else {
+                    const originalDir = sourcePaths[0].slice(0, sourcePaths[0].lastIndexOf('/')) || '/';
                     await invoke('move_files', { sources: sourcePaths, dest: file.path });
+                    useUndoStore.getState().record({ type: 'move', sources: resultPaths, originalDir });
                 }
                 await refreshFiles();
             }
@@ -602,10 +618,15 @@ export const MainPane = () => {
             if (currentPath === 'this-pc') return;
 
             if (clipboard) {
+                const baseName = (p: string) => p.slice(p.lastIndexOf('/') + 1);
+                const resultPaths = clipboard.files.map(f => `${currentPath}/${baseName(f)}`);
                 if (clipboard.operation === 'copy') {
                     await invoke('copy_files', { sources: clipboard.files, dest: currentPath });
+                    useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths: resultPaths });
                 } else {
+                    const originalDir = clipboard.files[0].slice(0, clipboard.files[0].lastIndexOf('/')) || '/';
                     await invoke('move_files', { sources: clipboard.files, dest: currentPath });
+                    useUndoStore.getState().record({ type: 'move', sources: resultPaths, originalDir });
                     setClipboard(null);
                 }
                 await refreshFilesLocal();
@@ -869,7 +890,18 @@ export const MainPane = () => {
                 </tr>
             </thead>
             <tbody>
-                {files.map((file, index) => (
+                {groups.map(group => (
+                    <Fragment key={group.key}>
+                        {groupBy !== 'none' && (
+                            <tr className={styles.groupHeaderRow}>
+                                <td colSpan={showItemCheckboxes ? 5 : 4}>
+                                    {group.label}<span className={styles.groupCount}>({group.files.length})</span>
+                                </td>
+                            </tr>
+                        )}
+                        {group.files.map(file => {
+                            const index = indexByPath.get(file.path)!;
+                            return (
                     <tr
                         key={file.path}
                         draggable
@@ -932,6 +964,9 @@ export const MainPane = () => {
                             {file.size_formatted}
                         </td>
                     </tr>
+                            );
+                        })}
+                    </Fragment>
                 ))}
             </tbody>
         </table>
@@ -939,7 +974,16 @@ export const MainPane = () => {
 
     const renderListView = () => (
         <div className={styles.listView}>
-            {files.map((file, index) => (
+            {groups.map(group => (
+                <Fragment key={group.key}>
+                    {groupBy !== 'none' && (
+                        <div className={styles.groupHeaderBlock}>
+                            {group.label}<span className={styles.groupCount}>({group.files.length})</span>
+                        </div>
+                    )}
+                    {group.files.map(file => {
+                        const index = indexByPath.get(file.path)!;
+                        return (
                 <div
                     key={file.path}
                     draggable
@@ -989,13 +1033,25 @@ export const MainPane = () => {
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={16} isSymlink={file.is_symlink} isNoAccess={file.is_noaccess} />
                     <span className={styles.listItemText}>{renderFileName(file)}</span>
                 </div>
+                        );
+                    })}
+                </Fragment>
             ))}
         </div>
     );
 
     const renderIconView = () => (
         <div className={styles.iconView} style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${iconSize + 40}px, 1fr))` }}>
-            {files.map((file, index) => (
+            {groups.map(group => (
+                <Fragment key={group.key}>
+                    {groupBy !== 'none' && (
+                        <div className={styles.groupHeaderBlock}>
+                            {group.label}<span className={styles.groupCount}>({group.files.length})</span>
+                        </div>
+                    )}
+                    {group.files.map(file => {
+                        const index = indexByPath.get(file.path)!;
+                        return (
                 <div
                     key={file.path}
                     draggable
@@ -1045,13 +1101,25 @@ export const MainPane = () => {
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={iconSize} isSymlink={file.is_symlink} isNoAccess={file.is_noaccess} />
                     <span className={styles.iconItemText} style={{ width: '100%' }}>{renderFileName(file)}</span>
                 </div>
+                        );
+                    })}
+                </Fragment>
             ))}
         </div>
     );
 
     const renderTilesView = () => (
         <div className={styles.listView} style={{ padding: '8px', gap: '4px' }}>
-            {files.map((file, index) => (
+            {groups.map(group => (
+                <Fragment key={group.key}>
+                    {groupBy !== 'none' && (
+                        <div className={styles.groupHeaderBlock}>
+                            {group.label}<span className={styles.groupCount}>({group.files.length})</span>
+                        </div>
+                    )}
+                    {group.files.map(file => {
+                        const index = indexByPath.get(file.path)!;
+                        return (
                 <div
                     key={file.path}
                     draggable
@@ -1105,13 +1173,25 @@ export const MainPane = () => {
                         {!file.is_dir && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }} onClick={(e) => { e.stopPropagation(); hookToggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, index); }}>{file.size_formatted}</span>}
                     </div>
                 </div>
+                        );
+                    })}
+                </Fragment>
             ))}
         </div>
     );
 
     const renderContentView = () => (
         <div style={{ display: 'flex', flexDirection: 'column', padding: '8px', alignContent: 'flex-start' }}>
-            {files.map((file, index) => (
+            {groups.map(group => (
+                <Fragment key={group.key}>
+                    {groupBy !== 'none' && (
+                        <div className={styles.groupHeaderBlock} style={{ maxWidth: '800px' }}>
+                            {group.label}<span className={styles.groupCount}>({group.files.length})</span>
+                        </div>
+                    )}
+                    {group.files.map(file => {
+                        const index = indexByPath.get(file.path)!;
+                        return (
                 <div
                     key={file.path}
                     draggable
@@ -1180,6 +1260,9 @@ export const MainPane = () => {
                         </div>
                     </div>
                 </div>
+                        );
+                    })}
+                </Fragment>
             ))}
         </div>
     );

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { FileEntry } from '@/types';
+import { FileEntry, ContentSearchResult, FileHashes, FilePreview, XattrInfo } from '@/types';
 
 export const ipc = {
     listDirectory: (path: string) => invoke<FileEntry[]>('list_directory', { path }),
@@ -17,4 +17,10 @@ export const ipc = {
     createFile: (path: string) => invoke<void>('create_file', { path }),
     getHomeDir: () => invoke<string>('get_home_dir'),
     openFileDefault: (path: string) => invoke<void>('open_file_default', { path }),
+    createSymlink: (target: string, linkPath: string) => invoke<void>('create_symlink', { target, linkPath }),
+    searchFileContents: (dir: string, query: string) => invoke<ContentSearchResult>('search_file_contents', { dir, query }),
+    calculateFileHash: (path: string) => invoke<FileHashes>('calculate_file_hash', { path }),
+    getFilePreview: (path: string) => invoke<FilePreview>('get_file_preview', { path }),
+    listXattrs: (path: string) => invoke<XattrInfo[]>('list_xattrs', { path }),
+    removeXattr: (path: string, name: string) => invoke<void>('remove_xattr', { path, name }),
 };

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { Home, Laptop, Download, FileText, ChevronRight, ChevronDown, Monitor, HardDrive, Network, Cloud } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { GoogleDriveIcon, ICloudDriveIcon } from '@/components/icons/CloudDriveIcons';
@@ -53,7 +54,10 @@ const FolderTreeItem = ({ path, name, icon, level, defaultExpanded = false, auto
                     setChildren(dirs);
                     setHasFetched(true);
                 })
-                .catch(err => console.error('Failed to list dir in tree', err))
+                .catch(err => {
+                    console.error('Failed to list dir in tree', err);
+                    useNotificationStore.getState().notifyError(`フォルダーの読み込みに失敗しました: ${err}`);
+                })
                 .finally(() => setLoading(false));
         }
     }, [isExpanded, path, hasFetched]);
@@ -167,8 +171,15 @@ export const SidePanel = () => {
     const [volumes, setVolumes] = useState<VolumeInfo[]>([]);
 
     useEffect(() => {
-        invoke<string>('get_home_dir').then(setHomeDir).catch(console.error);
-        invoke<VolumeInfo[]>('list_volumes').then(setVolumes).catch(console.error);
+        const notifyError = useNotificationStore.getState().notifyError;
+        invoke<string>('get_home_dir').then(setHomeDir).catch(err => {
+            console.error('Failed to get home dir', err);
+            notifyError(`ホームフォルダーの取得に失敗しました: ${err}`);
+        });
+        invoke<VolumeInfo[]>('list_volumes').then(setVolumes).catch(err => {
+            console.error('Failed to list volumes', err);
+            notifyError(`ドライブ情報の取得に失敗しました: ${err}`);
+        });
     }, []);
 
     const quickAccessItems = [

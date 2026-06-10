@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, ChevronDown, Folder } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, ChevronDown, Folder, FileText, Loader2, FileSearch } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useNavigationBar } from '@/hooks/useNavigationBar';
+import { useContentSearch } from '@/hooks/useContentSearch';
 import styles from '@/styles/components/layout/NavigationBar.module.css';
 
+type SearchMode = 'name' | 'content';
+
 export const NavigationBar = () => {
-    const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery, toggleSelection, openLocationNotAvailableDialog } = useAppStore();
+    const { tabs, activeTabId, goBack, goForward, goUp, setCurrentPath, setFiles, setSearchQuery, toggleSelection, setSelectedFiles, openLocationNotAvailableDialog } = useAppStore();
     const activeTab = tabs.find((t: any) => t.id === activeTabId);
 
     const canGoBack = activeTab ? activeTab.historyIndex > 0 : false;
@@ -22,6 +25,31 @@ export const NavigationBar = () => {
     const [isEditing, setIsEditing] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+
+    const [searchMode, setSearchMode] = useState<SearchMode>('name');
+    const [contentQuery, setContentQuery] = useState('');
+    const [showContentResults, setShowContentResults] = useState(false);
+    const { groups, truncated, searching, hasSearched, search: runContentSearch, reset: resetContentSearch } = useContentSearch(currentPath);
+
+    // ディレクトリ移動時は内容検索結果が無意味になるため破棄する
+    useEffect(() => {
+        resetContentSearch();
+        setShowContentResults(false);
+        setContentQuery('');
+    }, [currentPath, resetContentSearch]);
+
+    const handleContentSearch = () => {
+        if (!contentQuery.trim()) return;
+        setShowContentResults(true);
+        runContentSearch(contentQuery);
+    };
+
+    const openContentMatch = (filePath: string) => {
+        const parent = filePath.slice(0, filePath.lastIndexOf('/')) || '/';
+        setCurrentPath(parent);
+        setSelectedFiles(new Set([filePath]));
+        setShowContentResults(false);
+    };
 
     useEffect(() => {
         if (isEditing && inputRef.current) {
@@ -115,8 +143,14 @@ export const NavigationBar = () => {
             if (target.closest(`.${styles.dropdown}`) || target.closest(`.${styles.breadcrumbArrow}`) || target.closest(`.${styles.dropdownToggle}`)) {
                 return;
             }
+            if (target.closest(`.${styles.searchBar}`)) {
+                setDropdownPath(null);
+                setShowHistoryDropdown(false);
+                return;
+            }
             setDropdownPath(null);
             setShowHistoryDropdown(false);
+            setShowContentResults(false);
         };
         document.addEventListener('mousedown', handleOutsideClick);
         return () => document.removeEventListener('mousedown', handleOutsideClick);
@@ -272,16 +306,94 @@ export const NavigationBar = () => {
 
             {/* Search Box */}
             <div className={styles.searchBar}>
-                <input
-                    ref={searchInputRef}
-                    placeholder={`${folderName} の検索`}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={styles.searchInput}
-                />
-                <div className={styles.searchIconWrapper}>
-                    <Search size={14} color="var(--text-muted)" strokeWidth={1.5} />
-                </div>
+                <button
+                    className={styles.searchModeToggle}
+                    title={searchMode === 'name' ? 'ファイル名で検索中（クリックで内容検索）' : 'ファイル内容を検索中（クリックでファイル名検索）'}
+                    onClick={() => {
+                        const next: SearchMode = searchMode === 'name' ? 'content' : 'name';
+                        setSearchMode(next);
+                        setShowContentResults(false);
+                    }}
+                >
+                    {searchMode === 'name'
+                        ? <Search size={14} color="var(--text-muted)" strokeWidth={1.5} />
+                        : <FileSearch size={14} color="#0078D7" strokeWidth={1.5} />}
+                </button>
+                {searchMode === 'name' ? (
+                    <input
+                        ref={searchInputRef}
+                        placeholder={`${folderName} の検索`}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className={styles.searchInput}
+                    />
+                ) : (
+                    <input
+                        ref={searchInputRef}
+                        placeholder={`${folderName} 内のファイル内容を検索`}
+                        value={contentQuery}
+                        onChange={(e) => setContentQuery(e.target.value)}
+                        onFocus={() => hasSearched && setShowContentResults(true)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleContentSearch();
+                            } else if (e.key === 'Escape') {
+                                setShowContentResults(false);
+                            }
+                        }}
+                        className={styles.searchInput}
+                    />
+                )}
+                {searchMode === 'content' && searching && (
+                    <div className={styles.searchIconWrapper}>
+                        <Loader2 size={14} color="var(--text-muted)" strokeWidth={2} className={styles.spin} />
+                    </div>
+                )}
+
+                {searchMode === 'content' && showContentResults && (
+                    <div className={`${styles.dropdown} ${styles.dropdownRight} ${styles.contentResults}`}>
+                        {searching && (
+                            <div className={`${styles.dropdownItem} ${styles.emptyDropdown}`}>検索中...</div>
+                        )}
+                        {!searching && hasSearched && groups.length === 0 && (
+                            <div className={`${styles.dropdownItem} ${styles.emptyDropdown}`}>一致するファイルがありません</div>
+                        )}
+                        {!searching && groups.map(group => (
+                            <div key={group.path} className={styles.contentGroup}>
+                                <div
+                                    className={styles.contentGroupHeader}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        openContentMatch(group.path);
+                                    }}
+                                >
+                                    <FileText size={14} color="#607D8B" strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                                    <span className={styles.contentFileName}>{group.path.split('/').pop()}</span>
+                                    <span className={styles.contentMatchCount}>{group.matches.length}</span>
+                                </div>
+                                {group.matches.map((m, i) => (
+                                    <div
+                                        key={i}
+                                        className={styles.contentMatchRow}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            openContentMatch(group.path);
+                                        }}
+                                    >
+                                        <span className={styles.contentLineNumber}>{m.line_number}</span>
+                                        <span className={styles.contentSnippet}>{m.snippet}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                        {!searching && truncated && (
+                            <div className={`${styles.dropdownItem} ${styles.contentTruncated}`}>500件で打ち切りました</div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

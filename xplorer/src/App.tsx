@@ -6,6 +6,7 @@ import { MainPane } from './components/features/file-manager/MainPane';
 import { StatusBar } from './components/layout/StatusBar';
 import { Toolbar } from './components/layout/Toolbar';
 import { DetailsPane } from './components/layout/DetailsPane';
+import { PreviewPane } from './components/layout/PreviewPane';
 import { ProgressWindow } from './components/dialogs/ProgressWindow';
 import { PropertiesWindow } from './components/dialogs/PropertiesWindow';
 import { OverwriteConfirmDialog } from './components/dialogs/OverwriteConfirmDialog';
@@ -13,15 +14,17 @@ import { ExtractPromptDialog } from './components/dialogs/ExtractPromptDialog';
 import { TrashConfirmDialog } from './components/dialogs/TrashConfirmDialog';
 import { LocationNotAvailableWindow } from './components/dialogs/LocationNotAvailableWindow';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
+import { Toaster } from './components/Toaster';
 import { useAppStore } from './stores/appStore';
 import { useSettingsStore } from './stores/settingsStore';
+import { useUndoStore } from './stores/undoStore';
 import './styles/global.css';
 import styles from './styles/App.module.css';
 
 function App() {
   const { goBack, goForward, goUp, openLocationNotAvailableDialog } = useAppStore();
   const { settings, loaded, loadSettings, setSidebarWidth } = useSettingsStore();
-  const { showDetailsPane, sidebarWidth: savedSidebarWidth } = settings.display;
+  const { showDetailsPane, showPreviewPane, showNavigationPane, sidebarWidth: savedSidebarWidth } = settings.display;
   const [sideWidth, setSideWidth] = useState(savedSidebarWidth);
 
   useEffect(() => {
@@ -49,6 +52,11 @@ function App() {
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
           goUp();
+        } else if (e.key === 'p' || e.key === 'P') {
+          // Alt+P: プレビューウィンドウの切替（詳細ウィンドウとは排他）
+          e.preventDefault();
+          const { display } = useSettingsStore.getState().settings;
+          useSettingsStore.getState().updateDisplaySettings({ showPreviewPane: !display.showPreviewPane, showDetailsPane: false });
         }
       }
 
@@ -56,6 +64,16 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault();
         useSettingsStore.getState().openSettings();
+      }
+
+      // Cmd/Ctrl + Z で元に戻す / Shift 併用でやり直し
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          useUndoStore.getState().redo();
+          return;
+        }
+        useUndoStore.getState().undo();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -131,21 +149,27 @@ function App() {
         <Toolbar />
       </div>
       <div className={styles.mainContent}>
-        <div className={styles.sideWrapper} style={{ width: sideWidth }}>
-          <SidePanel />
-        </div>
-        <div
-          onMouseDown={handleSideResize}
-          className={styles.resizer}
-        />
+        {showNavigationPane && (
+          <>
+            <div className={styles.sideWrapper} style={{ width: sideWidth }}>
+              <SidePanel />
+            </div>
+            <div
+              onMouseDown={handleSideResize}
+              className={styles.resizer}
+            />
+          </>
+        )}
         <MainPane />
         {showDetailsPane && <DetailsPane />}
+        {showPreviewPane && <PreviewPane />}
       </div>
       <StatusBar />
       <OverwriteConfirmDialog />
       <ExtractPromptDialog />
       <TrashConfirmDialog />
       <SettingsDialog />
+      <Toaster />
     </div>
   );
 }

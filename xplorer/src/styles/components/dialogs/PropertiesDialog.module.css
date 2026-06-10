@@ -196,6 +196,122 @@
     margin-left: auto;
 }
 
+/* Hash section */
+.hashBlock {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.hashRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hashLabel {
+    width: 60px;
+    flex-shrink: 0;
+    color: #333;
+}
+
+.hashValue {
+    flex: 1;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 11px;
+    word-break: break-all;
+    background-color: #f5f5f5;
+    padding: 2px 4px;
+    border: 1px solid #e0e0e0;
+}
+
+/* Advanced attributes modal */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modalDialog {
+    width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border: 1px solid #aaa;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    gap: 12px;
+}
+
+.modalTitle {
+    font-size: 13px;
+    font-weight: bold;
+    border-bottom: 1px solid #e5e5e5;
+    padding-bottom: 8px;
+}
+
+.modalSection {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.modalSectionTitle {
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.modalAttrLine {
+    color: #333;
+}
+
+.modalHint {
+    color: #888;
+    font-size: 11px;
+}
+
+.xattrList {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.xattrRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.xattrName {
+    flex: 1;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 11px;
+    word-break: break-all;
+}
+
+.xattrSize {
+    flex-shrink: 0;
+    color: #666;
+    font-size: 11px;
+}
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #e5e5e5;
+    padding-top: 10px;
+}
+
 .footer {
     display: flex;
     justify-content: flex-end;
@@ -319,6 +435,35 @@
     }
 
     .appLoading {
+        color: #aaa;
+    }
+
+    .hashLabel {
+        color: #ccc;
+    }
+
+    .hashValue {
+        background-color: #1a1a1a;
+        border-color: #444;
+        color: #eee;
+    }
+
+    .modalDialog {
+        background-color: #2b2b2b;
+        border-color: #444;
+        color: #fff;
+    }
+
+    .modalTitle,
+    .modalFooter {
+        border-color: #444;
+    }
+
+    .modalAttrLine {
+        color: #ccc;
+    }
+
+    .xattrSize {
         color: #aaa;
     }
 }

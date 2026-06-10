@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useUndoStore } from '@/stores/undoStore';
+
+const parentDir = (path: string) => path.slice(0, path.lastIndexOf('/')) || '/';
 
 export const useFileOperations = (refreshFiles: () => void) => {
     const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -8,6 +11,8 @@ export const useFileOperations = (refreshFiles: () => void) => {
     const handleRename = useCallback(async (path: string, newName: string) => {
         try {
             await invoke('rename_file', { path, newName });
+            const to = `${parentDir(path)}/${newName}`;
+            useUndoStore.getState().record({ type: 'rename', from: path, to });
             setRenamingPath(null);
             refreshFiles();
         } catch (err) {
@@ -19,6 +24,7 @@ export const useFileOperations = (refreshFiles: () => void) => {
     const handleCreateDirectory = useCallback(async (path: string) => {
         try {
             await invoke('create_directory', { path });
+            useUndoStore.getState().record({ type: 'create', path });
             refreshFiles();
         } catch (err) {
             console.error('Create directory failed:', err);

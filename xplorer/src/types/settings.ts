@@ -6,6 +6,8 @@ export interface DisplaySettings {
     showFileExtensions: boolean;
     showItemCheckboxes: boolean;
     showDetailsPane: boolean;
+    showPreviewPane: boolean;
+    showNavigationPane: boolean;
     sidebarWidth: number;
 }
 
@@ -31,6 +33,8 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
     showFileExtensions: true,
     showItemCheckboxes: false,
     showDetailsPane: false,
+    showPreviewPane: false,
+    showNavigationPane: true,
     sidebarWidth: 200,
 };
 
