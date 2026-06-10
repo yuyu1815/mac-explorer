@@ -167,3 +167,51 @@ pub struct CompressionResultWithErrors {
     pub compressed_size: u64,
     pub errors: Vec<CompressionError>,
 }
+
+/// ファイル内容検索の単一マッチ
+#[derive(Debug, Serialize)]
+pub struct ContentMatch {
+    pub path: String,
+    pub line_number: u32,
+    pub snippet: String,
+}
+
+/// ファイル内容検索の結果
+#[derive(Debug, Serialize)]
+pub struct ContentSearchResult {
+    pub matches: Vec<ContentMatch>,
+    pub truncated: bool,
+}
+
+/// ファイルハッシュ（MD5 / SHA-1 / SHA-256 を一括計算）
+#[derive(Debug, Serialize)]
+pub struct FileHashes {
+    pub md5: String,
+    pub sha1: String,
+    pub sha256: String,
+}
+
+/// プレビュー種別
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PreviewKind {
+    Text,
+    Image,
+    Pdf,
+    Video,
+    Audio,
+    Binary,
+}
+
+/// ファイルプレビューデータ
+#[derive(Debug, Serialize)]
+pub struct FilePreview {
+    pub kind: PreviewKind,
+    pub path: String,
+    pub size: u64,
+    pub size_formatted: String,
+    /// テキストプレビュー時のみ内容を保持（UTF-8 lossy 変換、先頭のみ）
+    pub content: Option<String>,
+    /// テキストが先頭部分のみで打ち切られたか
+    pub truncated: bool,
+}

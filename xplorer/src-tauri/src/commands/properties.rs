@@ -416,6 +416,93 @@ pub async fn set_readonly(path: String, readonly: bool) -> Result<(), String> {
     std::fs::set_permissions(&path, permissions).map_err(|e| e.to_string())
 }
 
+/// 拡張属性（xattr）1件の情報
+#[derive(Serialize)]
+pub struct XattrInfo {
+    pub name: String,
+    pub size: u64,
+}
+
+/// 指定ファイルの拡張属性（xattr）一覧を取得します。
+/// libc の listxattr / getxattr を直接呼び、属性名とサイズを返します。
+#[tauri::command]
+pub async fn list_xattrs(path: String) -> Result<Vec<XattrInfo>, String> {
+    use std::ffi::{CStr, CString};
+
+    let c_path = CString::new(path.as_bytes()).map_err(|e| e.to_string())?;
+
+    // XATTR_NOFOLLOW=0x0001。シンボリックリンク自体の属性を見る
+    let buf_len = unsafe { libc::listxattr(c_path.as_ptr(), std::ptr::null_mut(), 0, 0x0001) };
+    if buf_len < 0 {
+        return Err(format!(
+            "listxattr失敗: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    if buf_len == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut name_buf = vec![0u8; buf_len as usize];
+    let written = unsafe {
+        libc::listxattr(
+            c_path.as_ptr(),
+            name_buf.as_mut_ptr() as *mut libc::c_char,
+            name_buf.len(),
+            0x0001,
+        )
+    };
+    if written < 0 {
+        return Err(format!(
+            "listxattr失敗: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    name_buf.truncate(written as usize);
+
+    // null区切りの属性名を分解し、各属性のサイズを getxattr で取得
+    let attrs = name_buf
+        .split(|&b| b == 0)
+        .filter(|chunk| !chunk.is_empty())
+        .filter_map(|chunk| {
+            let name = CStr::from_bytes_with_nul(
+                &[chunk, &[0u8]].concat(),
+            )
+            .ok()?
+            .to_str()
+            .ok()?
+            .to_string();
+            let c_name = CString::new(name.as_bytes()).ok()?;
+            let size =
+                unsafe { libc::getxattr(c_path.as_ptr(), c_name.as_ptr(), std::ptr::null_mut(), 0, 0, 0x0001) };
+            Some(XattrInfo {
+                name,
+                size: size.max(0) as u64,
+            })
+        })
+        .collect();
+
+    Ok(attrs)
+}
+
+/// 指定ファイルから拡張属性を1件削除します（com.apple.quarantine の解除など）。
+#[tauri::command]
+pub async fn remove_xattr(path: String, name: String) -> Result<(), String> {
+    use std::ffi::CString;
+
+    let c_path = CString::new(path.as_bytes()).map_err(|e| e.to_string())?;
+    let c_name = CString::new(name.as_bytes()).map_err(|e| e.to_string())?;
+
+    let result = unsafe { libc::removexattr(c_path.as_ptr(), c_name.as_ptr(), 0x0001) };
+    if result < 0 {
+        return Err(format!(
+            "拡張属性の削除に失敗: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    Ok(())
+}
+
 /// 指定されたファイルの隠し状態を設定します。
 /// macOSでは chflags コマンドを使用して hidden フラグを操作します。
 #[tauri::command]

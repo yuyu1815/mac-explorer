@@ -111,6 +111,41 @@ pub async fn open_file_default(path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 指定ファイル群を添付した新規メールを Mail.app で開きます。
+///
+/// `open -a Mail <files>` は各ファイルを添付した新規メッセージを作成する macOS の挙動を利用しています。
+#[tauri::command]
+pub async fn share_via_mail(paths: Vec<String>) -> Result<(), String> {
+    if paths.is_empty() {
+        return Err("共有するファイルが選択されていません".to_string());
+    }
+
+    std::process::Command::new("open")
+        .arg("-a")
+        .arg("Mail")
+        .args(&paths)
+        .spawn()
+        .map_err(|e| format!("Mailを開けませんでした: {}", e))?;
+    Ok(())
+}
+
+/// 指定ファイル群を Finder で表示（選択状態）します。
+///
+/// `open -R` はファイルを内包するフォルダを開き、対象を選択状態にします。
+#[tauri::command]
+pub async fn reveal_in_finder(paths: Vec<String>) -> Result<(), String> {
+    if paths.is_empty() {
+        return Err("表示するファイルが選択されていません".to_string());
+    }
+
+    std::process::Command::new("open")
+        .arg("-R")
+        .args(&paths)
+        .spawn()
+        .map_err(|e| format!("Finderで表示できませんでした: {}", e))?;
+    Ok(())
+}
+
 /// 指定されたディレクトリでターミナル（Terminal.app）を開きます。
 ///
 /// AppleScript経由でターミナルを起動し、対象ディレクトリへ `cd` を実行させます。
