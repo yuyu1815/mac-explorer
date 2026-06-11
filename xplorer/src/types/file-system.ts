@@ -66,3 +66,37 @@ export interface FilePreview {
     content: string | null;
     truncated: boolean;
 }
+
+// 圧縮・展開の進捗（Rust: CompressionProgress / ExtractionProgress。両者は同一フィールドなので1型に共通化）
+export interface ArchiveProgress {
+    current_file: string;
+    files_processed: number;
+    total_files: number;
+    bytes_processed: number;
+    bytes_processed_formatted: string;
+    total_bytes: number;
+    total_bytes_formatted: string;
+    speed: number;
+    speed_formatted: string;
+    eta: number;
+    eta_formatted: string;
+    progress_percent: number;
+    complete: boolean;
+}
+
+// Rust: CompressionResultWithErrors
+export interface CompressionResult {
+    archive_path: string;
+    files_count: number;
+    original_size: number;
+    compressed_size: number;
+    errors: { file_path: string; message: string }[];
+}
+
+// Rust: ExtractionResult
+export interface ExtractionResult {
+    extracted_count: number;
+    extracted_size: number;
+    destination: string;
+    errors: string[];
+}

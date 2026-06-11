@@ -32,6 +32,9 @@ pub struct DisplaySettings {
     pub show_item_checkboxes: bool,
     /// 詳細ペインを表示
     pub show_details_pane: bool,
+    /// プレビューペインを表示
+    #[serde(default)]
+    pub show_preview_pane: bool,
     /// ナビゲーションペインを表示
     #[serde(default = "default_true")]
     pub show_navigation_pane: bool,
@@ -53,6 +56,7 @@ impl Default for DisplaySettings {
             show_file_extensions: true,
             show_item_checkboxes: false,
             show_details_pane: false,
+            show_preview_pane: false,
             show_navigation_pane: true,
             sidebar_width: 200,
         }

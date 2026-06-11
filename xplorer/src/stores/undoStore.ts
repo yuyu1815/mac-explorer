@@ -6,7 +6,7 @@ import { useNotificationStore } from '@/stores/notificationStore';
 // 記録するファイル操作。delete はゴミ箱からの正確な復元が保証できないため対象外とする。
 export type FileOp =
     | { type: 'rename'; from: string; to: string }
-    | { type: 'move'; sources: string[]; originalDir: string }
+    | { type: 'move'; originalPaths: string[]; dest: string }
     | { type: 'copy'; sources: string[]; createdPaths: string[] }
     | { type: 'create'; path: string };
 
@@ -14,6 +14,7 @@ const HISTORY_LIMIT = 50;
 
 const parentDir = (path: string) => path.slice(0, path.lastIndexOf('/')) || '/';
 const baseName = (path: string) => path.slice(path.lastIndexOf('/') + 1);
+const joinPath = (dir: string, name: string) => (dir.endsWith('/') ? `${dir}${name}` : `${dir}/${name}`);
 
 // 操作種別 → 逆操作。undo 実行時にこの逆操作を呼ぶ。
 const invert: Record<FileOp['type'], (op: FileOp) => Promise<void>> = {
@@ -23,7 +24,9 @@ const invert: Record<FileOp['type'], (op: FileOp) => Promise<void>> = {
     },
     move: async (op) => {
         const o = op as Extract<FileOp, { type: 'move' }>;
-        await ipc.moveFiles(o.sources, o.originalDir);
+        for (const p of o.originalPaths) {
+            await ipc.moveFiles([joinPath(o.dest, baseName(p))], parentDir(p));
+        }
     },
     copy: async (op) => {
         const o = op as Extract<FileOp, { type: 'copy' }>;
@@ -43,8 +46,7 @@ const replay: Record<FileOp['type'], (op: FileOp) => Promise<void>> = {
     },
     move: async (op) => {
         const o = op as Extract<FileOp, { type: 'move' }>;
-        const originalPaths = o.sources.map((s) => `${o.originalDir}/${baseName(s)}`);
-        await ipc.moveFiles(originalPaths, parentDir(o.sources[0]));
+        await ipc.moveFiles(o.originalPaths, o.dest);
     },
     copy: async (op) => {
         const o = op as Extract<FileOp, { type: 'copy' }>;

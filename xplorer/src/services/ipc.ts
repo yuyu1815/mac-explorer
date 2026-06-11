@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import { FileEntry, ContentSearchResult, FileHashes, FilePreview, XattrInfo } from '@/types';
+import { invoke, Channel } from '@tauri-apps/api/core';
+import { FileEntry, ContentSearchResult, FileHashes, FilePreview, XattrInfo, ArchiveProgress, CompressionResult, ExtractionResult } from '@/types';
 
 export const ipc = {
     listDirectory: (path: string) => invoke<FileEntry[]>('list_directory', { path }),
@@ -8,8 +8,10 @@ export const ipc = {
     renameFile: (path: string, newName: string) => invoke<void>('rename_file', { path, newName }),
     copyFiles: (sources: string[], dest: string) => invoke<void>('copy_files', { sources, dest }),
     moveFiles: (sources: string[], dest: string) => invoke<void>('move_files', { sources, dest }),
-    compressArchive: (sources: string[], destArchivePath: string) => invoke<void>('compress_archive', { sources, destArchivePath }),
-    extractArchive: (sourcePath: string, destDir: string) => invoke<void>('extract_archive', { sourcePath, destDir }),
+    compressArchive: (sources: string[], destArchivePath: string, format: string, channel: Channel<ArchiveProgress>) =>
+        invoke<CompressionResult>('compress_archive', { sources, destArchivePath, format, channel }),
+    extractArchive: (archivePath: string, destDir: string, channel: Channel<ArchiveProgress>) =>
+        invoke<ExtractionResult>('extract_archive', { archivePath, destDir, channel }),
     listFilesSorted: (path: string, showHidden: boolean, sortBy: string, sortDesc: boolean, searchQuery: string) =>
         invoke<FileEntry[]>('list_files_sorted', { path, showHidden, sortBy, sortDesc, searchQuery }),
     showProperties: (path: string) => invoke<void>('show_properties', { path }),

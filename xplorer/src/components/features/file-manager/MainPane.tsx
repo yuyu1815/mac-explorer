@@ -193,7 +193,7 @@ const DriveCard = ({ vol, isSelected, onClick, onDoubleClick, onContextMenu }: D
 const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
     onContextMenu: (e: ReactMouseEvent, path: string) => void;
     selectedPaths: Set<string>;
-    toggleSelection: (path: string, clearOthers: boolean, isRange: boolean, index: number) => void;
+    toggleSelection: (path: string, multi: boolean, range: boolean, index: number) => void;
 }) => {
     const [volumes, setVolumes] = useState<VolumeInfo[]>([]);
     const { setCurrentPath } = useAppStore();
@@ -225,7 +225,7 @@ const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
                             isSelected={selectedPaths.has(vol.path)}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                toggleSelection(vol.path, !e.ctrlKey && !e.metaKey, e.shiftKey, -1);
+                                toggleSelection(vol.path, e.ctrlKey || e.metaKey, e.shiftKey, -1);
                             }}
                             onDoubleClick={() => setCurrentPath(vol.path)}
                             onContextMenu={(e) => {
@@ -251,7 +251,7 @@ const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
                                 isSelected={selectedPaths.has(vol.path)}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    toggleSelection(vol.path, !e.ctrlKey && !e.metaKey, e.shiftKey, -1);
+                                    toggleSelection(vol.path, e.ctrlKey || e.metaKey, e.shiftKey, -1);
                                 }}
                                 onDoubleClick={() => setCurrentPath(vol.path)}
                                 onContextMenu={(e) => {
@@ -278,7 +278,7 @@ const PCView = ({ onContextMenu, selectedPaths, toggleSelection }: {
                                 isSelected={selectedPaths.has(vol.path)}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    toggleSelection(vol.path, !e.ctrlKey && !e.metaKey, e.shiftKey, -1);
+                                    toggleSelection(vol.path, e.ctrlKey || e.metaKey, e.shiftKey, -1);
                                 }}
                                 onDoubleClick={() => setCurrentPath(vol.path)}
                                 onContextMenu={(e) => {
@@ -435,7 +435,7 @@ export const MainPane = () => {
         const paths = isSelected ? Array.from(selectedPaths) : [file.path];
 
         if (!isSelected) {
-            hookToggleSelection(file.path, true, false, -1);
+            hookToggleSelection(file.path, false, false, -1);
         }
 
         e.dataTransfer.setData('application/json', JSON.stringify({ sourcePaths: paths }));
@@ -522,9 +522,8 @@ export const MainPane = () => {
                     await invoke('copy_files', { sources: sourcePaths, dest: file.path });
                     useUndoStore.getState().record({ type: 'copy', sources: sourcePaths, createdPaths: resultPaths });
                 } else {
-                    const originalDir = sourcePaths[0].slice(0, sourcePaths[0].lastIndexOf('/')) || '/';
                     await invoke('move_files', { sources: sourcePaths, dest: file.path });
-                    useUndoStore.getState().record({ type: 'move', sources: resultPaths, originalDir });
+                    useUndoStore.getState().record({ type: 'move', originalPaths: sourcePaths, dest: file.path });
                 }
                 await refreshFiles();
             }
@@ -537,7 +536,7 @@ export const MainPane = () => {
         e.preventDefault();
         e.stopPropagation();
         if (path && !selectedPaths.has(path)) {
-            hookToggleSelection(path, true, false, -1);
+            hookToggleSelection(path, false, false, -1);
         }
         setContextMenu({ x: e.clientX, y: e.clientY, target: path });
     };
@@ -624,9 +623,8 @@ export const MainPane = () => {
                     await invoke('copy_files', { sources: clipboard.files, dest: currentPath });
                     useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths: resultPaths });
                 } else {
-                    const originalDir = clipboard.files[0].slice(0, clipboard.files[0].lastIndexOf('/')) || '/';
                     await invoke('move_files', { sources: clipboard.files, dest: currentPath });
-                    useUndoStore.getState().record({ type: 'move', sources: resultPaths, originalDir });
+                    useUndoStore.getState().record({ type: 'move', originalPaths: clipboard.files, dest: currentPath });
                     setClipboard(null);
                 }
                 await refreshFilesLocal();
@@ -651,7 +649,7 @@ export const MainPane = () => {
                 : Math.max(focusedIndex - 1, 0);
 
             setFocusedIndex(nextIndex);
-            hookToggleSelection(files[nextIndex].path, !e.ctrlKey && !e.metaKey, e.shiftKey, nextIndex);
+            hookToggleSelection(files[nextIndex].path, e.ctrlKey || e.metaKey, e.shiftKey, nextIndex);
             return;
         }
 
@@ -660,7 +658,7 @@ export const MainPane = () => {
             if (files.length === 0) return;
             const idx = e.key === 'Home' ? 0 : files.length - 1;
             setFocusedIndex(idx);
-            hookToggleSelection(files[idx].path, true, false, idx);
+            hookToggleSelection(files[idx].path, false, false, idx);
             return;
         }
 
@@ -743,7 +741,7 @@ export const MainPane = () => {
             const match = files.findIndex(f => f.name.toLowerCase().startsWith(typeAheadBuffer.current));
             if (match !== -1) {
                 setFocusedIndex(match);
-                hookToggleSelection(files[match].path, true, false, match);
+                hookToggleSelection(files[match].path, false, false, match);
             }
         }
     };
@@ -1024,7 +1022,7 @@ export const MainPane = () => {
                             checked={selectedPaths.has(file.path)}
                             onChange={(e) => {
                                 e.stopPropagation();
-                                hookToggleSelection(file.path, false, false, index);
+                                hookToggleSelection(file.path, true, false, index);
                             }}
                             onClick={(e) => e.stopPropagation()}
                             className={styles.itemCheckbox}
@@ -1092,7 +1090,7 @@ export const MainPane = () => {
                             checked={selectedPaths.has(file.path)}
                             onChange={(e) => {
                                 e.stopPropagation();
-                                hookToggleSelection(file.path, false, false, index);
+                                hookToggleSelection(file.path, true, false, index);
                             }}
                             onClick={(e) => e.stopPropagation()}
                             className={`${styles.itemCheckbox} ${styles.iconItemCheckbox}`}
@@ -1160,7 +1158,7 @@ export const MainPane = () => {
                             checked={selectedPaths.has(file.path)}
                             onChange={(e) => {
                                 e.stopPropagation();
-                                hookToggleSelection(file.path, false, false, index);
+                                hookToggleSelection(file.path, true, false, index);
                             }}
                             onClick={(e) => e.stopPropagation()}
                             className={styles.itemCheckbox}
@@ -1168,9 +1166,9 @@ export const MainPane = () => {
                     )}
                     <FileIcon isDir={file.is_dir} iconId={file.icon_id} size={48} isSymlink={file.is_symlink} isNoAccess={file.is_noaccess} />
                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-                        <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); hookToggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, index); }}>{renderFileName(file)}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); hookToggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, index); }}>{file.file_type}</span>
-                        {!file.is_dir && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }} onClick={(e) => { e.stopPropagation(); hookToggleSelection(file.path, !e.metaKey && !e.ctrlKey, false, index); }}>{file.size_formatted}</span>}
+                        <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{renderFileName(file)}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.file_type}</span>
+                        {!file.is_dir && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{file.size_formatted}</span>}
                     </div>
                 </div>
                         );
@@ -1211,7 +1209,7 @@ export const MainPane = () => {
                                 startRename(file.path);
                             }, 500);
                         }
-                        hookToggleSelection(file.path, !e.ctrlKey && !e.metaKey, e.shiftKey, index);
+                        hookToggleSelection(file.path, e.ctrlKey || e.metaKey, e.shiftKey, index);
                     }}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
@@ -1242,7 +1240,7 @@ export const MainPane = () => {
                             checked={selectedPaths.has(file.path)}
                             onChange={(e) => {
                                 e.stopPropagation();
-                                hookToggleSelection(file.path, false, false, index);
+                                hookToggleSelection(file.path, true, false, index);
                             }}
                             onClick={(e) => e.stopPropagation()}
                             className={styles.itemCheckbox}

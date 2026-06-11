@@ -3,23 +3,9 @@ import { invoke, Channel } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { InsufficientSpaceDialog } from './InsufficientSpaceDialog';
+import { ipc } from '@/services/ipc';
+import { ArchiveProgress } from '@/types';
 import styles from '@/styles/components/dialogs/ProgressWindow.module.css';
-
-export interface ProgressData {
-    current_file: string;
-    files_processed: number;
-    total_files: number;
-    bytes_processed: number;
-    bytes_processed_formatted: string;
-    total_bytes: number;
-    total_bytes_formatted: string;
-    speed: number;
-    speed_formatted: string;
-    eta: number;
-    eta_formatted: string;
-    progress_percent: number;
-    complete: boolean;
-}
 
 // Windows 10風 グラフ一体型プログレスバー
 const IntegratedSpeedGraph: React.FC<{
@@ -126,7 +112,7 @@ const IntegratedSpeedGraph: React.FC<{
 };
 
 export const ProgressWindow: React.FC = () => {
-    const [progress, setProgress] = useState<ProgressData | null>(null);
+    const [progress, setProgress] = useState<ArchiveProgress | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [insufficientSpace, setInsufficientSpace] = useState<{
         required: number; available: number; path: string;
@@ -140,7 +126,7 @@ export const ProgressWindow: React.FC = () => {
 
     const startTimeRef = useRef(Date.now());
     const speedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const progressRef = useRef<ProgressData | null>(null);
+    const progressRef = useRef<ArchiveProgress | null>(null);
     const isPausedRef = useRef(false);
 
     const togglePause = () => {
@@ -195,7 +181,7 @@ export const ProgressWindow: React.FC = () => {
                 setActionInfo({ action: actionText, dest: payload.destDir || '...' });
                 startTimeRef.current = Date.now();
 
-                const channel = new Channel<ProgressData>();
+                const channel = new Channel<ArchiveProgress>();
                 channel.onmessage = (data) => {
                     setProgress(data);
                     if (data.complete) {
@@ -211,19 +197,13 @@ export const ProgressWindow: React.FC = () => {
 
                 let invokeError = false;
                 if (action === 'compress') {
-                    const result = await invoke<{ errors: Array<{ file_path: string; message: string }> }>('compress_archive', {
-                        ...payload,
-                        channel,
-                    });
+                    const result = await ipc.compressArchive(payload.sources, payload.destArchivePath, payload.format, channel);
                     if (result.errors.length > 0) {
                         invokeError = true;
                         setErrorMsg('いくつかのファイルで圧縮エラーが発生しました');
                     }
                 } else if (action === 'extract') {
-                    const result = await invoke<{ errors: string[] }>('extract_archive', {
-                        ...payload,
-                        channel,
-                    });
+                    const result = await ipc.extractArchive(payload.archivePath, payload.destDir, channel);
                     if (result.errors.length > 0) {
                         invokeError = true;
                         setErrorMsg('解凍中にエラーが発生しました');

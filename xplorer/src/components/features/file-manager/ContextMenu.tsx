@@ -286,9 +286,8 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                                         await ipc.copyFiles(clipboard.files, currentPath);
                                         useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths: resultPaths });
                                     } else {
-                                        const originalDir = clipboard.files[0].slice(0, clipboard.files[0].lastIndexOf('/')) || '/';
                                         await ipc.moveFiles(clipboard.files, currentPath);
-                                        useUndoStore.getState().record({ type: 'move', sources: resultPaths, originalDir });
+                                        useUndoStore.getState().record({ type: 'move', originalPaths: clipboard.files, dest: currentPath });
                                         setClipboard(null);
                                     }
                                     await refreshFiles();

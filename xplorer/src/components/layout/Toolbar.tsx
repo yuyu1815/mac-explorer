@@ -121,10 +121,8 @@ export const Toolbar = () => {
                 const createdPaths = clipboard.files.map(f => joinPath(currentPath, baseName(f)));
                 useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths });
             } else {
-                const originalDir = clipboard.files.length > 0 ? clipboard.files[0].slice(0, clipboard.files[0].lastIndexOf('/')) || '/' : currentPath;
                 await invoke('move_files', { sources: clipboard.files, dest: currentPath });
-                const movedPaths = clipboard.files.map(f => joinPath(currentPath, baseName(f)));
-                useUndoStore.getState().record({ type: 'move', sources: movedPaths, originalDir });
+                useUndoStore.getState().record({ type: 'move', originalPaths: clipboard.files, dest: currentPath });
                 setClipboard(null);
             }
             refreshFiles();
@@ -163,10 +161,8 @@ export const Toolbar = () => {
             const destDir = await open({ directory: true, multiple: false });
             if (destDir && typeof destDir === 'string') {
                 const sources = Array.from(selectedFiles);
-                const originalDir = currentPath;
                 await invoke('move_files', { sources, dest: destDir });
-                const movedPaths = sources.map(f => joinPath(destDir, baseName(f)));
-                useUndoStore.getState().record({ type: 'move', sources: movedPaths, originalDir });
+                useUndoStore.getState().record({ type: 'move', originalPaths: sources, dest: destDir });
                 refreshFiles();
             }
         } catch (err) {
