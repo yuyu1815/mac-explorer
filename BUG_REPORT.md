@@ -85,3 +85,46 @@
 - `fs-change` イベントの listen/emit 一致
 - FileEntry / FilePreview 等の TS 型と Rust serde の整合
 - TrashConfirmDialog / OverwriteConfirmDialog の resolve 分岐は正しい
+
+---
+
+# 第2弾調査（2026-06-11）: D&D・貼り付け・サイレント失敗
+
+P0 4件の修正後、「D&Dが使えない」「同一ディレクトリに貼り付けできない」の報告を受けた追加調査。
+
+> **対応状況（2026-06-11）**: R1〜R6 およびサイレント失敗（影響大・中）は修正済み。同一dirコピーは Windows 互換の「xxx - コピー (n)」連番生成で対応。貼り付けロジックは services/fileTransfer.ts（copyWithConfirm / moveWithConfirm）に一本化。未実装機能（外部D&D・SidePanel/パンくずドロップ）は未着手。
+
+## 確定原因（報告された2症状）
+
+### R1. D&Dが全く動かない — tauri.conf.json の設定欠落
+- **箇所**: `xplorer/src-tauri/tauri.conf.json`（windows 設定）
+- **原因**: Tauri v2 はデフォルトでネイティブ drag-drop ハンドラが有効で、WebView 内の HTML5 DnD イベント（drop / dataTransfer）を奪う。MainPane の `draggable` ベース実装は設定上動作不能
+- **修正方針**: windows 設定に `"dragDropEnabled": false` を追加（ProgressWindow 等の動的ウィンドウは WebviewWindow オプションでも指定）
+
+### R2. 同一ディレクトリへの貼り付けが全件エラー — starts_with ガードの過剰判定
+- **箇所**: `xplorer/src-tauri/src/commands/file_ops.rs:54`
+- **原因**: `target.starts_with(src)` は同一パスでも true（自分自身を含む）ため、同じフォルダへのコピーが「Cannot copy into itself」で全件拒否される。さらにフロントが catch で console.error するだけなので無反応に見える
+- **修正方針**: 同一パス時はエラーではなく「xxx - コピー」等のユニーク名を生成（Windowsエクスプローラー互換）。`/a → /a/b` の真の自己内包だけ弾く
+
+## 追加で発見した確実なバグ
+
+| # | 箇所 | 内容 | リスク |
+|---|------|------|--------|
+| R3 | Toolbar/MainPane/ContextMenu の貼り付け全箇所 | **上書き確認が完全に欠落**。copy_files は同名を黙って上書き、move_files (fs::rename) も黙って置換。appStore の confirmOverwrite は存在するのに未使用 | データ消失（最重要） |
+| R4 | MainPane.tsx（コンテナ） | ビューの空白領域へのドロップが未実装。フォルダアイテム上にしかドロップできない | 機能欠落 |
+| R5 | MainPane.tsx:496 | dragLeave が子要素への移動でも発火し dragTarget が無条件クリア → ハイライトがちらつく | UX |
+| R6 | MainPane.tsx Cmd+V / ContextMenu.tsx handleAction | try/catch 自体が無く unhandled rejection。ContextMenu はエラー時に onClose が呼ばれずメニューが残る | UX |
+
+## サイレント失敗（エラーがUIに出ない）約20箇所
+
+notifyError / Toaster が存在するのに `catch { console.error }` 止まり。ユーザーには「無反応」に見える。
+
+- **影響大**: Toolbar.tsx 88, 129, 149, 168, 188, 204, 230, 379（貼り付け・コピー先・移動先・削除・開く・新規作成・再読込）/ MainPane.tsx 530（D&D）
+- **影響中**: ContextMenu.tsx 83, 97（再読込）/ NavigationBar.tsx 82, 135 / useFileSystem.ts 43（error が return されるが MainPane で未表示）/ PropertiesDialog.tsx 185
+- **影響小**: ProgressWindow.tsx 138, 140 / useFileSystem.ts 65（watch_path）
+
+## 未実装機能（バグではなく欠落）
+
+- Finder → xplorer への外部ファイルドロップ（`tauri://drag-drop` の listen なし）
+- xplorer → Finder へのドラッグアウト
+- SidePanel・パンくず・タブへのドロップ
