@@ -183,7 +183,7 @@ export const PropertiesDialog: React.FC<PropertiesDialogProps> = ({ path }) => {
             const apps = await invoke<ApplicationInfo[]>('get_applications_for_file', { path });
             setApplications(apps);
         } catch (err) {
-            console.error('Failed to load applications:', err);
+            useNotificationStore.getState().notifyError(`アプリケーション一覧の取得に失敗しました: ${err}`);
         } finally {
             setLoadingApps(false);
         }

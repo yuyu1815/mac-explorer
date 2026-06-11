@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ArrowUp, RotateCw, Search, ChevronRight, Chevron
 import { invoke } from '@tauri-apps/api/core';
 import { useNavigationBar } from '@/hooks/useNavigationBar';
 import { useContentSearch } from '@/hooks/useContentSearch';
+import { useNotificationStore } from '@/stores/notificationStore';
 import styles from '@/styles/components/layout/NavigationBar.module.css';
 
 type SearchMode = 'name' | 'content';
@@ -79,8 +80,8 @@ export const NavigationBar = () => {
         if (command === 'cmd' || command === 'terminal') {
             try {
                 await invoke('open_terminal_at', { path: currentPath });
-            } catch (e) {
-                console.error('Failed to open terminal:', e);
+            } catch (err) {
+                useNotificationStore.getState().notifyError(`ターミナルを開けませんでした: ${err}`);
             }
             setInputValue(currentPath);
             setIsEditing(false);
@@ -133,7 +134,7 @@ export const NavigationBar = () => {
             setDropdownItems(dirs);
             setDropdownPath(path);
         } catch (err) {
-            console.error(err);
+            useNotificationStore.getState().notifyError(`フォルダー一覧の取得に失敗しました: ${err}`);
         }
     };
 

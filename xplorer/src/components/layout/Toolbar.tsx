@@ -13,11 +13,9 @@ import {
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '@/utils/archive';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useUndoStore } from '@/stores/undoStore';
+import { copyWithConfirm, moveWithConfirm } from '@/services/fileTransfer';
 import { FileEntry, SortColumn, GroupBy } from '@/types';
 import styles from '@/styles/components/layout/Toolbar.module.css';
-
-const baseName = (path: string) => path.slice(path.lastIndexOf('/') + 1);
-const joinPath = (dir: string, name: string) => (dir.endsWith('/') ? `${dir}${name}` : `${dir}/${name}`);
 
 const SORT_OPTIONS: { label: string; column: SortColumn }[] = [
     { label: '名前', column: 'name' },
@@ -86,7 +84,7 @@ export const Toolbar = () => {
             const result = await invoke<FileEntry[]>('list_directory', { path: currentPath, showHidden: false });
             setFiles(result);
         } catch (err) {
-            console.error('Refresh failed', err);
+            useNotificationStore.getState().notifyError(`ファイル一覧の更新に失敗しました: ${err}`);
         }
     };
 
@@ -106,7 +104,7 @@ export const Toolbar = () => {
                 const paths = Array.from(selectedFiles).join('\n');
                 await writeText(paths);
             } catch (err) {
-                console.error('Failed to copy path', err);
+                useNotificationStore.getState().notifyError(`パスのコピーに失敗しました: ${err}`);
             }
         }
     };
@@ -117,17 +115,14 @@ export const Toolbar = () => {
         if (!clipboard || clipboard.files.length === 0) return;
         try {
             if (clipboard.operation === 'copy') {
-                await invoke('copy_files', { sources: clipboard.files, dest: currentPath });
-                const createdPaths = clipboard.files.map(f => joinPath(currentPath, baseName(f)));
-                useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths });
+                await copyWithConfirm(clipboard.files, currentPath);
             } else {
-                await invoke('move_files', { sources: clipboard.files, dest: currentPath });
-                useUndoStore.getState().record({ type: 'move', originalPaths: clipboard.files, dest: currentPath });
+                await moveWithConfirm(clipboard.files, currentPath);
                 setClipboard(null);
             }
             refreshFiles();
         } catch (err) {
-            console.error('Toolbar action failed:', err);
+            useNotificationStore.getState().notifyError(`貼り付けに失敗しました: ${err}`);
         }
     };
 
@@ -142,12 +137,10 @@ export const Toolbar = () => {
             const destDir = await open({ directory: true, multiple: false });
             if (destDir && typeof destDir === 'string') {
                 const sources = Array.from(selectedFiles);
-                await invoke('copy_files', { sources, dest: destDir });
-                const createdPaths = sources.map(f => joinPath(destDir, baseName(f)));
-                useUndoStore.getState().record({ type: 'copy', sources, createdPaths });
+                await copyWithConfirm(sources, destDir);
             }
         } catch (err) {
-            console.error('Failed to copy to', err);
+            useNotificationStore.getState().notifyError(`コピーに失敗しました: ${err}`);
         }
     };
 
@@ -161,12 +154,11 @@ export const Toolbar = () => {
             const destDir = await open({ directory: true, multiple: false });
             if (destDir && typeof destDir === 'string') {
                 const sources = Array.from(selectedFiles);
-                await invoke('move_files', { sources, dest: destDir });
-                useUndoStore.getState().record({ type: 'move', originalPaths: sources, dest: destDir });
+                await moveWithConfirm(sources, destDir);
                 refreshFiles();
             }
         } catch (err) {
-            console.error('Failed to move to', err);
+            useNotificationStore.getState().notifyError(`移動に失敗しました: ${err}`);
         }
     };
 
@@ -186,7 +178,7 @@ export const Toolbar = () => {
                 try {
                     await invoke('open_file_default', { path: targetFile.path });
                 } catch (err) {
-                    console.error('Failed to open file', err);
+                    useNotificationStore.getState().notifyError(`ファイルを開けませんでした: ${err}`);
                 }
             }
         }
@@ -202,7 +194,7 @@ export const Toolbar = () => {
             useUndoStore.getState().record({ type: 'create', path: newPath });
             refreshFiles();
         } catch (err) {
-            console.error('Toolbar action failed:', err);
+            useNotificationStore.getState().notifyError(`ファイルの作成に失敗しました: ${err}`);
         }
     };
 
@@ -228,7 +220,7 @@ export const Toolbar = () => {
                 refreshFiles();
             }
         } catch (err) {
-            console.error('Toolbar action failed:', err);
+            useNotificationStore.getState().notifyError(`削除に失敗しました: ${err}`);
         }
     };
 
@@ -377,7 +369,7 @@ export const Toolbar = () => {
             useUndoStore.getState().record({ type: 'create', path: newPath });
             refreshFiles();
         } catch (err) {
-            console.error('Toolbar action failed:', err);
+            useNotificationStore.getState().notifyError(`フォルダーの作成に失敗しました: ${err}`);
         }
     };
 

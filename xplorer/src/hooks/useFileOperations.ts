@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useUndoStore } from '@/stores/undoStore';
-
-const parentDir = (path: string) => path.slice(0, path.lastIndexOf('/')) || '/';
+import { parentDir } from '@/utils/path';
 
 export const useFileOperations = (refreshFiles: () => void) => {
     const [renamingPath, setRenamingPath] = useState<string | null>(null);

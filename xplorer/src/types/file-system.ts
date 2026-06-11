@@ -100,3 +100,9 @@ export interface ExtractionResult {
     destination: string;
     errors: string[];
 }
+
+// Rust: CopyResult（部分成功を表現する。errors があっても created_paths の分は作成済み）
+export interface CopyResult {
+    created_paths: string[];
+    errors: string[];
+}

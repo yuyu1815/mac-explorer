@@ -2,19 +2,16 @@ import { create } from 'zustand';
 import { ipc } from '@/services/ipc';
 import { useAppStore } from '@/stores/appStore';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { baseName, parentDir, joinPath } from '@/utils/path';
 
 // 記録するファイル操作。delete はゴミ箱からの正確な復元が保証できないため対象外とする。
 export type FileOp =
     | { type: 'rename'; from: string; to: string }
     | { type: 'move'; originalPaths: string[]; dest: string }
-    | { type: 'copy'; sources: string[]; createdPaths: string[] }
+    | { type: 'copy'; sources: string[]; dest: string; createdPaths: string[] }
     | { type: 'create'; path: string };
 
 const HISTORY_LIMIT = 50;
-
-const parentDir = (path: string) => path.slice(0, path.lastIndexOf('/')) || '/';
-const baseName = (path: string) => path.slice(path.lastIndexOf('/') + 1);
-const joinPath = (dir: string, name: string) => (dir.endsWith('/') ? `${dir}${name}` : `${dir}/${name}`);
 
 // 操作種別 → 逆操作。undo 実行時にこの逆操作を呼ぶ。
 const invert: Record<FileOp['type'], (op: FileOp) => Promise<void>> = {
@@ -30,6 +27,7 @@ const invert: Record<FileOp['type'], (op: FileOp) => Promise<void>> = {
     },
     copy: async (op) => {
         const o = op as Extract<FileOp, { type: 'copy' }>;
+        if (o.createdPaths.length === 0) return;
         await ipc.deleteFiles(o.createdPaths);
     },
     create: async (op) => {
@@ -38,27 +36,33 @@ const invert: Record<FileOp['type'], (op: FileOp) => Promise<void>> = {
     },
 };
 
-// 操作種別 → 順操作。redo 実行時に元の操作を再現する。
-const replay: Record<FileOp['type'], (op: FileOp) => Promise<void>> = {
+// 操作種別 → 順操作。redo 実行時に元の操作を再現し、undo スタックへ積み直す op を返す。
+// copy は再実行のたびに連番名（xxx - コピー (n)）が変わりうるため、実際の作成パスで記録を更新する。
+const replay: Record<FileOp['type'], (op: FileOp) => Promise<FileOp>> = {
     rename: async (op) => {
         const o = op as Extract<FileOp, { type: 'rename' }>;
         await ipc.renameFile(o.from, baseName(o.to));
+        return o;
     },
     move: async (op) => {
         const o = op as Extract<FileOp, { type: 'move' }>;
         await ipc.moveFiles(o.originalPaths, o.dest);
+        return o;
     },
     copy: async (op) => {
         const o = op as Extract<FileOp, { type: 'copy' }>;
-        await ipc.copyFiles(o.sources, parentDir(o.createdPaths[0]));
+        const { created_paths, errors } = await ipc.copyFiles(o.sources, o.dest);
+        if (errors.length > 0) throw new Error(errors.join('\n'));
+        return { ...o, createdPaths: created_paths };
     },
     create: async (op) => {
         const o = op as Extract<FileOp, { type: 'create' }>;
         if (o.path.endsWith('/') || !baseName(o.path).includes('.')) {
             await ipc.createDirectory(o.path);
-            return;
+            return o;
         }
         await ipc.createFile(o.path);
+        return o;
     },
 };
 
@@ -108,9 +112,9 @@ export const useUndoStore = create<UndoState>((set, get) => ({
         if (!op) return;
         set((state) => ({ redoStack: state.redoStack.slice(0, -1) }));
         try {
-            await replay[op.type](op);
+            const replayed = await replay[op.type](op);
             await refreshActiveTab();
-            set((state) => ({ undoStack: [...state.undoStack, op].slice(-HISTORY_LIMIT) }));
+            set((state) => ({ undoStack: [...state.undoStack, replayed].slice(-HISTORY_LIMIT) }));
         } catch (err) {
             useNotificationStore.getState().notifyError(`やり直せませんでした: ${err}`);
         }

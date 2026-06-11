@@ -3,7 +3,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/stores/appStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useNotificationStore } from '@/stores/notificationStore';
-import { useUndoStore } from '@/stores/undoStore';
 import { ContextMenu } from './ContextMenu';
 import {
     Folder, File, FileText, AppWindow, FileVideo,
@@ -13,6 +12,7 @@ import {
 import { FileEntry, VolumeInfo } from '@/types';
 import { groupFiles } from '@/utils/grouping';
 import { ipc } from '@/services/ipc';
+import { copyWithConfirm, moveWithConfirm } from '@/services/fileTransfer';
 import { useFileSystem } from '@/hooks/useFileSystem';
 import { useFileOperations } from '@/hooks/useFileOperations';
 import { useFileSelection } from '@/hooks/useFileSelection';
@@ -493,7 +493,8 @@ export const MainPane = () => {
         }
     };
 
-    const handleDragLeaveItem = (_e: React.DragEvent, file: { path: string; is_dir: boolean }) => {
+    const handleDragLeaveItem = (e: React.DragEvent, file: { path: string; is_dir: boolean }) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
         if (dragTarget === file.path) {
             setDragTarget(null);
         }
@@ -516,19 +517,46 @@ export const MainPane = () => {
                 const invalidDrop = sourcePaths.some((p: string) => file.path === p || file.path.startsWith(p + '/'));
                 if (invalidDrop) return;
 
-                const baseName = (p: string) => p.slice(p.lastIndexOf('/') + 1);
-                const resultPaths = sourcePaths.map((p: string) => `${file.path}/${baseName(p)}`);
                 if (isCopy) {
-                    await invoke('copy_files', { sources: sourcePaths, dest: file.path });
-                    useUndoStore.getState().record({ type: 'copy', sources: sourcePaths, createdPaths: resultPaths });
+                    await copyWithConfirm(sourcePaths, file.path);
                 } else {
-                    await invoke('move_files', { sources: sourcePaths, dest: file.path });
-                    useUndoStore.getState().record({ type: 'move', originalPaths: sourcePaths, dest: file.path });
+                    await moveWithConfirm(sourcePaths, file.path);
                 }
                 await refreshFiles();
             }
         } catch (err) {
-            console.error('Drop failed', err);
+            useNotificationStore.getState().notifyError(`移動/コピーに失敗しました: ${err}`);
+        }
+    };
+
+    const handleDragOverContainer = (e: React.DragEvent) => {
+        if (currentPath === 'this-pc') return;
+        if (!e.dataTransfer.types.includes('application/json')) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = e.ctrlKey || e.metaKey || e.altKey ? 'copy' : 'move';
+    };
+
+    const handleDropContainer = async (e: React.DragEvent) => {
+        if (currentPath === 'this-pc') return;
+        const data = e.dataTransfer.getData('application/json');
+        if (!data) return;
+        e.preventDefault();
+        setDragTarget(null);
+        try {
+            const { sourcePaths } = JSON.parse(data);
+            // フォルダを自分自身（の配下）である現在地へドロップした場合は無視
+            const invalidDrop = sourcePaths.some((p: string) => currentPath === p || currentPath.startsWith(p + '/'));
+            if (invalidDrop) return;
+
+            const isCopy = e.ctrlKey || e.metaKey || e.altKey;
+            if (isCopy) {
+                await copyWithConfirm(sourcePaths, currentPath);
+            } else {
+                await moveWithConfirm(sourcePaths, currentPath);
+            }
+            await refreshFiles();
+        } catch (err) {
+            useNotificationStore.getState().notifyError(`移動/コピーに失敗しました: ${err}`);
         }
     };
 
@@ -617,17 +645,17 @@ export const MainPane = () => {
             if (currentPath === 'this-pc') return;
 
             if (clipboard) {
-                const baseName = (p: string) => p.slice(p.lastIndexOf('/') + 1);
-                const resultPaths = clipboard.files.map(f => `${currentPath}/${baseName(f)}`);
-                if (clipboard.operation === 'copy') {
-                    await invoke('copy_files', { sources: clipboard.files, dest: currentPath });
-                    useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths: resultPaths });
-                } else {
-                    await invoke('move_files', { sources: clipboard.files, dest: currentPath });
-                    useUndoStore.getState().record({ type: 'move', originalPaths: clipboard.files, dest: currentPath });
-                    setClipboard(null);
+                try {
+                    if (clipboard.operation === 'copy') {
+                        await copyWithConfirm(clipboard.files, currentPath);
+                    } else {
+                        await moveWithConfirm(clipboard.files, currentPath);
+                        setClipboard(null);
+                    }
+                    await refreshFilesLocal();
+                } catch (err) {
+                    useNotificationStore.getState().notifyError(`貼り付けに失敗しました: ${err}`);
                 }
-                await refreshFilesLocal();
             }
             return;
         }
@@ -1289,6 +1317,8 @@ export const MainPane = () => {
                 goUp();
             }}
             onContextMenu={(e) => handleContextMenu(e, null)}
+            onDragOver={handleDragOverContainer}
+            onDrop={handleDropContainer}
             onKeyDown={handleKeyDown}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}

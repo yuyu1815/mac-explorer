@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { FileEntry } from '@/types';
 import { useAppStore } from '@/stores/appStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 interface UseFileSystemProps {
     currentPath: string;
@@ -41,7 +42,7 @@ export const useFileSystem = ({ currentPath, showHidden, sortParams, searchQuery
             setFilesLocal(result);
             setFilesGlobal(result);
         } catch (err) {
-            console.error('Failed to list files:', err);
+            useNotificationStore.getState().notifyError(`フォルダーを読み込めませんでした: ${err}`);
             setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);

@@ -1,12 +1,12 @@
 import { invoke, Channel } from '@tauri-apps/api/core';
-import { FileEntry, ContentSearchResult, FileHashes, FilePreview, XattrInfo, ArchiveProgress, CompressionResult, ExtractionResult } from '@/types';
+import { FileEntry, ContentSearchResult, FileHashes, FilePreview, XattrInfo, ArchiveProgress, CompressionResult, ExtractionResult, CopyResult } from '@/types';
 
 export const ipc = {
     listDirectory: (path: string) => invoke<FileEntry[]>('list_directory', { path }),
     createDirectory: (path: string) => invoke<void>('create_directory', { path }),
     deleteFiles: (paths: string[], toTrash: boolean = true) => invoke<void>('delete_files', { paths, toTrash }),
     renameFile: (path: string, newName: string) => invoke<void>('rename_file', { path, newName }),
-    copyFiles: (sources: string[], dest: string) => invoke<void>('copy_files', { sources, dest }),
+    copyFiles: (sources: string[], dest: string) => invoke<CopyResult>('copy_files', { sources, dest }),
     moveFiles: (sources: string[], dest: string) => invoke<void>('move_files', { sources, dest }),
     compressArchive: (sources: string[], destArchivePath: string, format: string, channel: Channel<ArchiveProgress>) =>
         invoke<CompressionResult>('compress_archive', { sources, destArchivePath, format, channel }),

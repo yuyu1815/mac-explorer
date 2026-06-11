@@ -10,9 +10,9 @@ import { GroupBy } from '@/types';
 import { isArchive, getArchiveFormat, getFileNameWithoutExtension } from '@/utils/archive';
 import { ipc } from '@/services/ipc';
 import { useUndoStore } from '@/stores/undoStore';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { copyWithConfirm, moveWithConfirm } from '@/services/fileTransfer';
 import styles from '@/styles/components/features/file-manager/ContextMenu.module.css';
-
-const baseName = (path: string) => path.slice(path.lastIndexOf('/') + 1);
 
 const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
     { label: '(なし)', value: 'none' },
@@ -69,8 +69,13 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
     }, [onClose]);
 
     const handleAction = async (action: () => Promise<void> | void) => {
-        await action();
-        onClose();
+        try {
+            await action();
+        } catch (err) {
+            useNotificationStore.getState().notifyError(`操作に失敗しました: ${err}`);
+        } finally {
+            onClose();
+        }
     };
 
     const refreshFiles = async () => {
@@ -81,7 +86,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             const result = await ipc.listFilesSorted(currentPath, false, sortBy, sortDesc, searchQuery);
             setFiles(result);
         } catch (err) {
-            console.error('Context menu action failed:', err);
+            useNotificationStore.getState().notifyError(`ファイル一覧の更新に失敗しました: ${err}`);
         }
     };
 
@@ -95,7 +100,7 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
             useUndoStore.getState().record({ type: 'create', path: newPath });
             refreshFiles();
         } catch (err) {
-            console.error('Context menu action failed:', err);
+            useNotificationStore.getState().notifyError(`ファイルの作成に失敗しました: ${err}`);
         }
     };
 
@@ -281,13 +286,10 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                         onClick={() => {
                             if (clipboard) {
                                 handleAction(async () => {
-                                    const resultPaths = clipboard.files.map(f => `${currentPath}/${baseName(f)}`);
                                     if (clipboard.operation === 'copy') {
-                                        await ipc.copyFiles(clipboard.files, currentPath);
-                                        useUndoStore.getState().record({ type: 'copy', sources: clipboard.files, createdPaths: resultPaths });
+                                        await copyWithConfirm(clipboard.files, currentPath);
                                     } else {
-                                        await ipc.moveFiles(clipboard.files, currentPath);
-                                        useUndoStore.getState().record({ type: 'move', originalPaths: clipboard.files, dest: currentPath });
+                                        await moveWithConfirm(clipboard.files, currentPath);
                                         setClipboard(null);
                                     }
                                     await refreshFiles();
@@ -329,7 +331,11 @@ export const ContextMenu = ({ x, y, targetPath, onClose, onStartRename, onCreate
                                         openLocationNotAvailableDialog(targetPath);
                                     }
                                 } else {
-                                    await ipc.openFileDefault(targetPath);
+                                    try {
+                                        await ipc.openFileDefault(targetPath);
+                                    } catch (err) {
+                                        useNotificationStore.getState().notifyError(`ファイルを開けませんでした: ${err}`);
+                                    }
                                 }
                             }
                         })} />

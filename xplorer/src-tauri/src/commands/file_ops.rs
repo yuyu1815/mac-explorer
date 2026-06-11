@@ -2,8 +2,10 @@
 //!
 //! macOS固有のゴミ箱（Trash）機能の統合や、バッチリネーム機能を含みます。
 
+use serde::Serialize;
+use std::ffi::OsStr;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// 新しいディレクトリを作成します。親ディレクトリが存在しない場合は再帰的に作成します。
 #[tauri::command]
@@ -18,34 +20,114 @@ pub async fn create_file(path: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// コピー結果。部分失敗があっても成功分の `created_paths` を保持する
+/// （Undo が成功分を正しく削除できるようにするため、Err でパスを捨てない）。
+#[derive(Serialize)]
+pub struct CopyResult {
+    pub created_paths: Vec<String>,
+    pub errors: Vec<String>,
+}
+
 /// 指定された複数のファイル・ディレクトリを宛先ディレクトリにコピーします。
 ///
 /// ディレクトリは再帰的にコピーします。シンボリックリンクは実体を辿らずリンクとして複製します。
 /// 同名衝突時はファイルを上書き、ディレクトリは既存ディレクトリへマージします（`fs::copy` の挙動に合わせる）。
-/// ファイル単位のエラーは収集して処理を継続し、完了時にまとめて返します。
+/// ファイル単位のエラーは収集して処理を継続し、成功分のコピー先パス（同一ディレクトリへの
+/// コピーでは `xxx - コピー` 連番名）と合わせて返します。
 #[tauri::command]
-pub async fn copy_files(sources: Vec<String>, dest: String) -> Result<(), String> {
-    let dest_dir = Path::new(&dest);
-    let errors: Vec<String> = sources
-        .iter()
-        .map(Path::new)
-        .filter(|src| src.symlink_metadata().is_ok())
-        .filter_map(|src| copy_entry(src, dest_dir).err())
-        .collect();
+pub async fn copy_files(sources: Vec<String>, dest: String) -> Result<CopyResult, String> {
+    Ok(copy_files_impl(&sources, &dest))
+}
 
-    if errors.is_empty() {
-        return Ok(());
+fn copy_files_impl(sources: &[String], dest: &str) -> CopyResult {
+    let dest_dir = Path::new(dest);
+    let mut created: Vec<String> = Vec::new();
+    let mut errors: Vec<String> = Vec::new();
+
+    for src in sources.iter().map(Path::new).filter(|src| src.symlink_metadata().is_ok()) {
+        match copy_entry(src, dest_dir) {
+            Ok(target) => created.push(target.to_string_lossy().into_owned()),
+            Err(e) => errors.push(e),
+        }
     }
-    Err(errors.join("\n"))
+
+    CopyResult { created_paths: created, errors }
 }
 
 /// 1つのソース（ファイル/ディレクトリ/シンボリックリンク）を宛先ディレクトリ配下へコピーします。
-fn copy_entry(src: &Path, dest_dir: &Path) -> Result<(), String> {
+/// コピー先のフルパスを返します。
+fn copy_entry(src: &Path, dest_dir: &Path) -> Result<PathBuf, String> {
     let name = src
         .file_name()
         .ok_or_else(|| format!("Invalid source path: {}", src.display()))?;
     let target = dest_dir.join(name);
-    copy_recursive(src, &target)
+
+    // 同一ディレクトリへのコピーは Windows 互換のユニーク名（`xxx - コピー`）を生成する。
+    if target != src {
+        copy_recursive(src, &target)?;
+        return Ok(target);
+    }
+
+    let reserved = reserve_unique_copy_target(src, dest_dir, name)?;
+    if let Err(e) = copy_recursive(src, &reserved) {
+        // 予約で作った空エントリを残さない（コピー本体が失敗した場合のみ）
+        remove_reservation(&reserved);
+        return Err(e);
+    }
+    Ok(reserved)
+}
+
+/// 同一ディレクトリへのコピー時に衝突しないユニークなパスを「作成して予約」してから返します。
+/// `file.txt` → `file - コピー.txt` → `file - コピー (2).txt` → …
+///
+/// exists() で空きを確認してから後でコピーする方式だと、その間に他プロセスが同名を
+/// 作成した場合に黙って上書きしてしまう（TOCTOU）ため、`create_new` / `create_dir` で
+/// アトミックに確保する。確保した空エントリはこの後の copy_recursive が中身で埋める。
+fn reserve_unique_copy_target(src: &Path, dest_dir: &Path, name: &OsStr) -> Result<PathBuf, String> {
+    let name = name.to_string_lossy();
+    let (stem, ext) = split_stem_ext(&name);
+    let src_is_dir = src
+        .symlink_metadata()
+        .map(|m| m.is_dir())
+        .unwrap_or(false);
+
+    let suffixes = std::iter::once(String::new()).chain((2..).map(|n| format!(" ({n})")));
+    // 上限は連番暴走（権限エラー等で永遠に確保できないケース）の保険
+    for suffix in suffixes.take(10_000) {
+        let candidate = dest_dir.join(format!("{stem} - コピー{suffix}{ext}"));
+        let reserved = if src_is_dir {
+            fs::create_dir(&candidate).is_ok()
+        } else {
+            fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&candidate)
+                .is_ok()
+        };
+        if reserved {
+            return Ok(candidate);
+        }
+    }
+    Err(format!("空きコピー名を確保できませんでした: {}", name))
+}
+
+fn remove_reservation(path: &Path) {
+    let is_dir = path.symlink_metadata().map(|m| m.is_dir()).unwrap_or(false);
+    let _ = if is_dir {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_file(path)
+    };
+}
+
+/// ファイル名を (stem, ext) に分割します。ext は `.` を含む（拡張子なしなら空文字）。
+/// 先頭が `.` のドットファイルは拡張子なし扱い。
+/// 複合拡張子（`.tar.gz` 等）は最後の `.` のみを拡張子とする（Windows エクスプローラー準拠）。
+fn split_stem_ext(name: &str) -> (&str, &str) {
+    match name.rfind('.') {
+        Some(idx) if idx > 0 => (&name[..idx], &name[idx..]),
+        _ => (name, ""),
+    }
 }
 
 /// `src` を `target` へ再帰コピーします。`target` はコピー後のフルパス（宛先ディレクトリ + 名前）。
@@ -227,5 +309,60 @@ mod tests {
         // /a を /a 自身の配下へコピー → ガードで弾かれる
         let err = copy_entry(&src, &src).unwrap_err();
         assert!(err.contains("into itself"));
+    }
+
+    #[test]
+    fn same_dir_copy_creates_unique_name_and_keeps_original() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path();
+        let src = dir.join("file.txt");
+        fs::write(&src, b"hello").unwrap();
+
+        let target = copy_entry(&src, dir).unwrap();
+
+        assert_eq!(target, dir.join("file - コピー.txt"));
+        // 元ファイルは無傷
+        assert_eq!(fs::read(&src).unwrap(), b"hello");
+        assert_eq!(fs::read(&target).unwrap(), b"hello");
+    }
+
+    #[test]
+    fn copy_files_keeps_partial_success_on_errors() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir_src = tmp.path().join("a");
+        fs::create_dir_all(dir_src.join("sub")).unwrap();
+        let file_src = tmp.path().join("f.txt");
+        fs::write(&file_src, b"x").unwrap();
+
+        // dest = /a/sub: /a 自身のコピーは into itself で失敗、f.txt は成功する
+        let dest = dir_src.join("sub").to_string_lossy().into_owned();
+        let sources = vec![
+            dir_src.to_string_lossy().into_owned(),
+            file_src.to_string_lossy().into_owned(),
+        ];
+        let result = copy_files_impl(&sources, &dest);
+
+        assert_eq!(
+            result.created_paths,
+            vec![dir_src.join("sub/f.txt").to_string_lossy().into_owned()]
+        );
+        assert_eq!(result.errors.len(), 1);
+        assert!(result.errors[0].contains("into itself"));
+    }
+
+    #[test]
+    fn same_dir_copy_twice_increments_number() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path();
+        let src = dir.join("file.txt");
+        fs::write(&src, b"hello").unwrap();
+
+        let first = copy_entry(&src, dir).unwrap();
+        assert_eq!(first, dir.join("file - コピー.txt"));
+
+        let second = copy_entry(&src, dir).unwrap();
+        assert_eq!(second, dir.join("file - コピー (2).txt"));
+        assert!(first.exists());
+        assert!(second.exists());
     }
 }
